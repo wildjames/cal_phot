@@ -299,7 +299,7 @@ Then, for each observing run,
                 filename = f"{filename}_{fname.split('/')[-1][:-4]}_{c[CCD_int]}.calib"
                 ratio = ratio[ltrim:-rtrim]
                 # ratio = ratio.fold(period, t0=T0)
-                ratio.t = (ratio.t - T0) / period
+                ratio = ratio.fold(period, t0=T0)
                 ratio = ratio.bin(binsize)
                 with open(filename, 'w') as f:
                     f.write("# Phase, Flux, Err_Flux, Mask\n")
