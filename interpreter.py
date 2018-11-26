@@ -285,7 +285,7 @@ Generally we want to follow these steps:
             else:
                 coords = '{} {}'.format(args[0], args[1])
                 coords.replace(':', ' ')
-                self.params['coords']
+                self.params['coords'] = coords
                 print("Using the following star coordinates:\n  RA:  {}\n  Dec: {}".format(args[0], args[1]))
         
         elif command == 'directory':
