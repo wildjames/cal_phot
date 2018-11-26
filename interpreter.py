@@ -74,8 +74,8 @@ Generally we want to follow these steps:
     If we are using sub-folders, this tells the next script where to look for data
   extinction <ext>
     Sets extinction coefficient, in mags/airmass
-  writeparams
-    Writes parameters to file. You probably want this every time!
+  writeparams <paramName>
+    Writes parameters to file. You probably want this every time! If no paramname is given, writes to 'reductino_params.txt'.
 
 -- Kappa corrections commands --
   stdLogfile <file>
@@ -302,7 +302,11 @@ Generally we want to follow these steps:
             self.params['plotall'] = args[0] in ['y', '1', 'yes', 'true']
 
         elif command == 'writeparams':
-            with open('reduction_params.txt', 'w') as f:
+            if args == []:
+                paramname = 'reduction_params.txt'
+            else:
+                paramname = args[0]
+            with open(paramname, 'w') as f:
                 for key, item in enumerate(self.params):
                     f.write("{} {}\n".format(item, self.params[item]))
             print("Wrote parameters to 'reduction_params.txt'!")
