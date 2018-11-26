@@ -304,7 +304,7 @@ Generally we want to follow these steps:
         elif command == 'writeparams':
             with open('reduction_params.txt', 'w') as f:
                 for key, item in enumerate(self.params):
-                    f.write("{} {}\n".format(key, item))
+                    f.write("{} {}\n".format(item, self.params[item]))
             print("Wrote parameters to 'reduction_params.txt'!")
 
 
