@@ -349,7 +349,7 @@ so was untrustworthy.
 
             # Use an MCMC model, starting from the solution we found, to model the errors
             ndim     = 6
-            nwalkers = 100
+            nwalkers = 50
 
             # Initial positions. Scatter by 0.00001, as this is one above the order of magnitude of the error
             #  we expect on t_ecl.
