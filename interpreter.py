@@ -372,7 +372,7 @@ Generally we want to follow these steps:
 
         elif command == 'analyse_new_eclipses':
             anal_new = args[0].lower() in ['y', '1']
-            self.params['anal_new']
+            self.params['anal_new'] = anal_new
             if anal_new:
                 print("I will analyse any data I find for eclipses.")
             else:
