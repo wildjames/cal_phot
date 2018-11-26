@@ -238,14 +238,14 @@ so was untrustworthy.
     oname = 'eclipse_times.txt'
     oname = '/'.join([myLoc, oname])
     if not path.isfile(oname):
-        print(f"  Couldn't find the file, '{oname}'. Creating that file.")
+        print("  Couldn't find the file, '{}'. Creating that file.".format(oname))
     
     ### ------------------------------------------------- ###
     
     # tecl list
     tl = []
     if path.isfile(oname):
-        print(f"  Found prior eclipses in '{oname}'. Using these in my fit.")
+        print("  Found prior eclipses in '{}'. Using these in my fit.".format(oname))
         with open(oname, 'r') as f:
             for line in f:
                 line = line.split(',')
@@ -391,7 +391,7 @@ so was untrustworthy.
             err = np.std(sampler.flatchain[:,2])
             sep = np.mean(sampler.flatchain[:,3])
 
-            print(f"    Got a solution: {t_ecl:.7f}+/-{err:.7f}\n")
+            print("    Got a solution: {:.7f}+/-{:.7f}\n".format(t_ecl, err))
 
             # print("  Got a Jacobian,\n {}".format(soln['jac']))
             # print("  Got a Hessian,\n {}".format(soln['hess_inv'].todense()))
@@ -414,7 +414,7 @@ so was untrustworthy.
             plt.axvline(t_ecl, color='magenta')
             plt.xlim(xmin=t_ecl-(1*sep), xmax=t_ecl+(1*sep))
 
-            plt.title(f"maximum likelihood prediction - {lf.split('/')[-1]}")
+            plt.title("maximum likelihood prediction - {}".format(lf.split('/')[-1]))
             plt.show()
         print("  \nDone all the files!")
 
@@ -430,7 +430,7 @@ so was untrustworthy.
     print("  Fitting these eclipse times:")
     for t in tl:
         print("  {:.7f}+/-{:.7f} from {}".format(t[0], t[1], t[2]))
-    print(f"\nStarting from an initial ephem of T0: {T0}, P: {period}")
+    print("\nStarting from an initial ephem of T0: {}, P: {}".format(T0, period))
     
     def test(params, data):
         # Gets the eclipse number.
@@ -467,7 +467,7 @@ so was untrustworthy.
     print("  Got a T0 of {:.10f}+/-{:.2e}".format(T0, T0_err))
     print("  Got a period of {:.10f}+/-{:.2e}".format(P, P_err))
 
-    print(f"        T - T0           | #phases from predicted")
+    print("        T - T0           | #phases from predicted")
     with open(oname, 'w') as f:
         for datum in tl:
             t = datum[0]
@@ -483,8 +483,8 @@ so was untrustworthy.
                 t_e,
                 dt
             ))
-            f.write(f"{t}, {t_e},{source}\n")
-    print(f"Wrote eclipse data to {oname}")
+            f.write("{}, {},{}\n".format(t, t_e, source))
+    print("Wrote eclipse data to {}".format(oname))
 
     # print('  Best period found: {:.9f}'.format(opt['x'][0]))
     return T0, P

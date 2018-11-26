@@ -254,7 +254,7 @@ Generally we want to follow these steps:
         elif command == 'observatory':
             # Changes the observing location
             self.obsname = args[0]
-            print(f"Observing location: {self.obsname}")
+            print("Observing location: {}".format(self.obsname))
         
         elif command == 'coords':
             # Changes the coordinates of the object you're about to talk about.
@@ -269,11 +269,11 @@ Generally we want to follow these steps:
         
         elif command == 'directory':
             self.directory = ''.join(args)
-            print(f"Working from directory: {self.directory}")
+            print("Working from directory: {}".format(self.directory))
 
         elif command == 'extinction':
             self.ext = float(args[0])
-            print(f"Extinction coefficient: {self.ext}")
+            print("Extinction coefficient: {}".format(self.ext))
         
         elif command == 'plotall':
             self.plotall = True
@@ -284,11 +284,11 @@ Generally we want to follow these steps:
         elif command == 'sdss':
             # Toggle SDSS field
             self.SDSS = args[0][0]=='1' or args[0][0].lower()=='y'
-            print(f"Are we in the SDSS field? [{self.SDSS}]")
+            print("Are we in the SDSS field? [{}]".format(self.SDSS))
         
         elif command == 'sdss_file':
             self.ref_file = args[0]
-            print(f"The SDSS reference star RA and Dec are contained in the file '{self.ref_file}'")
+            print("The SDSS reference star RA and Dec are contained in the file '{}'".format(self.ref_file))
 
 
         # getKappa stuff
@@ -326,11 +326,11 @@ Generally we want to follow these steps:
         
         elif command == 'period':
             self.period = float(args[0])
-            print(f"Using the period: {self.period}")
+            print("Using the period: {}".format(self.period))
 
         elif command == 't0':
             self.T0 = float(args[0])
-            print(f"Using the T0: {self.T0}")
+            print("Using the T0: {}".format(self.T0))
 
         elif command == 'analyse_new_eclipses':
             self.anal_new = args[0].lower() in ['y', '1']
@@ -371,8 +371,8 @@ Generally we want to follow these steps:
         # Unknown command handler
         elif command not in ['', None]: # I don't want to be told about every blank line...
             print("Unknown command!")
-            print(f"- {command}")
-            print(f"- {args}")
+            print("- {}".format(command))
+            print("- {}".format(args))
 
 
 inf = None

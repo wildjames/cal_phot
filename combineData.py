@@ -79,7 +79,7 @@ def tcorrect(tseries, star, observatory, type='B'):
 
 # -------------------\inputted variables-------------------------------------- #
 
-def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, binsize=10, myLoc='.', ext=0.161, fnames=None, ltrim=0, rtrim=1):
+def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, binsize=10, myLoc='.', ext=0.161, fnames=None):
     '''
 oname      - Filename template for writing lightcurve plot and data. Appended with binning factor.
 coords     - RA and DEC of target star. As a string in a format that astropy can interpret.
@@ -129,7 +129,7 @@ Then, for each observing run,
     for i, fname in enumerate(fnames):
         print("    {:2d} - {}".format(i, fname))
     print('  ')
-    print(f"  Binning folded data by {binsize}")
+    print("  Binning folded data by {}".format(binsize))
     print("  I'll write out to {}*\n".format(oname))
 
 
@@ -296,10 +296,25 @@ Then, for each observing run,
                 
                 filename = oname
                 filename = filename.replace('Reduced_Data', 'Reduced_Data/lightcurves')
+<<<<<<< Updated upstream
                 filename = f"{filename}_{fname.split('/')[-1][:-4]}_{c[CCD_int]}.calib"
                 ratio = ratio[ltrim:-rtrim]
                 # ratio = ratio.fold(period, t0=T0)
                 ratio = ratio.fold(period, t0=T0)
+=======
+                filename = "{}_{}_{}.calib".format(filename, fname.split('/')[-1][:-4], c[CCD_int])
+                ratio = ratio.fold(period, t0=T0) 
+               
+                # # TODO: Figure a way of doing what you're trying here.
+                # # Get what period we're in.
+                # t_ecl = ratio.t[np.argmin(ratio.y[50:-50])]
+                # t_ecl = np.rint(t_ecl/period) # Get the E of minimum light, and round to the nearest integer
+                # 
+                # t_ecl = t_ecl * period      # Then multiply this back up to the theoretical ephemeris 
+                # ratio.t = (ratio.t - t_ecl) # and scale the time to that number
+                # ratio.t = ratio.t / period  # then convert to phase, without wrapping
+
+>>>>>>> Stashed changes
                 ratio = ratio.bin(binsize)
                 with open(filename, 'w') as f:
                     f.write("# Phase, Flux, Err_Flux, Mask\n")
@@ -381,12 +396,12 @@ Then, for each observing run,
     print("  Writing to files...")
 
     for i, col in zip(['1', '2', '3'], c[1:]):
-        filename = oname+f'_{col}.calib'
+        filename = oname+'_{}.calib'.format(col)
         with open(filename, 'w') as f:
             f.write("# Phase, Flux, Err_Flux, Mask\n")
             for t, y, ye, mask in zip(master[i].t, master[i].y, master[i].ye, master[i].mask):
                 f.write("{}, {}, {}, {}\n".format(t, y, ye, mask))
-        print(f"  Wrote out {filename}!")
+        print("  Wrote out {}!".format(filename))
 
     # with open(oname+'.calib', 'w') as f:
     #     for i, col in zip(['1', '2', '3'], c[1:]):
