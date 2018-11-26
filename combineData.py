@@ -296,12 +296,6 @@ Then, for each observing run,
                 
                 filename = oname
                 filename = filename.replace('Reduced_Data', 'Reduced_Data/lightcurves')
-<<<<<<< Updated upstream
-                filename = f"{filename}_{fname.split('/')[-1][:-4]}_{c[CCD_int]}.calib"
-                ratio = ratio[ltrim:-rtrim]
-                # ratio = ratio.fold(period, t0=T0)
-                ratio = ratio.fold(period, t0=T0)
-=======
                 filename = "{}_{}_{}.calib".format(filename, fname.split('/')[-1][:-4], c[CCD_int])
                 ratio = ratio.fold(period, t0=T0) 
                
@@ -314,7 +308,6 @@ Then, for each observing run,
                 # ratio.t = (ratio.t - t_ecl) # and scale the time to that number
                 # ratio.t = ratio.t / period  # then convert to phase, without wrapping
 
->>>>>>> Stashed changes
                 ratio = ratio.bin(binsize)
                 with open(filename, 'w') as f:
                     f.write("# Phase, Flux, Err_Flux, Mask\n")

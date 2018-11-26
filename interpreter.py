@@ -11,25 +11,22 @@ from combineData import combineData
 
 class Interpreter:
     def __init__(self, inFile=None, prompt=[]):
-        # Initialise variables
-        self.directory = os.path.curdir
-        self.T0 = None
-        self.ext = 0.161
-        self.binsize = 1
-        self.anal_new = True
-        self.fnames = None
-        self.SDSS = 0
+        # Initialise variables. Store args in a dict.
+        self.params = {
+            'T0': None,
+            'directory': os.path.curdir,
+            'ext': 0.161,
+            'binsize': 1,
+            'anal_new': True,
+            'fnames': None,
+            'SDSS': 0
+        }
 
-        print("I will use the following working directory: {}\n".format(os.path.curdir+'/Reduced_Data/'))
-        if not os.path.exists(os.path.curdir+'/Reduced_Data/'):
-            os.mkdir(os.path.curdir+'/Reduced_Data/')
-
-
-        # parse individual commands
+        # parse prompt commands
         for line in prompt:
             self.parse(line)
         
-
+        # parse file commands
         if inFile != None:
             self.inFile = open(inFile, 'r')
             line = self.inFile.readline()
@@ -77,6 +74,8 @@ Generally we want to follow these steps:
     If we are using sub-folders, this tells the next script where to look for data
   extinction <ext>
     Sets extinction coefficient, in mags/airmass
+  writeparams
+    Writes parameters to file. You probably want this every time!
 
 -- Kappa corrections commands --
   stdLogfile <file>
@@ -129,24 +128,36 @@ Generally we want to follow these steps:
 
 ''')
 
+    def get_param(self, pname):
+        try:
+            p = self.params[pname]
+        except KeyError:
+            p = None
+            print("I couldn't retrieve the parameter {}!".format(pname))
+            raise AttributeError
+        return p
+
     def test(self, args):
         print('Entered the testing function, with the arguments:\n  {}'.format(args))
         return None
 
     def getKappa(self):
         try:
-            obsname = self.obsname
-            stdLogfile = '/'.join([self.directory, self.stdLogfile])
-            mags = self.mags
-            coords = self.coords
-            ext = self.ext
-
+            obsname = self.get_param('obsname')
+            mags   = self.get_param('mags')
+            coords = self.get_param('coords')
+            ext    = self.get_param('ext')
+            stdLogfile = '/'.join(
+                [self.get_param('directory'), self.get_param('stdLogfile')]
+            )
+            
             print("Computing instrumental magnitude to SDSS magnitude corrections...")
             
-            self.kappas = getKappa(stdLogfile, coords, obsname, mags, ext)
-            
+            kappas = getKappa(stdLogfile, coords, obsname, mags, ext)
+            self.params['kappas'] = kappas
+
             print("Computed the following correction factors:\n  r': {:.3f}\n  g': {:.3f}\n  u': {:.3f}\n".format(
-                self.kappas[1], self.kappas[2], self.kappas[3]
+                kappas[1], kappas[2], kappas[3]
                 )
             )
         except AttributeError:
@@ -161,16 +172,22 @@ Generally we want to follow these steps:
 
     def getEclipseTimes(self):
         try:
-            coords = self.coords
-            period = self.period
-            obsname = self.obsname
-            anal = self.anal_new
+            coords    = self.get_param('coords')
+            period    = self.get_param('period')
+            obsname   = self.get_param('obsname')
+            anal      = self.get_param('anal_new')
+            directory = self.get_param('directory')
+            T0        = self.get_param('T0')
 
 
-            print("Refining eclipse times:\n  Period: {:.3f}\n  Directory: {}\n".format(self.period, self.directory))
-            self.T0, self.period = getEclipseTimes(coords, obsname, period, analyse_new=anal, T0=self.T0, myLoc=self.directory)
+            print("Refining eclipse times:\n  Period: {:.3f}\n  Directory: {}\n".format(period, directory))
+
+            T0, period = getEclipseTimes(coords, obsname, period, analyse_new=anal, T0=T0, myLoc=directory)
+            self.params['T0']     = T0
+            self.params['period'] = period
+            
             print("Using the following ephemeris:\n  T0: {:-6.8f}\n  Period: {:-6.8f}\n".format(
-                self.T0, self.period
+                T0, period
             ))
         except AttributeError:
             print("I don't have enough data for ephemeris calculation!")
@@ -181,38 +198,40 @@ Generally we want to follow these steps:
             exit()
 
     def combineData(self):
-        # try:
-        oname     = self.oname
-        coords    = self.coords
-        obsname   = self.obsname
-        T0        = self.T0
-        period    = self.period
-        binsize   = self.binsize
-        myLoc     = self.directory
-        fnames    = self.fnames
-        
-        print("Combining, calibrating, and plotting data...")
-        if self.SDSS:
-            combineData(oname, coords, obsname, T0, period, SDSS=True, binsize=binsize, myLoc=myLoc, fnames=fnames)
-        else:
-            ref_kappa = self.kappas
-            combineData(oname, coords, obsname, T0, period, ref_kappa=ref_kappa, binsize=binsize, myLoc=myLoc, fnames=fnames)
-        # except AttributeError:
-        #     print("I don't have enough data to do the data processing!")
-        #     print("I failed to collect one or more of the following:")
-        #     print("  - oname")
-        #     print("  - coords")
-        #     print("  - ref_kappa")
-        #     print("  - observatory name")
-        #     print("  - T0")
-        #     print("  - period")
-        #     print("  - binsize")
-        #     print("  - directory")
-        #     exit()
+        try:
+            oname     = self.get_param('oname')
+            coords    = self.get_param('coords')
+            obsname   = self.get_param('obsname')
+            T0        = self.get_param('T0')
+            period    = self.get_param('period')
+            binsize   = self.get_param('binsize')
+            myLoc     = self.get_param('directory')
+            fnames    = self.get_param('fnames')
+
+            
+            print("Combining, calibrating, and plotting data...")
+            if self.SDSS:
+                combineData(oname, coords, obsname, T0, period, SDSS=True, binsize=binsize, myLoc=myLoc, fnames=fnames)
+            else:
+                ref_kappa = self.kappas
+                combineData(oname, coords, obsname, T0, period, ref_kappa=ref_kappa, SDSS=False, binsize=binsize, myLoc=myLoc, fnames=fnames)
+        except AttributeError:
+            print("I don't have enough data to do the data processing!")
+            print("I failed to collect one or more of the following:")
+            print("  - oname")
+            print("  - coords")
+            print("  - ref_kappa")
+            print("  - observatory name")
+            print("  - T0")
+            print("  - period")
+            print("  - binsize")
+            print("  - directory")
+            exit()
 
     def parse(self, line):
         line = line.strip()
 
+        # Clean up input for parsing
         if line == '':
             command = None
             args = None
@@ -253,8 +272,9 @@ Generally we want to follow these steps:
         # ''Global'' variables
         elif command == 'observatory':
             # Changes the observing location
-            self.obsname = args[0]
-            print("Observing location: {}".format(self.obsname))
+            obsname = args[0]
+            self.params['obsname'] = obsname
+            print("Observing location: {}".format(obsname))
         
         elif command == 'coords':
             # Changes the coordinates of the object you're about to talk about.
@@ -263,32 +283,43 @@ Generally we want to follow these steps:
                 print("I didn't seem to get the right RA and Dec format! Please use:\n  RA - HH:MM:SS.SS\n  DEC - DD:MM:SS.SS\n")
                 pass
             else:
-                self.coords = '{} {}'.format(args[0], args[1])
-                self.coords.replace(':', ' ')
-            print("Using the following star coordinates:\n  RA:  {}\n  Dec: {}".format(args[0], args[1]))
+                coords = '{} {}'.format(args[0], args[1])
+                coords.replace(':', ' ')
+                self.params['coords']
+                print("Using the following star coordinates:\n  RA:  {}\n  Dec: {}".format(args[0], args[1]))
         
         elif command == 'directory':
-            self.directory = ''.join(args)
-            print("Working from directory: {}".format(self.directory))
+            directory = ''.join(args)
+            self.params['directory'] = directory
+            print("Working from directory: {}".format(directory))
 
         elif command == 'extinction':
-            self.ext = float(args[0])
-            print("Extinction coefficient: {}".format(self.ext))
+            ext = float(args[0])
+            self.params['ext'] = ext
+            print("Extinction coefficient: {}".format(ext))
         
         elif command == 'plotall':
-            self.plotall = True
+            self.params['plotall'] = args[0] in ['y', '1', 'yes', 'true']
+
+        elif command == 'writeparams':
+            with open('reduction_params.txt', 'w') as f:
+                for key, item in enumerate(self.params):
+                    f.write("{} {}\n".format(key, item))
+            print("Wrote parameters to 'reduction_params.txt'!")
 
 
         # SDSS field observations calibration
         
         elif command == 'sdss':
             # Toggle SDSS field
-            self.SDSS = args[0][0]=='1' or args[0][0].lower()=='y'
-            print("Are we in the SDSS field? [{}]".format(self.SDSS))
+            SDSS = args[0] in ['y', '1', 'yes', 'true']
+            self.params['SDSS'] = SDSS
+            print("Are we in the SDSS field? [{}]".format(SDSS))
         
         elif command == 'sdss_file':
-            self.ref_file = args[0]
-            print("The SDSS reference star RA and Dec are contained in the file '{}'".format(self.ref_file))
+            ref_file = args[0]
+            self.params['ref_file'] = ref_file
+            print("The SDSS reference star RA and Dec are contained in the file '{}'".format(ref_file))
 
 
         # getKappa stuff
@@ -296,26 +327,31 @@ Generally we want to follow these steps:
             self.getKappa()
         
         elif command == 'stdlogfile':
-            self.stdLogfile = args[0]
-            print("Using the standard star in this log file,\n  {}".format(self.stdLogfile))
+            stdLogfile = args[0]
+            self.params['stdLogfile'] = stdLogfile
+            print("Using the standard star in this log file,\n  {}".format(stdLogfile))
         
         elif command == 'stdmags':
             # Must be in the format <r' g' u'>
             if len(args) < 3:
                 print("I didn't get enough magnitudes for the standard star!")
             else:
-                self.mags = [float(m) for m in args[:3]]
+                mags = [float(m) for m in args[:3]]
+                self.params['mags'] = mags
+
                 print("The standard star has the following apparent magnitudes:")
                 print("  r': {:.3f}\n  g': {:.3f}\n  u': {:.3f}".format(
-                    self.mags[0], self.mags[1], self.mags[2]
+                    mags[0], mags[1], mags[2]
                 ))
         
         elif command == 'kappa_corr':
-            self.kappas = [np.nan, np.nan, np.nan, np.nan]
-            self.kappas[1:] = [float(x) for x in args[:3]]
+            kappas = [np.nan, np.nan, np.nan, np.nan]
+            kappas[1:] = [float(x) for x in args[:3]]
+            self.params['kappas']
+
             print("Using the Kappa Corrections:")
             print("  r': {}\n  g': {}\n  u': {}".format(
-                self.kappas[1], self.kappas[2], self.kappas[3]
+                kappas[1], kappas[2], kappas[3]
             ))
 
 
@@ -325,16 +361,19 @@ Generally we want to follow these steps:
             self.getEclipseTimes()
         
         elif command == 'period':
-            self.period = float(args[0])
-            print("Using the period: {}".format(self.period))
+            period = float(args[0])
+            self.params['period'] = period
+            print("Using the period: {}".format(period))
 
         elif command == 't0':
-            self.T0 = float(args[0])
-            print("Using the T0: {}".format(self.T0))
+            T0 = float(args[0])
+            self.params['T0'] = T0
+            print("Using the T0: {}".format(T0))
 
         elif command == 'analyse_new_eclipses':
-            self.anal_new = args[0].lower() in ['y', '1']
-            if self.anal_new:
+            anal_new = args[0].lower() in ['y', '1']
+            self.params['anal_new']
+            if anal_new:
                 print("I will analyse any data I find for eclipses.")
             else:
                 print("Using historical data only for ephemeris fitting.")
@@ -344,9 +383,13 @@ Generally we want to follow these steps:
         elif command == 'combinedata':
             self.combineData()
         elif command == 'oname':
-            self.oname = args[0]
+            oname = args[0]
+            self.params['oname'] = oname
+            print("Using the following filename: {}".format(oname))
         elif command == 'binsize':
-            self.binsize = int(args[0])
+            binsize = int(args[0])
+            self.params['binsize'] = binsize
+            print("Binning data by {}".format(binsize))
         elif command == 'logfiles':
             # Read in logfilenames, terminated by an empty line, i.e. in the format:
             # logfiles
@@ -355,15 +398,16 @@ Generally we want to follow these steps:
             # file3 
             #
             # <continue>
-            self.fnames = []
+            fnames = []
 
             line = self.inFile.readline().strip()
             while line!='':
-                self.fnames.append(line)
+                fnames.append(line)
                 line = self.inFile.readline().strip()
+            self.params['fnames'] = fnames
 
             print("Using the following logfiles:")
-            for fname in self.fnames:
+            for fname in fnames:
                 print("- {}".format(fname))
 
 
@@ -384,6 +428,6 @@ if len(f) == 1:
 
 if os.path.isfile(f[1]):
     infile = f[1]
-    interp = Interpreter(inFile=infile, prompt=prom)
+    interp = Interpreter(inFile=infile)
 else:
     interp = Interpreter(prompt=f[1:])
