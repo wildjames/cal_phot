@@ -23,7 +23,7 @@ This is a copy of the 'help' output from the script. This can also be given by r
 - `coords <RA> <Dec` -- Sets the sky location. This has to be changed if your standard is in a different place than your target!
 - `directory <dir>` -- If we are using sub-folders, this tells the next script where to look for data
 - `extinction <ext> -- Sets extinction coefficient, in mags/airmass
-- `writeparams` -- Writes parameters to file. You probably want this every time!
+- `writeparams <filename>` -- Writes parameters to file. You probably want this every time! Optional filename arg, if not given writes to `reduction_params.txt`
 
 ## Kappa corrections commands
 - `stdLogfile <file>` -- Tells the kappa correction script where to look for a .log file
