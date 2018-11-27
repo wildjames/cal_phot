@@ -227,8 +227,6 @@ Generally we want to follow these steps:
             print("  - binsize")
             print("  - directory")
             exit()
-        else:
-            print("combineData command had a weird error...")
 
     def parse(self, line):
         line = line.strip()
