@@ -207,13 +207,13 @@ Generally we want to follow these steps:
             binsize   = self.get_param('binsize')
             myLoc     = self.get_param('directory')
             fnames    = self.get_param('fnames')
-
+            SDSS      = self.get_param('SDSS')
             
             print("Combining, calibrating, and plotting data...")
-            if self.SDSS:
+            if SDSS:
                 combineData(oname, coords, obsname, T0, period, SDSS=True, binsize=binsize, myLoc=myLoc, fnames=fnames)
             else:
-                ref_kappa = self.kappas
+                ref_kappa = self.get_param('kappas')
                 combineData(oname, coords, obsname, T0, period, ref_kappa=ref_kappa, SDSS=False, binsize=binsize, myLoc=myLoc, fnames=fnames)
         except AttributeError:
             print("I don't have enough data to do the data processing!")
@@ -227,6 +227,8 @@ Generally we want to follow these steps:
             print("  - binsize")
             print("  - directory")
             exit()
+        else:
+            print("combineData command had a weird error...")
 
     def parse(self, line):
         line = line.strip()
