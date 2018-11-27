@@ -160,7 +160,6 @@ Then, for each observing run,
             if SDSS:
                 refname         = fname.replace('.log', '.coords')
                 reference_stars = construct_reference(refname)
-                print("Grabbed reference coordinates from {}".format(refname))
 
             # Plotting area
             fig, ax = plt.subplots(3, figsize=[24, 8])
