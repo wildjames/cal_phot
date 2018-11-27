@@ -425,15 +425,16 @@ Generally we want to follow these steps:
             print("- {}".format(args))
 
 
-inf = None
-prom = []
-f = sys.argv
+if __name__ == "__main__":
+    inf = None
+    prom = []
+    f = sys.argv
 
-if len(f) == 1:
-    interp = Interpreter(prompt=['help'])
+    if len(f) == 1:
+        interp = Interpreter(prompt=['help'])
 
-if os.path.isfile(f[1]):
-    infile = f[1]
-    interp = Interpreter(inFile=infile)
-else:
-    interp = Interpreter(prompt=f[1:])
+    if os.path.isfile(f[1]):
+        infile = f[1]
+        interp = Interpreter(inFile=infile)
+    else:
+        interp = Interpreter(prompt=f[1:])
