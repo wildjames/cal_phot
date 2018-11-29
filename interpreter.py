@@ -302,7 +302,7 @@ Generally we want to follow these steps:
             self.params['plotall'] = args[0] in ['y', '1', 'yes', 'true']
 
         elif command == 'writeparams':
-            if args == []:
+            if args == None:
                 paramname = 'reduction_params.txt'
             else:
                 paramname = args[0]
