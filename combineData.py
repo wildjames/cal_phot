@@ -107,8 +107,9 @@ Then, for each observing run,
                 if file.endswith('.log'):
                     fnames.append('/'.join([myLoc,'Reduced_Data', file]))
         except:
-            print("  I had trouble finding the 'Reduced_Data' folder - does it exist?")
-            os.mkdir('/'.join([myLoc, 'Reduced_Data']))
+            for file in os.listdir('/'.join([myLoc])):
+                if file.endswith('.log'):
+                    fnames.append('/'.join([myLoc, file]))
         if len(fnames) == 0:
             print("  I couldn't find any log files! Stopping...")
             exit()
