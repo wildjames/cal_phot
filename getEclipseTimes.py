@@ -238,7 +238,7 @@ so was untrustworthy.
     oname = 'eclipse_times.txt'
     oname = '/'.join([myLoc, oname])
     if not path.isfile(oname):
-        print("  Couldn't find the file, '{}'. Creating that file.".format(oname))
+        print("  Couldn't find previous eclipse times file, '{}'. Creating that file.".format(oname))
     
     ### ------------------------------------------------- ###
     
@@ -270,7 +270,10 @@ so was untrustworthy.
                 if filename.endswith('.log'):
                     fnames.append('/'.join([myLoc, 'Reduced_Data', filename]))
         except:
-                print("  I had trouble finding the 'Reduced_Data' folder - does it exist?")
+            for filename in listdir('/'.join([myLoc])):
+                if filename.endswith('.log'):
+                    fnames.append('/'.join([myLoc, filename]))
+            
         if len(fnames) == 0:
                 print("  I couldn't find any log files in the Reduced_Data directory! Stopping...")
                 exit()
