@@ -147,9 +147,7 @@ Generally we want to follow these steps:
             mags   = self.get_param('mags')
             coords = self.get_param('coords')
             ext    = self.get_param('ext')
-            stdLogfile = '/'.join(
-                [self.get_param('directory'), self.get_param('stdLogfile')]
-            )
+            stdLogfile = self.get_param('stdLogfile')
             
             print("Computing instrumental magnitude to SDSS magnitude corrections...")
             
