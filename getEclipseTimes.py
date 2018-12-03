@@ -263,7 +263,6 @@ so was untrustworthy.
 
     if analyse_new:
         print("  Grabbing log files...")
-        locflag = input("\n    What is the source of these data: ")
         fnames = []
         try:
             for filename in listdir('/'.join([myLoc, 'Reduced_Data'])):
@@ -275,7 +274,9 @@ so was untrustworthy.
                     fnames.append('/'.join([myLoc, filename]))
             
         if len(fnames) == 0:
-                print("  I couldn't find any log files in the Reduced_Data directory! Stopping...")
+                print("  I couldn't find any log files! For reference, I searched the following:")
+                print("   - {}".format('/'.join([myLoc, 'Reduced_Data'])))
+                print("   - {}".format('/'.join([myLoc)))
                 exit()
         # List the files we found
         print("  Found these log files: ")
@@ -283,6 +284,8 @@ so was untrustworthy.
             print("  {:2d} - {}".format(i, fname))
         print('  ')
 
+        locflag = input("\n    What is the source of these data: ")
+        
         for lf in fnames:
             # lets make the file reading more robust
             try:
