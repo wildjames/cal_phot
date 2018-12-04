@@ -276,7 +276,7 @@ so was untrustworthy.
         if len(fnames) == 0:
                 print("  I couldn't find any log files! For reference, I searched the following:")
                 print("   - {}".format('/'.join([myLoc, 'Reduced_Data'])))
-                print("   - {}".format('/'.join([myLoc)))
+                print("   - {}".format('/'.join([myLoc])))
                 exit()
         # List the files we found
         print("  Found these log files: ")
