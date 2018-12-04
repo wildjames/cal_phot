@@ -291,6 +291,10 @@ Generally we want to follow these steps:
             self.params['directory'] = directory
             print("Working from directory: {}".format(directory))
 
+            # Check if we have preexisting lightcurves
+            if not os.path.exists('/'.join([directory, 'lightcurves'])):
+                os.mkdir('/'.join([directory, 'lightcurves']))
+
         elif command == 'extinction':
             ext = float(args[0])
             self.params['ext'] = ext
