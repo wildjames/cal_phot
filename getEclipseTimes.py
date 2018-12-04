@@ -413,14 +413,17 @@ so was untrustworthy.
 
             # Plot the data
             color = "#ff7f0e"
-            plt.plot(x, y, '.')
-            plt.plot(x, mu, color=color)
-            plt.fill_between(x, mu+std, mu-std, color=color, alpha=0.3, edgecolor="none")
-            plt.plot(x, mean_model.get_value(x), 'k-')
-            plt.axvline(t_ecl, color='magenta')
-            plt.xlim(xmin=t_ecl-(1*sep), xmax=t_ecl+(1*sep))
+            fig, ax = plt.subplots(2, 1, sharex=True)
+            ax[0].plot(x, y, '.')
+            ax[0].plot(x, mu, color=color)
+            ax[0].fill_between(x, mu+std, mu-std, color=color, alpha=0.3, edgecolor="none")
+            ax[0].plot(x, mean_model.get_value(x), 'k-')
+            ax[0].axvline(t_ecl, color='magenta')
+            ax[0].set_xlim(left=t_ecl-(1*sep), right=t_ecl+(1*sep))
+            
+            gband_corr.mplot(ax[1])
 
-            plt.title("maximum likelihood prediction - {}".format(lf.split('/')[-1]))
+            ax[0].set_title("maximum likelihood prediction - {}".format(lf.split('/')[-1]))
             plt.show()
         print("  \nDone all the files!")
 
