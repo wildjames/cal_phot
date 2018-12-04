@@ -81,23 +81,23 @@ def tcorrect(tseries, star, observatory, type='B'):
 
 def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, binsize=10, myLoc='.', ext=0.161, fnames=None):
     '''
-oname      - Filename template for writing lightcurve plot and data. Appended with binning factor.
-coords     - RA and DEC of target star. As a string in a format that astropy can interpret.
-obsname    - Observatory name
-T0         - Ephemeris zero point
-period     - Ephemeris period
-ref_kappa  - kappa corrections
-SDSS       - Are we in the SDSS field? If we are, I'll do a lookup using coordinates from a '.coords' file of the 
-             same name as the logfile, and get the data from there.
-binsize    - Lightcurve binning
-myLoc      - Logfile search directory. Looks here for a directory called 'Reduced_Data', and pulls logfiles from there.
-ext        - Atmospheric extinction, mags/airmass
+    oname      - Filename template for writing lightcurve plot and data. Appended with binning factor.
+    coords     - RA and DEC of target star. As a string in a format that astropy can interpret.
+    obsname    - Observatory name
+    T0         - Ephemeris zero point
+    period     - Ephemeris period
+    ref_kappa  - kappa corrections
+    SDSS       - Are we in the SDSS field? If we are, I'll do a lookup for reference magnitudes using coordinates from a '.coords' 
+                file of the same name as the logfile (i.e. logfile.log -> logfile.coords), and get the data from there.
+    binsize    - Lightcurve binning
+    myLoc      - Logfile search directory. Looks here for a directory called 'Reduced_Data', and pulls logfiles from there.
+    ext        - Atmospheric extinction, mags/airmass
 
-Overall goal: Construct a folded lightcurve of an object. 
+    Overall goal: Construct a folded lightcurve of an object. 
 
-Looks in <myLoc> for the directory 'Reduced_Data', and pulls all the logfiles from there for analysis.
-Then, for each observing run, 
-'''
+    Looks in <myLoc> for the directory 'Reduced_Data', and pulls all the logfiles from there for analysis.
+    Then, for each observing run, 
+    '''
 
     ## First, find the logfiles we want to use
     if fnames==None:
@@ -166,7 +166,7 @@ Then, for each observing run,
             fig, ax = plt.subplots(3, figsize=[24, 8])
 
             # I want altitude converted to zenith angle. Airmass is roughly constant over 
-            # a single observing run so only do it once.
+            # a single observing run so only do it once to save time.
             T = float(data['1'][0][1])
             T = time.Time(T, format='mjd')
             star_loc_AltAz = star_loc.transform_to(AltAz(obstime=T, location=observatory))
@@ -183,7 +183,6 @@ Then, for each observing run,
 
                 # Get this frame's apertures
                 ap = aps[CCD]
-
                 # Check that there is more than one aperture -- i.e. if a reference star exists
                 if len(ap) == 1:
                     print("  I can't do relative photometry with only one aperture!")
@@ -198,13 +197,14 @@ Then, for each observing run,
                     ## SDSS FIELD ##
                     # If we have more than one reference, handle that
                     if len(ap) > 1:
+                        # Add up the reference star fluxes
                         for comp in ap[2:]:
                             reference = reference + data.tseries(CCD, comp)
                         # Take the mean
                         reference = reference / len(ap[1:])
                     
                     ### <reference> is now a mean COUNT of the reference stars ### 
-                    ## Calculate their actual mean flux...
+                    ## Calculate their actual mean flux
                     
                     # List of the relevant reference star data
                     refs = reference_stars[CCD]
@@ -212,23 +212,22 @@ Then, for each observing run,
                     # Construct an array of the reference magnitudes, with some super opaque list comprehension.
                     # Just trust me on this one
                     mags = np.array(
-                        [ float(
-                            refs[comp][ band[CCD_int] ]
-                        )
-                            for comp in refs ]
+                        [ float(refs[comp][ band[CCD_int] ])
+                                for comp in refs ]
                     )
 
                     fluxs = sdss_mag2flux(mags)
                     meanFlux = np.mean(fluxs) # Actual FLUX of reference
                 else:
                     ### NON-SDSS FIELD ###
+
                     # mean reference counts/s, converted to magnitudes
                     fl = np.zeros(len(reference.y))
                     for i, count in enumerate(reference.y):
-                        # the column, data[CCD][i][3], contains the exposure time for that frame
+                        # the third column, data[CCD][i][3], contains the exposure time for that frame
                         fl[i] = count / data[CCD][i][3]
 
-                    # Calculate the mean apparent magnitude of the reference star
+                    # Calculate the mean apparent magnitude of the reference star above the atmosphere
                     mag = -2.5*np.log10(np.mean(fl)) - (ext*airmass) - ref_kappa[CCD_int]
                     # reference star magnitudes
                     mags = [mag]
@@ -261,12 +260,7 @@ Then, for each observing run,
                     reference.y = reference.y / len(ap[1:])
                     ### <reference> is now a mean COUNT of the reference stars ### 
 
-                    ## Calculate their real mean fluxes...
                     fluxs = sdss_mag2flux(mags)
-                    # print("  Reference star mean fluxes, CCD{}:".format(CCD))
-                    # for f in fluxs:
-                    #     print("  %.3f" % f)
-                    # print('  ')
                     meanFlux = np.mean(fluxs) # Actual MEAN FLUX of reference, mJy
 
                 # Conversion of target lightcurve
@@ -314,7 +308,7 @@ Then, for each observing run,
                     f.write("# Phase, Flux, Err_Flux, Mask\n")
                     for t, y, ye, mask in zip(ratio.t, ratio.y, ratio.ye, ratio.mask):
                         f.write("{} {} {}\n".format(t, y, ye))
-                # print(f"    Wrote out {filename}!")
+                print("Wrote file {}, with a mean of {:.4f}".format(filename, np.mean(ratio.y)))
 
 
             ax[0].set_title(fname.split('/')[-1])
