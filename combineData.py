@@ -147,6 +147,7 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
 
     band = ['', 'r',   'g',     'u'   ]
     c    = ['', 'red', 'green', 'blue']
+    master = {}
 
 
     # I want a master pdf file with all the nights' lightcurves plotted
@@ -269,21 +270,13 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
 
                 ratio = tcorrect(ratio, star_loc, obsname)
 
-                ## Check out master dict exists
+                ## Check we can append
                 try:
-                    master # Fails if master doesn't exist
+                    # If we find <master> has an entry for this CCD, append it
+                    master[CCD] = master[CCD].append(ratio)
                 except:
-                    # <master> doesn't exist, so initialise it as the reference we just calculated
-                    master = {}
+                    # Otherwise, create a new entry
                     master[CCD] = ratio
-                else:
-                    ## Check we can append
-                    try:
-                        # If we find <master> has an entry for this CCD, append it
-                        master[CCD] = master[CCD].append(ratio)
-                    except:
-                        # Otherwise, create a new entry
-                        master[CCD] = ratio
                 
                 filename = oname
                 filename = filename.replace('Reduced_Data', 'Reduced_Data/lightcurves')
@@ -312,7 +305,7 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
                     f.write("# Phase, Flux, Err_Flux, Mask\n")
                     for t, y, ye, mask in zip(ratio.t, ratio.y, ratio.ye, ratio.mask):
                         f.write("{} {} {}\n".format(t, y, ye))
-                print("    Wrote file {}, with a mean of {:.4f}".format(filename, np.mean(ratio.y)))
+                print("    Wrote file {}, with a mean of {:.4f}".format(filename, np.mean(ratio.y[:100])))
 
 
             ax[0].set_title(fname.split('/')[-1])
@@ -395,11 +388,4 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
                 f.write("{}, {}, {}, {}\n".format(t, y, ye, mask))
         print("  Wrote out {}!".format(filename))
 
-    # with open(oname+'.calib', 'w') as f:
-    #     for i, col in zip(['1', '2', '3'], c[1:]):
-    #         f.write("# {} band observations\n".format(col))
-    #         f.write("# Phase, Flux, Err_Flux, Mask\n")
-    #         for t, y, ye, mask in zip(master[i].t, master[i].y, master[i].ye, master[i].mask):
-    #             f.write("{}, {}, {}, {}\n".format(t, y, ye, mask))
-    # print("  Wrote to {}".format(oname+'.calib'))
     print("\n  Done!")
