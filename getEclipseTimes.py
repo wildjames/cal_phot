@@ -439,7 +439,7 @@ so was untrustworthy.
     print("  Fitting these eclipse times:")
     for t in tl:
         print("  {:.7f}+/-{:.7f} from {}".format(t[0], t[1], t[2]))
-    print("\nStarting from an initial ephem of T0: {}, P: {}".format(T0, period))
+    print("\n  Starting from an initial ephem of T0: {}, P: {}".format(T0, period))
     
     def test(params, data):
         # Gets the eclipse number.
@@ -476,7 +476,7 @@ so was untrustworthy.
     print("  Got a T0 of {:.10f}+/-{:.2e}".format(T0, T0_err))
     print("  Got a period of {:.10f}+/-{:.2e}".format(P, P_err))
 
-    print("        T - T0           | #phases from predicted")
+    print("          T                  | Seconds from predicted")
     with open(oname, 'w') as f:
         for datum in tl:
             t = datum[0]
@@ -487,13 +487,9 @@ so was untrustworthy.
             if dt > 0.5:
                 dt -= 1
 
-            print("    {: 10.6f}+/-{:-9.6f} | {: 9.6f}".format( # Make this handle errors properly
-                (t),
-                t_e,
-                dt
-            ))
+            print("    {:>10.6f}+/-{:<9.6f} | {:<9.2f}".format(t, t_e, (dt *24.*60.*60.)  ))
             f.write("{}, {},{}\n".format(t, t_e, source))
-    print("Wrote eclipse data to {}".format(oname))
+    print("  Wrote eclipse data to {}\n".format(oname))
 
     # print('  Best period found: {:.9f}'.format(opt['x'][0]))
     return T0, P
