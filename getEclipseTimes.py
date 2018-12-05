@@ -401,7 +401,7 @@ so was untrustworthy.
 
             # print("  Got a Jacobian,\n {}".format(soln['jac']))
             # print("  Got a Hessian,\n {}".format(soln['hess_inv'].todense()))
-            # print(f"Final log-liklihood: {(soln.fun)}")
+            # print("  Final log-liklihood: {}".format(soln.fun))
 
             tl.append(
                 [float(t_ecl), float(err), locflag]

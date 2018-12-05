@@ -269,10 +269,6 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
 
                 ratio = tcorrect(ratio, star_loc, obsname)
 
-                # Plotting
-                ratio.mplot(ax[CCD_int-1], colour=c[CCD_int])
-                ax[CCD_int-1].set_ylabel('Flux, mJy')
-
                 ## Check out master dict exists
                 try:
                     master # Fails if master doesn't exist
@@ -292,23 +288,31 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
                 filename = oname
                 filename = filename.replace('Reduced_Data', 'Reduced_Data/lightcurves')
                 filename = "{}_{}_{}.calib".format(filename, fname.split('/')[-1][:-4], c[CCD_int])
-                ratio = ratio.fold(period, t0=T0) 
-               
-                # # TODO: Figure a way of doing what you're trying here.
-                # # Get what period we're in.
-                # t_ecl = ratio.t[np.argmin(ratio.y[50:-50])]
-                # t_ecl = np.rint(t_ecl/period) # Get the E of minimum light, and round to the nearest integer
-                # 
-                # t_ecl = t_ecl * period      # Then multiply this back up to the theoretical ephemeris 
-                # ratio.t = (ratio.t - t_ecl) # and scale the time to that number
-                # ratio.t = ratio.t / period  # then convert to phase, without wrapping
 
-                ratio = ratio.bin(binsize)
+                # Fold about the period
+                # ratio = ratio.fold(period, t0=T0) ## BUGGED! +/-~12 min off, and not a LTT error?
+                fold_time = (((ratio.t - T0) / period) % 1)
+                # fold time domain from -.5 to .5
+                fold_time[fold_time > 0.5] -= 1
+                sorted_args = np.argsort(fold_time)
+                ratio = hcam.hlog.Tseries(
+                    fold_time[sorted_args],
+                    ratio.y[sorted_args],
+                    ratio.ye[sorted_args],
+                    ratio.mask[sorted_args]
+                    )
+                
+                # ratio = ratio.bin(binsize)
+                
+                # Plotting
+                ratio.mplot(ax[CCD_int-1], colour=c[CCD_int])
+                ax[CCD_int-1].set_ylabel('Flux, mJy')
+
                 with open(filename, 'w') as f:
                     f.write("# Phase, Flux, Err_Flux, Mask\n")
                     for t, y, ye, mask in zip(ratio.t, ratio.y, ratio.ye, ratio.mask):
                         f.write("{} {} {}\n".format(t, y, ye))
-                print("Wrote file {}, with a mean of {:.4f}".format(filename, np.mean(ratio.y)))
+                print("    Wrote file {}, with a mean of {:.4f}".format(filename, np.mean(ratio.y)))
 
 
             ax[0].set_title(fname.split('/')[-1])
