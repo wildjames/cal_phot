@@ -261,235 +261,179 @@ so was untrustworthy.
             exit()
         return T0, period
 
-    if analyse_new:
-        print("  Grabbing log files...")
-        fnames = []
+    print("  Grabbing log files...")
+    fnames = []
+    try:
+        for filename in listdir('/'.join([myLoc, 'Reduced_Data'])):
+            if filename.endswith('.log'):
+                fnames.append('/'.join([myLoc, 'Reduced_Data', filename]))
+    except:
+        for filename in listdir('/'.join([myLoc])):
+            if filename.endswith('.log'):
+                fnames.append('/'.join([myLoc, filename]))
+        
+    if len(fnames) == 0:
+            print("  I couldn't find any log files! For reference, I searched the following:")
+            print("   - {}".format('/'.join([myLoc, 'Reduced_Data'])))
+            print("   - {}".format('/'.join([myLoc])))
+            exit()
+    # List the files we found
+    print("  Found these log files: ")
+    for i, fname in enumerate(fnames):
+        print("  {:2d} - {}".format(i, fname))
+    print('  ')
+
+    locflag = input("\n    What is the source of these data: ")
+    
+    for lf in fnames:
+        # lets make the file reading more robust
         try:
-            for filename in listdir('/'.join([myLoc, 'Reduced_Data'])):
-                if filename.endswith('.log'):
-                    fnames.append('/'.join([myLoc, 'Reduced_Data', filename]))
-        except:
-            for filename in listdir('/'.join([myLoc])):
-                if filename.endswith('.log'):
-                    fnames.append('/'.join([myLoc, filename]))
+            log = Hlog.from_ascii(lf)
+        except Exception:
+            log = Hlog.from_ulog(lf)
             
-        if len(fnames) == 0:
-                print("  I couldn't find any log files! For reference, I searched the following:")
-                print("   - {}".format('/'.join([myLoc, 'Reduced_Data'])))
-                print("   - {}".format('/'.join([myLoc])))
-                exit()
-        # List the files we found
-        print("  Found these log files: ")
-        for i, fname in enumerate(fnames):
-            print("  {:2d} - {}".format(i, fname))
-        print('  ')
+        # Get the g band lightcurve, and correct it to the barycentric time
+        gband = log.tseries('2', '1') / log.tseries('2', '2')
+        gband_corr = tcorrect(gband, star, obsname)
+        # Discard the first 10 observations, as they're often junk
+        gband_corr = gband_corr[10:]
 
-        locflag = input("\n    What is the source of these data: ")
+        x, y = smooth_derivative(gband_corr, 9, 5)
+        yerr = 0.001*np.ones_like(x)
+
+        fig, ax = plt.subplots()
+        plt.plot(x, y)
+        gauss = PlotPoints(fig)
+        gauss.connect()
+        plt.show()
+
+        if gauss.flag:
+            print("  No eclipse taken from these data.")
+            continue
+
+        kwargs = gauss.gaussPars()
+        # hold values close to initial guesses
+        bounds = dict(
+            t0=(kwargs['t0']-kwargs['sep']/8, kwargs['t0']+kwargs['sep']/8),
+            sep=(0.9*kwargs['sep'], 1.1*kwargs['sep']),
+            log_sigma2=(np.log(kwargs['sep']**2/10000), np.log(kwargs['sep']**2/25)),
+            peak=(0.9*kwargs['peak'], 1.1*kwargs['peak'])
+        )
+        kwargs['bounds'] = bounds
+
+        mean_model = TwoGaussians(**kwargs)
+
+        mean, median, std = sigma_clipped_stats(y)
+        delta_t = np.mean(np.diff(x))*5
+        kernel = terms.RealTerm(log_a=np.log(std**2), log_c=-np.log(delta_t))
+        gp = celerite.GP(kernel, mean=mean_model, fit_mean=True)
+        gp.compute(x, yerr)
+        # print("  Initial log-likelihood: {0}".format(gp.log_likelihood(y)))
+
+
+        # Fit for the maximum likelihood parameters
+        initial_params = gp.get_parameter_vector()
+        bounds = gp.get_parameter_bounds()
         
-        for lf in fnames:
-            # lets make the file reading more robust
-            try:
-                log = Hlog.from_ascii(lf)
-            except Exception:
-                log = Hlog.from_ulog(lf)
-                
-            # Get the g band lightcurve, and correct it to the barycentric time
-            gband = log.tseries('2', '1') / log.tseries('2', '2')
-            gband_corr = tcorrect(gband, star, obsname)
-            # Discard the first 10 observations, as they're often junk
-            gband_corr = gband_corr[10:]
 
-            x, y = smooth_derivative(gband_corr, 9, 5)
-            yerr = 0.001*np.ones_like(x)
+        # Find a solution using Stu's method
+        soln = minimize(neg_log_like, initial_params, jac=grad_neg_log_like,
+                        method="L-BFGS-B", bounds=bounds, args=(y, gp))
+        if not soln.success:
+            print('  Warning: may not have converged')
+            print(soln.message)
 
-            fig, ax = plt.subplots()
-            plt.plot(x, y)
-            gauss = PlotPoints(fig)
-            gauss.connect()
-            plt.show()
-
-            if gauss.flag:
-                print("  No eclipse taken from these data.")
-                continue
-
-            kwargs = gauss.gaussPars()
-            # hold values close to initial guesses
-            bounds = dict(
-                t0=(kwargs['t0']-kwargs['sep']/8, kwargs['t0']+kwargs['sep']/8),
-                sep=(0.9*kwargs['sep'], 1.1*kwargs['sep']),
-                log_sigma2=(np.log(kwargs['sep']**2/10000), np.log(kwargs['sep']**2/25)),
-                peak=(0.9*kwargs['peak'], 1.1*kwargs['peak'])
-            )
-            kwargs['bounds'] = bounds
-
-            mean_model = TwoGaussians(**kwargs)
-
-            mean, median, std = sigma_clipped_stats(y)
-            delta_t = np.mean(np.diff(x))*5
-            kernel = terms.RealTerm(log_a=np.log(std**2), log_c=-np.log(delta_t))
-            gp = celerite.GP(kernel, mean=mean_model, fit_mean=True)
-            gp.compute(x, yerr)
-            # print("  Initial log-likelihood: {0}".format(gp.log_likelihood(y)))
-
-
-            # Fit for the maximum likelihood parameters
-            initial_params = gp.get_parameter_vector()
-            bounds = gp.get_parameter_bounds()
-            
-
-            # Find a solution using Stu's method
-            soln = minimize(neg_log_like, initial_params, jac=grad_neg_log_like,
-                            method="L-BFGS-B", bounds=bounds, args=(y, gp))
-            if not soln.success:
-                print('  Warning: may not have converged')
-                print(soln.message)
-
-            gp.set_parameter_vector(soln.x)
-            mean_model.set_parameter_vector(gp.get_parameter_vector()[2:])
-            
-            out = soln['x']
-            t_ecl = out[2]
-
-            print("  Using MCMC to characterise error at peak likelihood...")
-
-
-            # Use an MCMC model, starting from the solution we found, to model the errors
-            ndim     = 6
-            nwalkers = 50
-
-            # Initial positions. Scatter by 0.00001, as this is one above the order of magnitude of the error
-            #  we expect on t_ecl.
-            p0 = np.random.rand(ndim * nwalkers).reshape((nwalkers, ndim))
-            scatter = 0.0001/t_ecl
-            p0 *= scatter
-            p0 += 1. - scatter
-            p0 = np.transpose(np.repeat(out, nwalkers).reshape((ndim, nwalkers))) *p0
-            
-            # Construct a sampler
-            sampler = emcee.EnsembleSampler(nwalkers, ndim, log_like, args=[y, gp], threads=1)
-
-
-            width=30
-
-            # Burn in
-            print("")
-            nsteps = 200
-            start_time = time.time()
-            for i, result in enumerate(sampler.sample(p0, iterations=nsteps)):
-                n = int((width+1) * float(i) / nsteps)
-                sys.stdout.write("\r  Burning in...    [{}{}]".format('#'*n, ' '*(width - n)))
-            pos, prob, state = result
-            
-            # Data
-            sampler.reset()
-            nsteps = 300
-
-            start_time = time.time()
-            for i, result in enumerate(sampler.sample(pos, iterations=nsteps)):
-                n = int((width+1) * float(i) / nsteps)
-                sys.stdout.write("\r  Sampling data... [{}{}]".format('#'*n, ' '*(width - n))) 
-            print("")
-
-            # corner.corner(sampler.flatchain, labels=['???', '???', 't_ecl', '???', 'a', 'b'])
-            # plt.show()
-
-            t_ecl = np.mean(sampler.flatchain[:,2])
-            err = np.std(sampler.flatchain[:,2])
-            sep = np.mean(sampler.flatchain[:,3])
-
-            print("    Got a solution: {:.7f}+/-{:.7f}\n".format(t_ecl, err))
-
-            # print("  Got a Jacobian,\n {}".format(soln['jac']))
-            # print("  Got a Hessian,\n {}".format(soln['hess_inv'].todense()))
-            # print("  Final log-liklihood: {}".format(soln.fun))
-
-            tl.append(
-                [float(t_ecl), float(err), locflag]
-            )
-
-            # Make the maximum likelihood prediction
-            mu, var = gp.predict(y, x, return_var=True)
-            std = np.sqrt(var)
-
-            # Plot the data
-            color = "#ff7f0e"
-            fig, ax = plt.subplots(2, 1, sharex=True)
-            ax[0].plot(x, y, '.')
-            ax[0].plot(x, mu, color=color)
-            ax[0].fill_between(x, mu+std, mu-std, color=color, alpha=0.3, edgecolor="none")
-            ax[0].plot(x, mean_model.get_value(x), 'k-')
-            ax[0].axvline(t_ecl, color='magenta')
-            ax[0].set_xlim(left=t_ecl-(1*sep), right=t_ecl+(1*sep))
-            
-            gband_corr.mplot(ax[1])
-
-            ax[0].set_title("maximum likelihood prediction - {}".format(lf.split('/')[-1]))
-            plt.show()
-        print("  \nDone all the files!")
-
-    # Collect the times
-    ts = np.array([x[0] for x in tl])
-    t_err = np.array([x[1] for x in tl])
-    
-    # data T0, if no T0 is given to us
-    if T0 == None:
-        print("  No prior T0, using first eclipse in data.")
-        T0 = np.min(ts)
-    
-    print("  Fitting these eclipse times:")
-    for t in tl:
-        print("  {:.7f}+/-{:.7f} from {}".format(t[0], t[1], t[2]))
-    print("\n  Starting from an initial ephem of T0: {}, P: {}".format(T0, period))
-    
-    def test(params, data):
-        # Gets the eclipse number.
-
-        # Extract the params
-        T = params[0]
-        period = params[1]
+        gp.set_parameter_vector(soln.x)
+        mean_model.set_parameter_vector(gp.get_parameter_vector()[2:])
         
-        # How far are we from the predicted eclipse time
-        comp = ((data - T) / period)
+        out = soln['x']
+        t_ecl = out[2]
 
-        return comp
+        print("  Using MCMC to characterise error at peak likelihood...")
 
-    def errFunc(p, t, t_e):
-        # Ideal E is an integer
-        E = np.round((t - T0) / period)
 
-        diffs = ( test(p, t) - E ) / t_e
+        # Use an MCMC model, starting from the solution we found, to model the errors
+        ndim     = 6
+        nwalkers = 50
 
-        return diffs
-    
-    out = leastsq(errFunc,
-        [T0, period],
-        args=(ts, t_err),
-        full_output=1
-    )
+        # Initial positions. Scatter by 0.00001, as this is one above the order of magnitude of the error
+        #  we expect on t_ecl.
+        p0 = np.random.rand(ndim * nwalkers).reshape((nwalkers, ndim))
+        scatter = 0.0001/t_ecl
+        p0 *= scatter
+        p0 += 1. - scatter
+        p0 = np.transpose(np.repeat(out, nwalkers).reshape((ndim, nwalkers))) *p0
+        
+        # Construct a sampler
+        sampler = emcee.EnsembleSampler(nwalkers, ndim, log_like, args=[y, gp], threads=1)
 
-    pfinal = out[0]
-    covar = out[1]
 
-    P, P_err = pfinal[1], np.sqrt(covar[1][1])
-    T0, T0_err = pfinal[0], np.sqrt(covar[0][0])
+        width=30
 
-    print("  Got a T0 of {:.10f}+/-{:.2e}".format(T0, T0_err))
-    print("  Got a period of {:.10f}+/-{:.2e}".format(P, P_err))
+        # Burn in
+        print("")
+        nsteps = 200
+        start_time = time.time()
+        for i, result in enumerate(sampler.sample(p0, iterations=nsteps)):
+            n = int((width+1) * float(i) / nsteps)
+            sys.stdout.write("\r  Burning in...    [{}{}]".format('#'*n, ' '*(width - n)))
+        pos, prob, state = result
+        
+        # Data
+        sampler.reset()
+        nsteps = 300
 
-    print("          T                  | Seconds from predicted")
+        start_time = time.time()
+        for i, result in enumerate(sampler.sample(pos, iterations=nsteps)):
+            n = int((width+1) * float(i) / nsteps)
+            sys.stdout.write("\r  Sampling data... [{}{}]".format('#'*n, ' '*(width - n))) 
+        print("")
+
+        # corner.corner(sampler.flatchain, labels=['???', '???', 't_ecl', '???', 'a', 'b'])
+        # plt.show()
+
+        t_ecl = np.mean(sampler.flatchain[:,2])
+        err = np.std(sampler.flatchain[:,2])
+        sep = np.mean(sampler.flatchain[:,3])
+
+        print("    Got a solution: {:.7f}+/-{:.7f}\n".format(t_ecl, err))
+
+        # print("  Got a Jacobian,\n {}".format(soln['jac']))
+        # print("  Got a Hessian,\n {}".format(soln['hess_inv'].todense()))
+        # print("  Final log-liklihood: {}".format(soln.fun))
+
+        locflag = input("What is the source of these data: ")
+        tl.append(
+            [float(t_ecl), float(err), locflag]
+        )
+
+        # Make the maximum likelihood prediction
+        mu, var = gp.predict(y, x, return_var=True)
+        std = np.sqrt(var)
+
+        # Plot the data
+        color = "#ff7f0e"
+        fig, ax = plt.subplots(2, 1, sharex=True)
+        ax[0].plot(x, y, '.')
+        ax[0].plot(x, mu, color=color)
+        ax[0].fill_between(x, mu+std, mu-std, color=color, alpha=0.3, edgecolor="none")
+        ax[0].plot(x, mean_model.get_value(x), 'k-')
+        ax[0].axvline(t_ecl, color='magenta')
+        ax[0].set_xlim(left=t_ecl-(1*sep), right=t_ecl+(1*sep))
+        
+        gband_corr.mplot(ax[1])
+
+        ax[0].set_title("maximum likelihood prediction - {}".format(lf.split('/')[-1]))
+        plt.show()
+    print("  \nDone all the files!")
+
     with open(oname, 'w') as f:
-        for datum in tl:
-            t = datum[0]
-            t_e = datum[1]
-            source = datum[2]
-
-            dt = ((t-T0)/P)%1 # residual
-            if dt > 0.5:
-                dt -= 1
-
-            print("    {:>10.6f}+/-{:<9.6f} | {:<9.2f}".format(t, t_e, (dt *24.*60.*60.)  ))
-            f.write("{}, {},{}\n".format(t, t_e, source))
+        for ecl, time, source in tl:
+            f.write("<ECLIPSE NUMBER>, {}, {},{}\n".format(t, t_e, source))
     print("  Wrote eclipse data to {}\n".format(oname))
+
+    print("  Please open the file, {}, and edit in the eclipse numbers for each one.\n  Hit enter when you've done this!")
+    input()
 
     # print('  Best period found: {:.9f}'.format(opt['x'][0]))
     return T0, P
