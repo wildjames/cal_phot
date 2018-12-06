@@ -325,7 +325,7 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
 
     # Sort each CCD so all the observations are lined up
     for CCD in ['1', '2', '3']:
-        lightcurve = master[CCD].copy()
+        lightcurve = master[CCD]
 
         times = lightcurve.t
         sorted_args = np.argsort(times)
