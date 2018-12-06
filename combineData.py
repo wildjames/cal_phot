@@ -274,18 +274,7 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
 
                 ratio = tcorrect(ratio, star_loc, obsname)
 
-                # Store the lightcurve in the master dict
-                try:
-                    # If we find <master> has an entry for this CCD, append it
-                    master[CCD] = master[CCD].append(ratio)
-                except KeyError:
-                    # Otherwise, create a new entry
-                    master[CCD] = ratio
                 
-                filename = oname
-                filename = filename.replace('Reduced_Data', 'Reduced_Data/lightcurves')
-                filename = "{}_{}_{}.calib".format(filename, fname.split('/')[-1][:-4], c[CCD_int])
-
                 # Fold about the period
                 # ratio = ratio.fold(period, t0=T0) ## BUGGED! and not a LTT error?
                 fold_time = (((ratio.t - T0) / period) %1)
@@ -299,17 +288,29 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
                     ratio.mask[sorted_args]
                     )
                 
-                # ratio = ratio.bin(binsize)
+                ratio = ratio.bin(binsize)
                 
                 # Plotting
                 ratio.mplot(ax[CCD_int-1], colour=c[CCD_int])
                 ax[CCD_int-1].set_ylabel('Flux, mJy')
+                
+                filename = oname
+                filename = filename.replace('Reduced_Data', 'Reduced_Data/lightcurves')
+                filename = "{}_{}_{}.calib".format(filename, fname.split('/')[-1][:-4], c[CCD_int])
 
                 with open(filename, 'w') as f:
                     f.write("# Phase, Flux, Err_Flux, Mask\n")
                     for t, y, ye, mask in zip(ratio.t, ratio.y, ratio.ye, ratio.mask):
                         f.write("{} {} {}\n".format(t, y, ye))
 
+                # Store the lightcurve in the master dict
+                try:
+                    # If we find <master> has an entry for this CCD, append it
+                    master[CCD] = master[CCD].append(ratio)
+                except KeyError:
+                    # Otherwise, create a new entry
+                    master[CCD] = ratio
+                
 
             ax[0].set_title(fname.split('/')[-1])
             ax[2].set_xlabel('Phase, days')
@@ -322,37 +323,18 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
 
     ## <master> is now a dict, containing 3 Tseries objects of the lightcurves.
 
-    # Apply the correction to each CCD
+    # Sort each CCD so all the observations are lined up
     for CCD in ['1', '2', '3']:
-        master[CCD] = master[CCD]
+        lightcurve = master[CCD].copy()
 
-        # master[CCD] = tcorrect(master[CCD], star_loc, obsname)
-
-        # times = time.Time(master[CCD].t,
-        #     format='mjd', scale='utc', location=observatory
-        # )
-        # ltt = times.light_travel_time(star_loc)
-        # times = times.tdb + ltt
-        # times = np.array(
-        #     [t.value for t in times]
-        # )
-
-        # # # Manually fold the times
-        # # times = ((times - T0)/period) % 1.
-        # # times[times > 0.5] -= 1.
-
-        # sorted_args = np.argsort(times)
-
-        # master[CCD] = hcam.hlog.Tseries(
-        #     times[sorted_args],
-        #     master[CCD].y[sorted_args],
-        #     master[CCD].ye[sorted_args],
-        #     master[CCD].mask[sorted_args]
-        # )
-
-        master[CCD] = master[CCD].fold(period, t0=T0)
-        # master[CCD] = master[CCD].remove_outliers()
-        master[CCD] = master[CCD].bin(binsize)
+        times = lightcurve.t
+        sorted_args = np.argsort(times)
+        master[CCD] = hcam.hlog.Tseries(
+            times[sorted_args],
+            lightcurve.y[sorted_args],
+            lightcurve.ye[sorted_args],
+            lightcurve.mask[sorted_args]
+        )
 
     print("  Done!\n")
 
