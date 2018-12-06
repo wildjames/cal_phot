@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import hipercam as hcam
 import sys
 import os

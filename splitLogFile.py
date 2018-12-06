@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import hipercam as hcam
 import numpy as np
 import matplotlib.pyplot as plt

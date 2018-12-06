@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 from hipercam.hlog import Hlog
 
 from astropy import coordinates as coord, units as u
