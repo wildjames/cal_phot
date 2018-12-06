@@ -83,7 +83,7 @@ def fitEphem(myLoc, T0, period):
 
     print(" (T - T0) / P (s) | Cycle Number")
     for t in tl:
-        print(" {:<16.6f} | {:d}".format( (24*60*60*(t[1] - T0)/P) , t[0] ))
+        print(" {:>16.6f} | {:d}".format( ((t[1] - T0)/P) , t[0] ))
 
     print("  Got a T0 of {:.10f}+/-{:.2e}".format(T0, T0_err))
     print("  Got a period of {:.10f}+/-{:.2e}".format(P, P_err))
