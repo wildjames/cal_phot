@@ -25,7 +25,7 @@ from matplotlib import pyplot as plt
 #import corner
 import time
 
-def fitEphem(eclFile, T0=None, period=None):
+def fitEphem(myLoc, T0, period):
     # data T0, if no T0 is given to us
     if T0 == None:
         print("  No prior T0, using first eclipse in data.")
