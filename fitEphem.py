@@ -43,9 +43,7 @@ def fitEphem(myLoc, T0, period):
 
     print("  Fitting these eclipse times:")
     for t in tl:
-        print("  Cycle: {} -- {:.7f}+/-{:.7f} from {}".format(t[0], t[1], t[2], 
-        t[3]
-        ))
+        print("  Cycle: {:5d} -- {:.7f}+/-{:.7f} from {}".format(t[0], t[1], t[2], t[3]))
     print("\n  Starting from an initial ephem of T0: {}, P: {}".format(T0, period))
     
 
@@ -81,6 +79,10 @@ def fitEphem(myLoc, T0, period):
 
     T0, T0_err = pfinal[0], np.sqrt(covar[0][0])
     P, P_err   = pfinal[1], np.sqrt(covar[1][1])
+
+    print(" (T - T0) / P (s) | Cycle Number")
+    for t in tl:
+        print(" {:<16.6f} | {:d}".format( (24*60*60*(t[1] - T0)/P) , t[0] ))
 
     print("  Got a T0 of {:.10f}+/-{:.2e}".format(T0, T0_err))
     print("  Got a period of {:.10f}+/-{:.2e}".format(P, P_err))
