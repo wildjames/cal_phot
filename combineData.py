@@ -133,6 +133,10 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
     print("  Binning folded data by {}".format(binsize))
     print("  I'll write out to {}*\n".format(oname))
 
+    #Correct to BMJD
+    print("  Correcting observations from MJD to BMJD (observed from '{}')".format(obsname))
+
+    print("  Phase folding data for a T0: {:}, period: {:}".format(T0, period))
 
     # Where are we?
     observatory = coord.EarthLocation.of_site(obsname)
@@ -167,14 +171,14 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
             fig, ax = plt.subplots(3, figsize=[24, 8])
 
             # I want altitude converted to zenith angle. Airmass is roughly constant over 
-            # a single observing run so only do it once to save time.
-            T = float(data['1'][0][1])
-            T = time.Time(T, format='mjd')
-            star_loc_AltAz = star_loc.transform_to(AltAz(obstime=T, location=observatory))
+            # a single eclipse so only do it once to save time.
+            obs_T = float(data['1'][0][1])
+            obs_T = time.Time(obs_T, format='mjd')
+            star_loc_AltAz = star_loc.transform_to(AltAz(obstime=obs_T, location=observatory))
             zenith_angle = 90. - star_loc_AltAz.alt.value
             airmass = 1. / np.cos(np.radians(zenith_angle))
-            print("  For the night of {}, calculated z of {:.3f}, and airmass of {:.3f}".format(
-                fname.split('/')[-1], zenith_angle, airmass)
+            print("  For the night of {} (observing at {}), calculated altitude of {:.3f}, and airmass of {:.3f}".format(
+                fname.split('/')[-1], obs_T, star_loc_AltAz.alt.value, airmass)
             )
 
             # Loop through the CCDs.
@@ -270,11 +274,11 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
 
                 ratio = tcorrect(ratio, star_loc, obsname)
 
-                ## Check we can append
+                # Store the lightcurve in the master dict
                 try:
                     # If we find <master> has an entry for this CCD, append it
                     master[CCD] = master[CCD].append(ratio)
-                except:
+                except KeyError:
                     # Otherwise, create a new entry
                     master[CCD] = ratio
                 
@@ -283,8 +287,8 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
                 filename = "{}_{}_{}.calib".format(filename, fname.split('/')[-1][:-4], c[CCD_int])
 
                 # Fold about the period
-                # ratio = ratio.fold(period, t0=T0) ## BUGGED! +/-~12 min off, and not a LTT error?
-                fold_time = (((ratio.t - T0) / period) % 1)
+                # ratio = ratio.fold(period, t0=T0) ## BUGGED! and not a LTT error?
+                fold_time = (((ratio.t - T0) / period) %1)
                 # fold time domain from -.5 to .5
                 fold_time[fold_time > 0.5] -= 1
                 sorted_args = np.argsort(fold_time)
@@ -305,7 +309,6 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
                     f.write("# Phase, Flux, Err_Flux, Mask\n")
                     for t, y, ye, mask in zip(ratio.t, ratio.y, ratio.ye, ratio.mask):
                         f.write("{} {} {}\n".format(t, y, ye))
-                print("    Wrote file {}, with a mean of {:.4f}".format(filename, np.mean(ratio.y[:100])))
 
 
             ax[0].set_title(fname.split('/')[-1])
@@ -318,10 +321,7 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
 
 
     ## <master> is now a dict, containing 3 Tseries objects of the lightcurves.
-    #Correct to BMJD
-    print("  Correcting observations from MJD to BMJD (observed from '{}')".format(obsname))
 
-    print("  And folding data for a T0: {:.6f}, period: {:.6f}".format(T0, period))
     # Apply the correction to each CCD
     for CCD in ['1', '2', '3']:
         master[CCD] = master[CCD]
