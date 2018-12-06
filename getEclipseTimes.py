@@ -143,7 +143,6 @@ def tcorrect(tseries, star, observatory, type='B'):
     ts.t = corr.mjd
     return ts
 
-
 def smooth_derivative(tseries, med_half_width, box_half_width):
     """
     Calculate a smoothed version of the lightcurve derivative
@@ -175,11 +174,9 @@ def smooth_derivative(tseries, med_half_width, box_half_width):
     kernel = Box1DKernel(2 * box_half_width + 1)
     return locs, convolve(deriv, kernel)
 
-
 def get_tseries(logfile, ccdnam, ap_targ, ap_comp):
     log = Hlog.from_ulog(logfile)
     return log.tseries(ccdnam, ap_targ) / log.tseries(ccdnam, ap_comp)
-
 
 # Define a cost function for MCMC
 def log_like(params, y, gp):
@@ -245,13 +242,22 @@ so was untrustworthy.
     tl = []
     if path.isfile(oname):
         print("  Found prior eclipses in '{}'. Using these in my fit.".format(oname))
-        with open(oname, 'r') as f:
+        # Read in the eclipsetimes.txt file
+        fname = '/'.join([myLoc, 'eclipse_times.txt'])
+        source_key = {}
+        tl = []
+        with open(fname, 'r') as f:
             for line in f:
-                line = line.strip().split(',')
-                line = [float(x) for x in line]
-                tl.append(line)
+                if line[0] == '#':
+                    line = line[1:].strip().split(",")
+                    source_key[line[1]] = line[0]
+                else:
+                    line = line.split(',')
+                    line = [float(x) for x in line]
+                    line[3] = source_key[line[3]]
+                    tl.append()
         for t in tl:
-            print("cycle {} -- {:.7f}+/-{:.7f} from {}".format(t[0], t[1], t[2], t[3]))
+            print("cycle {} -- {:.7f}+/-{:.7f} from {}".format(t[0], t[1], t[2], source_key[t[3]]))
 
 
     print("  Grabbing log files...")
@@ -354,7 +360,7 @@ so was untrustworthy.
 
         # Burn in
         print("")
-        nsteps = 500
+        nsteps = 100
         for i, result in enumerate(sampler.sample(p0, iterations=nsteps)):
             n = int((width+1) * float(i) / nsteps)
             sys.stdout.write("\r  Burning in...    [{}{}]".format('#'*n, ' '*(width - n)))
@@ -362,7 +368,7 @@ so was untrustworthy.
         
         # Data
         sampler.reset()
-        nsteps = 1000
+        nsteps = 300
 
         for i, result in enumerate(sampler.sample(pos, iterations=nsteps)):
             n = int((width+1) * float(i) / nsteps)
@@ -383,9 +389,7 @@ so was untrustworthy.
         # print("  Final log-liklihood: {}".format(soln.fun))
 
         locflag = input("  What is the source of these data: ")
-        tl.append(
-            [float(t_ecl), float(err), locflag]
-        )
+        tl.append([float(t_ecl), float(err), locflag])
 
         # Make the maximum likelihood prediction
         mu, var = gp.predict(y, x, return_var=True)
@@ -404,6 +408,7 @@ so was untrustworthy.
         gband_corr.mplot(ax[1])
 
         ax[0].set_title("maximum likelihood prediction - {}".format(lf.split('/')[-1]))
+        plt.tight_layout()
         plt.show()
     print("  \nDone all the files!")
 
@@ -412,10 +417,14 @@ so was untrustworthy.
     key_dict = {}
     i = 0
     for t, t_e, source in tl:
+        print("source: {}".format(source))
         if source not in key:
-            key += "'{}' {}".format(key, i)
+            key += "#{},{}\n".format(source, i)
             key_dict[source] = i
             i += 1
+
+    # Sort the list
+    tl = sorted(tl,key=lambda x: (x[0]))
 
     with open(oname, 'w') as f:
         f.write(key)
@@ -427,5 +436,5 @@ so was untrustworthy.
     # Temporary placeholder. Think about this.
     # - Get the rounded ephemeris fit from the period and T0 supplied?
     # - Might be best to force the user to do this manually, to make it more reliable?
-    print("  Please open the file, {}, and edit in the eclipse numbers for each one.\n  Hit enter when you've done this!")
+    print("  Please open the file, and edit in the eclipse numbers for each one.\n  Hit enter when you've done this!")
     input()

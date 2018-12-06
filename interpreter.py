@@ -187,7 +187,10 @@ Generally we want to follow these steps:
     
     def fitEphem(self):
         print("--- CONSTRUCTION SITE ---")
-        # T0, period = fitEphem(directory, T0, period)
+        directory = self.get_param('directory')
+        T0 = self.get_param('T0')
+        period = self.get_param('period')
+        T0, period = fitEphem(directory, T0, period)
 
     def combineData(self):
         try:
