@@ -24,6 +24,7 @@ from matplotlib import pyplot as plt
 
 #import corner
 import time
+import glob
 
 
 class PlotPoints:
@@ -196,19 +197,20 @@ def grad_neg_log_like(params, y, gp):
 
 
 
-def getEclipseTimes(coords, obsname, period, T0=None, analyse_new=True, myLoc=None):
+def getEclipseTimes(coords, obsname, myLoc=None):
     '''
 coords  - "ra dec" - string, needs to be in a format that astropy can interpret.
     ra  - Target Right Ascension, in hours
     dec - Target Declination, in degrees
 obsname - Observing location. Currently must be the /name/ of the observatory.
-period  - Initial guess for the period. Remember - this is a function to REFINE a period, not get one from scratch!! 
-T0      - Zero point for ephemeris calculation. If not supplied, then the earliest data point is used.
 myLoc   - Working directory.
 
 
 Searches the current directory for a file containing eclipse times, and fits an ephemeris (T0 and period) to it. 
 If <analyse_new> is True, it also seraches <myLoc> for log files, and fits the for an eclipse time. 
+
+Searched <myLoc> for a file containing eclipse times. Searches <myLoc> for logfiles, and fits these for their 
+eclipse times.
 
 The technique for this is to make a smoothed plot of the numerical gradient, and look for two mirrored peaks - one 
 where the lightcurve enters eclipse (showing as a trough in gradient), and one for egress (showing as a peak in 
@@ -228,9 +230,6 @@ so was untrustworthy.
         unit=(u.hour, u.deg)
     )
 
-    # Initial guess
-    period = float(period)
-
     if myLoc == None:
         print("  Defaulting to current directory")
         myLoc = path.curdir
@@ -248,42 +247,25 @@ so was untrustworthy.
         print("  Found prior eclipses in '{}'. Using these in my fit.".format(oname))
         with open(oname, 'r') as f:
             for line in f:
-                line = line.split(',')
-                line[:2] = [float(x) for x in line[:2]]
-                line[2] = line[2].replace('\n', '')
+                line = line.strip().split(',')
+                line = [float(x) for x in line]
                 tl.append(line)
-        if analyse_new:
-            for t in tl:
-                print("  {:.7f}+/-{:.7f} from {}".format(t[0], t[1], t[2]))
-    elif not analyse_new:
-        print("  I have no eclipse data to analyse. {}".format('No T0, stopping script.' if T0==None else "Continuing with 'guess' values..."))
-        if T0 == None:
-            exit()
-        return T0, period
+        for t in tl:
+            print("cycle {} -- {:.7f}+/-{:.7f} from {}".format(t[0], t[1], t[2], t[3]))
+
 
     print("  Grabbing log files...")
-    fnames = []
-    try:
-        for filename in listdir('/'.join([myLoc, 'Reduced_Data'])):
-            if filename.endswith('.log'):
-                fnames.append('/'.join([myLoc, 'Reduced_Data', filename]))
-    except:
-        for filename in listdir('/'.join([myLoc])):
-            if filename.endswith('.log'):
-                fnames.append('/'.join([myLoc, filename]))
-        
+    fnames = list(glob.iglob('{}/**/*.log'.format(myLoc), recursive=True))
+    
     if len(fnames) == 0:
             print("  I couldn't find any log files! For reference, I searched the following:")
-            print("   - {}".format('/'.join([myLoc, 'Reduced_Data'])))
-            print("   - {}".format('/'.join([myLoc])))
+            print("   - {}".format(myLoc))
             exit()
     # List the files we found
     print("  Found these log files: ")
     for i, fname in enumerate(fnames):
         print("  {:2d} - {}".format(i, fname))
     print('  ')
-
-    locflag = input("\n    What is the source of these data: ")
     
     for lf in fnames:
         # lets make the file reading more robust
@@ -354,7 +336,7 @@ so was untrustworthy.
 
         # Use an MCMC model, starting from the solution we found, to model the errors
         ndim     = 6
-        nwalkers = 50
+        nwalkers = 100
 
         # Initial positions. Scatter by 0.00001, as this is one above the order of magnitude of the error
         #  we expect on t_ecl.
@@ -368,12 +350,11 @@ so was untrustworthy.
         sampler = emcee.EnsembleSampler(nwalkers, ndim, log_like, args=[y, gp], threads=1)
 
 
-        width=30
+        width=40
 
         # Burn in
         print("")
-        nsteps = 200
-        start_time = time.time()
+        nsteps = 500
         for i, result in enumerate(sampler.sample(p0, iterations=nsteps)):
             n = int((width+1) * float(i) / nsteps)
             sys.stdout.write("\r  Burning in...    [{}{}]".format('#'*n, ' '*(width - n)))
@@ -381,9 +362,8 @@ so was untrustworthy.
         
         # Data
         sampler.reset()
-        nsteps = 300
+        nsteps = 1000
 
-        start_time = time.time()
         for i, result in enumerate(sampler.sample(pos, iterations=nsteps)):
             n = int((width+1) * float(i) / nsteps)
             sys.stdout.write("\r  Sampling data... [{}{}]".format('#'*n, ' '*(width - n))) 
@@ -402,7 +382,7 @@ so was untrustworthy.
         # print("  Got a Hessian,\n {}".format(soln['hess_inv'].todense()))
         # print("  Final log-liklihood: {}".format(soln.fun))
 
-        locflag = input("What is the source of these data: ")
+        locflag = input("  What is the source of these data: ")
         tl.append(
             [float(t_ecl), float(err), locflag]
         )
@@ -427,13 +407,25 @@ so was untrustworthy.
         plt.show()
     print("  \nDone all the files!")
 
+    # make a key for the data sources
+    key = ''
+    key_dict = {}
+    i = 0
+    for t, t_e, source in tl:
+        if source not in key:
+            key += "'{}' {}".format(key, i)
+            key_dict[source] = i
+            i += 1
+
     with open(oname, 'w') as f:
-        for ecl, time, source in tl:
-            f.write("<ECLIPSE NUMBER>, {}, {},{}\n".format(t, t_e, source))
+        f.write(key)
+        for t, t_e, source in tl:
+            f.write("<ECLIPSE NUMBER>, {}, {},{}\n".format(t, t_e, key_dict[source]))
     print("  Wrote eclipse data to {}\n".format(oname))
 
+    #TODO:
+    # Temporary placeholder. Think about this.
+    # - Get the rounded ephemeris fit from the period and T0 supplied?
+    # - Might be best to force the user to do this manually, to make it more reliable?
     print("  Please open the file, {}, and edit in the eclipse numbers for each one.\n  Hit enter when you've done this!")
     input()
-
-    # print('  Best period found: {:.9f}'.format(opt['x'][0]))
-    return T0, P
