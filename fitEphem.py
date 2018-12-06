@@ -49,39 +49,59 @@ def fitEphem(myLoc, T0, period):
     
     ### Fitting
 
-    def test(params, E):
-        # Gets the eclipse number.
+    # def test(params, E):
+    #     # Gets the eclipse number.
 
-        # Extract the params
-        T = params[0]
-        period = params[1]
+    #     # Extract the params
+    #     T = params[0]
+    #     period = params[1]
         
-        # How far are we from the predicted eclipse time
-        calc = T + (E*period)
+    #     # How far are we from the predicted eclipse time
+    #     calc = T + (E*period)
 
-        return calc
+    #     return calc
 
-    def errFunc(p, data):
-        e = np.array([i[0] for i in data])
-        t = np.array([i[1] for i in data])
-        t_e = np.array([i[2] for i in data])
+    # def errFunc(p, data):
+    #     e = np.array([i[0] for i in data])
+    #     t = np.array([i[1] for i in data])
+    #     t_e = np.array([i[2] for i in data])
 
-        diffs = ( test(p, e) - t ) / t_e
+    #     diffs = ( test(p, e) - t ) / t_e
 
-        return diffs
+    #     return diffs
     
-    out = leastsq(errFunc,
-        [T0, period],
-        args=(tl),
-        full_output=1
-    )
+    # out = leastsq(errFunc,
+    #     [T0, period],
+    #     args=(tl),
+    #     full_output=1
+    # )
 
+    # pfinal = out[0]
+    # covar = out[1]
+
+    # T0, T0_err = pfinal[0], np.sqrt(covar[0][0])
+    # P, P_err   = pfinal[1], np.sqrt(covar[1][1])
+
+
+    def fitfunc(p,x):
+        return p[0] + p[1]*x
+    def errfunc(p,x,y,err):
+        return (y-fitfunc(p,x)) / err
+
+    ### params = numpy.array([55202.0579,0.05298466])
+
+    params = [T0, period]
+
+    x = [i[0] for i in tl]
+    y = [i[1] for i in tl]
+    ey = [i[2] for i in tl]
+
+    out = lsq(errfunc,params,args=(x,y,ey),full_output=1)
     pfinal = out[0]
     covar = out[1]
 
-    T0, T0_err = pfinal[0], np.sqrt(covar[0][0])
-    P, P_err   = pfinal[1], np.sqrt(covar[1][1])
-
+    P, P_err = pfinal[1], numpy.sqrt(covar[1][1])
+    T0, T0_err = pfinal[0], numpy.sqrt(covar[0][0])
 
 
     ### Reporting
