@@ -150,7 +150,7 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
         T0 = 0.0
 
     band = ['', 'r',   'g',     'u'   ]
-    c    = ['', 'red', 'green', 'blue']
+    c    = ['', 'r', 'g', 'u']
     master = {}
 
 
@@ -299,7 +299,7 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
                 filename = "{}_{}_{}.calib".format(filename, fname.split('/')[-1][:-4], c[CCD_int])
 
                 with open(filename, 'w') as f:
-                    f.write("# Phase, Flux, Err_Flux, Mask\n")
+                    f.write("# Phase, Flux, Err_Flux\n")
                     for t, y, ye, mask in zip(ratio.t, ratio.y, ratio.ye, ratio.mask):
                         f.write("{} {} {}\n".format(t, y, ye))
 
