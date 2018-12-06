@@ -6,7 +6,7 @@ from astropy.convolution import Box1DKernel, convolve
 from astropy.stats import sigma_clipped_stats
 
 from scipy.signal import medfilt
-from scipy.optimize import minimize, leastsq
+from scipy.optimize import minimize, leastsq as lsq
 
 import celerite
 from celerite import terms
