@@ -89,7 +89,7 @@ def fitEphem(myLoc, T0, period):
     for t in tl:
         E = ((t[1] - T0)/P)
         dE = E - np.rint(E)
-        dE *= 24.*60.*60.
+        dE *= 24.*60.*60. * P
         print(" {:>16.6f} | {:d}".format(dE , t[0] ))
 
     print("  Got a T0 of {:.10f}+/-{:.2e}".format(T0, T0_err))
