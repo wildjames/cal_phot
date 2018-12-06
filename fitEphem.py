@@ -38,6 +38,7 @@ def fitEphem(myLoc, T0, period):
             else:
                 line = line.split(',')
                 line[:3] = [float(x) for x in line[:3]]
+                line[0] = int(line[0])
                 line[3]  = source_key[line[3]]
                 tl.append(line)
 
