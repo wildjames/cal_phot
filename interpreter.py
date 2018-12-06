@@ -7,7 +7,7 @@ import os
 from getKappa import getKappa
 from getEclipseTimes import getEclipseTimes
 from combineData import combineData
-
+from fitEphem import fitEphem
 
 class Interpreter:
     def __init__(self, inFile=None, prompt=[]):
@@ -171,22 +171,12 @@ Generally we want to follow these steps:
     def getEclipseTimes(self):
         try:
             coords    = self.get_param('coords')
-            period    = self.get_param('period')
             obsname   = self.get_param('obsname')
-            anal      = self.get_param('anal_new')
             directory = self.get_param('directory')
-            T0        = self.get_param('T0')
 
-
-            print("Refining eclipse times:\n  Period: {:.3f}\n  Directory: {}\n".format(period, directory))
-
-            T0, period = getEclipseTimes(coords, obsname, period, analyse_new=anal, T0=T0, myLoc=directory)
-            self.params['T0']     = T0
-            self.params['period'] = period
+            print("Getting eclipse times from data...")
+            getEclipseTimes(coords, obsname, myLoc=directory)
             
-            print("Using the following ephemeris:\n  T0: {:-6.8f}\n  Period: {:-6.8f}\n".format(
-                T0, period
-            ))
         except AttributeError:
             print("I don't have enough data for ephemeris calculation!")
             print('I need the following:')
@@ -194,6 +184,10 @@ Generally we want to follow these steps:
             print('  - Initial period guess')
             print('  - Observatory name')
             exit()
+    
+    def fitEphem(self):
+        print("--- CONSTRUCTION SITE ---")
+        # T0, period = fitEphem(directory, T0, period)
 
     def combineData(self):
         try:
@@ -209,10 +203,12 @@ Generally we want to follow these steps:
             
             print("Combining, calibrating, and plotting data...")
             if SDSS:
-                combineData(oname, coords, obsname, T0, period, SDSS=True, binsize=binsize, myLoc=myLoc, fnames=fnames)
+                combineData(oname, coords, obsname, T0, period, SDSS=True, binsize=binsize,
+                myLoc=myLoc, fnames=fnames)
             else:
                 ref_kappa = self.get_param('kappas')
-                combineData(oname, coords, obsname, T0, period, ref_kappa=ref_kappa, SDSS=False, binsize=binsize, myLoc=myLoc, fnames=fnames)
+                combineData(oname, coords, obsname, T0, period, ref_kappa=ref_kappa, SDSS=False,
+                binsize=binsize, myLoc=myLoc, fnames=fnames)
         except AttributeError:
             print("I don't have enough data to do the data processing!")
             print("I failed to collect one or more of the following:")
@@ -276,9 +272,11 @@ Generally we want to follow these steps:
         
         elif command == 'coords':
             # Changes the coordinates of the object you're about to talk about.
-            ## TODO: Evaluate -- maybe have separate std and targ coords to ensure users don't forget to change it?
+            ## TODO: 
+            # Evaluate -- maybe have separate std and targ coords to ensure users don't forget to change it?
             if len(args) < 2:
-                print("I didn't seem to get the right RA and Dec format! Please use:\n  RA - HH:MM:SS.SS\n  DEC - DD:MM:SS.SS\n")
+                print("I didn't seem to get the right RA and Dec format!")
+                print("Please use:\n  RA - HH:MM:SS.SS\n  DEC - DD:MM:SS.SS\n")
                 pass
             else:
                 coords = '{} {}'.format(args[0], args[1])
@@ -376,13 +374,8 @@ Generally we want to follow these steps:
             self.params['T0'] = T0
             print("Using the T0: {}".format(T0))
 
-        elif command == 'analyse_new_eclipses':
-            anal_new = args[0].lower() in ['y', '1']
-            self.params['anal_new'] = anal_new
-            if anal_new:
-                print("I will analyse any data I find for eclipses.")
-            else:
-                print("Using historical data only for ephemeris fitting.")
+        elif command == 'fitephemeris':
+            self.fitEphem()
 
 
         # combineData
