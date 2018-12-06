@@ -58,7 +58,7 @@ in each band. Returns these as a list.
     
     # Calculate the airmass
     airmass = 1. / np.cos(np.radians(zenith_angle))
-    print("For the observations on {}, calculated z of {:.3f}, and airmass of {:.3f}.\n".format(
+    print("  For the observations on {}, calculated z of {:.3f}, and airmass of {:.3f}.\n".format(
         date.strftime("%Y-%m-%d"), zenith_angle, airmass)
     )
 
