@@ -25,6 +25,7 @@ from matplotlib import pyplot as plt
 import time
 import glob
 
+import mcmc_utils
 
 class PlotPoints:
     def __init__(self, fig):
@@ -362,7 +363,7 @@ so was untrustworthy.
 
         # Burn in
         print("")
-        nsteps = 500
+        nsteps = 5000
         for i, result in enumerate(sampler.sample(p0, iterations=nsteps)):
             n = int((width+1) * float(i) / nsteps)
             sys.stdout.write("\r  Burning in...    [{}{}]".format('#'*n, ' '*(width - n)))
@@ -370,15 +371,19 @@ so was untrustworthy.
         
         # Data
         sampler.reset()
-        nsteps = 1500
+        nsteps = 5000
 
         for i, result in enumerate(sampler.sample(pos, iterations=nsteps)):
             n = int((width+1) * float(i) / nsteps)
             sys.stdout.write("\r  Sampling data... [{}{}]".format('#'*n, ' '*(width - n))) 
         print("")
 
-        # corner.corner(sampler.flatchain, labels=['???', '???', 't_ecl', '???', 'a', 'b'])
-        # plt.show()
+        chain = sampler.flatchain
+
+        fig = mcmc_utils.thumbPlot(chain,['g1', 'g2', 'T0', 'sep', 'peak', 'log_sigma2'])
+        # fig.savefig('/'.join([myLoc, 'eclipse_{}_cornerPlot.pdf'.format(lf.split('/')[-1])]))
+        # plt.close()
+        plt.show(block=False)
 
         t_ecl = np.mean(sampler.flatchain[:,2])
         err = np.std(sampler.flatchain[:,2])
