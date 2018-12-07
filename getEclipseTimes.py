@@ -257,7 +257,7 @@ so was untrustworthy.
                     line[3]  = source_key[line[3]]
                     tl.append(line)
 
-        print("  Fitting these eclipse times:")
+        print("  Found these prior eclipse times:")
         for t in tl:
             print("  Cycle: {:5d} -- {:.7f}+/-{:.7f} from {}".format(t[0], t[1], t[2], t[3]))
     
@@ -345,14 +345,15 @@ so was untrustworthy.
         ndim     = 6
         nwalkers = 100
 
-        # Initial positions. Scatter by 0.00001, as this is one above the order of magnitude of the error
-        #  we expect on t_ecl.
+        # Initial positions. 
         p0 = np.random.rand(ndim * nwalkers).reshape((nwalkers, ndim))
-        scatter = 0.0001/t_ecl
+        scatter = 0.0005 # Scatter by ~ 40s in time
         p0 *= scatter
-        p0 += 1. - scatter
-        p0 = np.transpose(np.repeat(out, nwalkers).reshape((ndim, nwalkers))) *p0
+        p0 -= (scatter/2)
+        p0 = np.transpose(np.repeat(out, nwalkers).reshape((ndim, nwalkers))) + p0
         
+        print(86400*(p0[:,2] - np.transpose(np.repeat(out, nwalkers).reshape((ndim, nwalkers)))[:,2]))
+
         # Construct a sampler
         sampler = emcee.EnsembleSampler(nwalkers, ndim, log_like, args=[y, gp], threads=1)
 
@@ -422,14 +423,13 @@ so was untrustworthy.
     key_dict = {}
     i = 0
     for c, t, t_e, source in tl:
-        print("source: {}".format(source))
         if source not in key:
             key += "#{},{}\n".format(source, i)
             key_dict[source] = i
             i += 1
 
     # Sort the list
-    tl = sorted(tl,key=lambda x: (x[0]))
+    tl = sorted(tl,key=lambda x: (x[1]))
 
     with open(oname, 'w') as f:
         f.write(key)
