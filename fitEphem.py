@@ -104,12 +104,12 @@ def fitEphem(myLoc, T0, period):
     T0, T0_err = pfinal[0], np.sqrt(covar[0][0])
 
     chisq = (y - fitfunc(pfinal, x))**2 / (ey**2)
-    chisq /= 
+    chisq = sum(chisq) / (len(chisq)-2)
 
     ### Reporting
     print("  Got a T0 of {:.10f}+/-{:.2e}".format(T0, T0_err))
     print("  Got a period of {:.10f}+/-{:.2e}".format(P, P_err))
-    print("This fit had a chisq value of {}".format(chisq))
+    print("This fit had a reduced chisq value of {}".format(chisq))
     print('')
     print("  (Obs) - (Calc), sec | Cycle Number")
     for t in tl:
