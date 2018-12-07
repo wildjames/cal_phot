@@ -286,6 +286,7 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
                     ratio.mask[sorted_args]
                     )
                 
+                print("  Binning the night of {} by {}".format(fname.split('/')[-1][:-4], binsize))
                 ratio = ratio.bin(binsize)
                 
                 # Plotting
@@ -333,6 +334,10 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
             lightcurve.ye[sorted_args],
             lightcurve.mask[sorted_args]
         )
+
+        # Bin the lightcurve by the number of nights
+        print("Binning the folded, sum lightcurve by the number of eclipses +1, {}".format(len(fnames)+1))
+        master[CCD] = master[CCD].bin(len(fnames)+1)
 
     print("  Done!\n")
 
