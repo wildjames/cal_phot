@@ -92,27 +92,31 @@ def fitEphem(myLoc, T0, period):
 
     params = [T0, period]
 
-    x = [i[0] for i in tl]
-    y = [i[1] for i in tl]
-    ey = [i[2] for i in tl]
+    x =  np.array([i[0] for i in tl])
+    y =  np.array([i[1] for i in tl])
+    ey = np.array([i[2] for i in tl])
 
     out = lsq(errfunc,params,args=(x,y,ey),full_output=1)
     pfinal = out[0]
     covar = out[1]
 
-    P, P_err = pfinal[1], numpy.sqrt(covar[1][1])
-    T0, T0_err = pfinal[0], numpy.sqrt(covar[0][0])
+    P, P_err = pfinal[1], np.sqrt(covar[1][1])
+    T0, T0_err = pfinal[0], np.sqrt(covar[0][0])
 
+    chisq = (y - fitfunc(pfinal, x))**2 / (ey**2)
+    chisq /= 
 
     ### Reporting
-    print(" (T - T0) / P (s) | Cycle Number")
-    for t in tl:
-        E = ((t[1] - T0)/P)
-        dE = E - np.rint(E)
-        dE *= 24.*60.*60. * P
-        print(" {:>16.6f} | {:d}".format(dE , t[0] ))
-
     print("  Got a T0 of {:.10f}+/-{:.2e}".format(T0, T0_err))
     print("  Got a period of {:.10f}+/-{:.2e}".format(P, P_err))
-    exit()
+    print("This fit had a chisq value of {}".format(chisq))
+    print('')
+    print("  (Obs) - (Calc), sec | Cycle Number")
+    for t in tl:
+        dT = fitfunc(pfinal, t[0]) - t[1]
+        dT *= 24*60*60
+        print(" {:>20.4f} | {:d}".format(dT , t[0] ))
+    
+
+
     return T0, P
