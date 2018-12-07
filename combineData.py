@@ -336,7 +336,7 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
         )
 
         # Bin the lightcurve by the number of nights
-        print("Binning the folded, sum lightcurve by the number of eclipses +1, {}".format(len(fnames)+1))
+        print("  Binning the folded, sum lightcurve by the number of eclipses +1, {}".format(len(fnames)+1))
         master[CCD] = master[CCD].bin(len(fnames)+1)
 
     print("  Done!\n")
