@@ -352,7 +352,7 @@ so was untrustworthy.
         p0 -= (scatter/2)
         p0 = np.transpose(np.repeat(out, nwalkers).reshape((ndim, nwalkers))) + p0
         
-        print(86400*(p0[:,2] - np.transpose(np.repeat(out, nwalkers).reshape((ndim, nwalkers)))[:,2]))
+        # print(86400*(p0[:,2] - np.transpose(np.repeat(out, nwalkers).reshape((ndim, nwalkers)))[:,2]))
 
         # Construct a sampler
         sampler = emcee.EnsembleSampler(nwalkers, ndim, log_like, args=[y, gp], threads=1)
