@@ -35,12 +35,12 @@ class PlotPoints:
 
     def connect(self):
         self.cidpress = self.fig.canvas.mpl_connect('key_press_event', self.on_press)
-        self.cidclick = self.fig.canvas.mpl_connect('button_release_event', self.on_click)
-        print("  Hit 'q' to skip these data.\n  Click another button, or the mouse, on initial guesses for ingress and egress:")
+        # self.cidclick = self.fig.canvas.mpl_connect('button_release_event', self.on_click)
+        print("  Hit 'q' to skip these data.\n  Hit 'a' on initial guesses for ingress and egress:")
 
     def disconnect(self):
         self.fig.canvas.mpl_disconnect(self.cidpress)
-        self.fig.canvas.mpl_disconnect(self.cidclick)
+        # self.fig.canvas.mpl_disconnect(self.cidclick)
 
     def on_press(self, event):
         if 'q' in event.key:
@@ -49,9 +49,10 @@ class PlotPoints:
             closeplot()
             print("  ")
             return
-        print('  added point at %.1f, %.1f' % (event.xdata, event.ydata))
-        self.xcoords = np.append(self.xcoords, event.xdata)
-        self.ycoords = np.append(self.ycoords, event.ydata)
+        if 'a' in event.key:
+            print('  added point at %.1f, %.1f' % (event.xdata, event.ydata))
+            self.xcoords = np.append(self.xcoords, event.xdata)
+            self.ycoords = np.append(self.ycoords, event.ydata)
         if self.xcoords.size == 2:
             self.disconnect()
             closeplot()
@@ -383,7 +384,6 @@ so was untrustworthy.
         sep = np.mean(sampler.flatchain[:,3])
 
         print("    Got a solution: {:.7f}+/-{:.7f}\n".format(t_ecl, err))
-
         # print("  Got a Jacobian,\n {}".format(soln['jac']))
         # print("  Got a Hessian,\n {}".format(soln['hess_inv'].todense()))
         # print("  Final log-liklihood: {}".format(soln.fun))
@@ -411,7 +411,7 @@ so was untrustworthy.
         cont = input("  Save these data? y/n: ")
         if cont.lower() == 'y':
             locflag = input("    What is the source of these data: ")
-            tl.append([float(t_ecl), float(err), locflag])
+            tl.append(['<CYCLE NUMBER>', float(t_ecl), float(err), locflag])
         else:
             print("  Did not store that eclipse time.")
 
@@ -421,7 +421,7 @@ so was untrustworthy.
     key = ''
     key_dict = {}
     i = 0
-    for t, t_e, source in tl:
+    for c, t, t_e, source in tl:
         print("source: {}".format(source))
         if source not in key:
             key += "#{},{}\n".format(source, i)
@@ -433,8 +433,8 @@ so was untrustworthy.
 
     with open(oname, 'w') as f:
         f.write(key)
-        for t, t_e, source in tl:
-            f.write("<ECLIPSE NUMBER>, {}, {},{}\n".format(t, t_e, key_dict[source]))
+        for c, t, t_e, source in tl:
+            f.write("{}, {}, {},{}\n".format(c, t, t_e, key_dict[source]))
     print("  Wrote eclipse data to {}\n".format(oname))
 
     #TODO:
