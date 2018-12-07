@@ -240,26 +240,27 @@ so was untrustworthy.
     # tecl list
     tl = []
     if path.isfile(oname):
-        print("  Found prior eclipses in '{}'. Using these in my fit.".format(oname))
         # Read in the eclipsetimes.txt file
-        fname = '/'.join([myLoc, 'eclipse_times.txt'])
         source_key = {}
         tl = []
-        with open(fname, 'r') as f:
+        with open(oname, 'r') as f:
             for line in f:
+                line = line.strip()
                 if line[0] == '#':
                     line = line[1:].strip().split(",")
                     source_key[line[1]] = line[0]
                 else:
                     line = line.split(',')
-                    line = [float(x) for x in line]
-                    line[3] = source_key[line[3]]
-                    tl.append()
+                    line[:3] = [float(x) for x in line[:3]]
+                    line[0] = int(line[0])
+                    line[3]  = source_key[line[3]]
+                    tl.append(line)
+
+        print("  Fitting these eclipse times:")
         for t in tl:
-            print("cycle {} -- {:.7f}+/-{:.7f} from {}".format(t[0], t[1], t[2], source_key[t[3]]))
-
-
-    print("  Grabbing log files...")
+            print("  Cycle: {:5d} -- {:.7f}+/-{:.7f} from {}".format(t[0], t[1], t[2], t[3]))
+    
+    print("\n  Grabbing log files...")
     fnames = list(glob.iglob('{}/**/*.log'.format(myLoc), recursive=True))
     
     if len(fnames) == 0:
@@ -359,7 +360,7 @@ so was untrustworthy.
 
         # Burn in
         print("")
-        nsteps = 300
+        nsteps = 500
         for i, result in enumerate(sampler.sample(p0, iterations=nsteps)):
             n = int((width+1) * float(i) / nsteps)
             sys.stdout.write("\r  Burning in...    [{}{}]".format('#'*n, ' '*(width - n)))
@@ -367,7 +368,7 @@ so was untrustworthy.
         
         # Data
         sampler.reset()
-        nsteps = 500
+        nsteps = 1500
 
         for i, result in enumerate(sampler.sample(pos, iterations=nsteps)):
             n = int((width+1) * float(i) / nsteps)
@@ -387,9 +388,6 @@ so was untrustworthy.
         # print("  Got a Hessian,\n {}".format(soln['hess_inv'].todense()))
         # print("  Final log-liklihood: {}".format(soln.fun))
 
-        locflag = input("  What is the source of these data: ")
-        tl.append([float(t_ecl), float(err), locflag])
-
         # Make the maximum likelihood prediction
         mu, var = gp.predict(y, x, return_var=True)
         std = np.sqrt(var)
@@ -408,7 +406,15 @@ so was untrustworthy.
 
         ax[0].set_title("maximum likelihood prediction - {}".format(lf.split('/')[-1]))
         plt.tight_layout()
-        plt.show()
+        plt.show(block=False)
+
+        cont = input("  Save these data? y/n: ")
+        if cont.lower() == 'y':
+            locflag = input("    What is the source of these data: ")
+            tl.append([float(t_ecl), float(err), locflag])
+        else:
+            print("  Did not store that eclipse time.")
+
     print("  \nDone all the files!")
 
     # make a key for the data sources
