@@ -137,6 +137,11 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
 
     print("  Phase folding data for a T0: {:}, period: {:}".format(T0, period))
 
+    # Ephemeris info
+    eclFile = 'eclipse_times.txt'
+    eclFile = '/'.join([myLoc, eclFile])
+    source_key, eclipse_data = read_ecl_file(eclFile)
+    
     # Where are we?
     observatory = coord.EarthLocation.of_site(obsname)
     star_loc = coord.SkyCoord(
@@ -157,11 +162,6 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
     with PdfPages(oname+'_all-nights.pdf') as pdf:
         for fname in fnames:
             data = hcam.hlog.Hlog.from_ascii(fname)
-
-            # Ephemeris info
-            eclFile = 'eclipse_times.txt'
-            eclFile = '/'.join([myLoc, eclFile])
-            source_key, eclipse_data = read_ecl_file(eclFile)
             
             # Get the apertures of this data set
             aps = data.apnames
@@ -172,7 +172,7 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
                 reference_stars = construct_reference(refname)
 
             # Plotting area
-            fig, ax = plt.subplots(3, figsize=[24, 8])
+            fig, ax = plt.subplots(3, figsize=[12, 8])
 
             # I want altitude converted to zenith angle. Airmass is roughly constant over 
             # a single eclipse so only do it once to save time.
