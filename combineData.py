@@ -353,6 +353,7 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
             plt.tight_layout()
             pdf.savefig()
     print("  ")
+    plt.close(fig)
 
 
 
@@ -397,6 +398,7 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
     plt.tight_layout()
     plt.savefig(oname+'.pdf')
     # plt.show()
+    plt.close('all')
     print('  Saved to {}'.format(oname+'.pdf'))
     print("  Done!\n")
 
@@ -411,5 +413,6 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
         print("  Wrote out {}!".format(filename))
 
     print("\n  Done!")
+    input('')
 
     return written_files
