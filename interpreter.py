@@ -421,7 +421,7 @@ Generally we want to follow these steps:
             if len(args) > 0:
                 oname = args[0]
             else:
-                oname = 'overplotted_eclipses'
+                oname = ''
             plot_all(self.written_files, oname)
 
 

@@ -7,6 +7,9 @@ def plot_all(files, oname):
 
     Returns None
     '''
+    if oname == '':
+        print("Invalid filename! using 'overplotted_eclipses.pdf'")
+        oname = 'overplotted_eclipses'
 
     # filter the files so we only have green lightcurves
     files = [x for x in files if '_g.calib' in x]
