@@ -363,7 +363,7 @@ so was untrustworthy.
 
         # Burn in
         print("")
-        nsteps = 5000
+        nsteps = 2500
         for i, result in enumerate(sampler.sample(p0, iterations=nsteps)):
             n = int((width+1) * float(i) / nsteps)
             sys.stdout.write("\r  Burning in...    [{}{}]".format('#'*n, ' '*(width - n)))
@@ -371,7 +371,7 @@ so was untrustworthy.
         
         # Data
         sampler.reset()
-        nsteps = 5000
+        nsteps = 2500
 
         for i, result in enumerate(sampler.sample(pos, iterations=nsteps)):
             n = int((width+1) * float(i) / nsteps)
