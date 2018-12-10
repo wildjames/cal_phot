@@ -7,6 +7,13 @@ def plot_all(files, oname):
 
     Returns None
     '''
+
+    # filter the files so we only have green lightcurves
+    files = [x for x in files if '_g.calib' in x]
+    for f in files:
+        print(f)
+
+    
     CB_color_cycle = ['#377eb8', '#ff7f00', '#4daf4a',
                     '#f781bf', '#a65628', '#984ea3',
                     '#999999', '#e41a1c', '#dede00']
