@@ -19,10 +19,10 @@ def getKappa(lf, coords, obsname, mags, ext=0.161):
     Uses the observatory and coordinates of the star to get its airmass at the start of the run, and 
     assumes it's rouchly constant over the observations.
 
-    From these, calculate the instrumental magnitude of the standard, and get the correction factor, kappa,
+    From these, calculate the instrumental magnitude of the standard, and get the zero point, kappa,
     in each band. Returns these as a list.
 '''
-    print("  Computing kappa magnitude corrections, from the file '{}'".format(lf))
+    print("  Computing zero point magnitude corrections, from the file '{}'".format(lf))
     print("  The standard star was observed at coordinates: {}, from {}".format(coords, obsname))
 
     # Double check our data are the right format
@@ -79,7 +79,7 @@ def getKappa(lf, coords, obsname, mags, ext=0.161):
         # Instrumental magnitude
         inst_mag = -2.5*np.log10(flux) - (extinction_coefficient*airmass)
 
-        print("    This is an instrumental magnitude of ")
+        print("    This is an instrumental magnitude of {}".format(inst_mag))
 
         # Correction factor for this band
         kappa = inst_mag - mags[int(CCD)]

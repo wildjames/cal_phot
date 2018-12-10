@@ -195,39 +195,43 @@ Generally we want to follow these steps:
         T0, period = fitEphem(directory, T0, period)
 
     def combineData(self):
-        try:
-            oname     = self.get_param('oname')
-            coords    = self.get_param('coords')
-            obsname   = self.get_param('obsname')
-            T0        = self.get_param('T0')
-            period    = self.get_param('period')
-            binsize   = self.get_param('binsize')
-            myLoc     = self.get_param('directory')
-            fnames    = self.get_param('fnames')
-            SDSS      = self.get_param('SDSS')
+        # try:
+        oname     = self.get_param('oname')
+        coords    = self.get_param('coords')
+        obsname   = self.get_param('obsname')
+        T0        = self.get_param('T0')
+        period    = self.get_param('period')
+        binsize   = self.get_param('binsize')
+        myLoc     = self.get_param('directory')
+        fnames    = self.get_param('fnames')
+        SDSS      = self.get_param('SDSS')
+        
+        print("Combining, calibrating, and plotting data...")
+        if SDSS:
+            written_files = combineData(oname, coords, obsname, T0, period, SDSS=True, binsize=binsize,
+            myLoc=myLoc, fnames=fnames)
+        else:
+            # Retrieve the SDSS-matching reductions for each night
+            comparisons = self.get_param('comparisonfnames')
+            stdLogfile  = self.get_param('stdLogfile')
             
-            print("Combining, calibrating, and plotting data...")
-            if SDSS:
-                written_files = combineData(oname, coords, obsname, T0, period, SDSS=True, binsize=binsize,
-                myLoc=myLoc, fnames=fnames)
-            else:
-                ref_kappa = self.get_param('kappas')
-                written_files = combineData(oname, coords, obsname, T0, period, ref_kappa=ref_kappa, SDSS=False,
-                    binsize=binsize, myLoc=myLoc, fnames=fnames)
-            
-            self.written_files += written_files
-        except AttributeError:
-            print("I don't have enough data to do the data processing!")
-            print("I failed to collect one or more of the following:")
-            print("  - oname")
-            print("  - coords")
-            print("  - ref_kappa")
-            print("  - observatory name")
-            print("  - T0")
-            print("  - period")
-            print("  - binsize")
-            print("  - directory")
-            exit()
+            # ref_kappa = self.get_param('kappas')
+            written_files = combineData(oname, coords, obsname, T0, period, SDSS=False,
+                binsize=binsize, myLoc=myLoc, fnames=fnames, comp_fnames=comparisons, std_fname=stdLogfile)
+        
+        self.written_files += written_files
+        # except AttributeError:
+        #     print("I don't have enough data to do the data processing!")
+        #     print("I failed to collect one or more of the following:")
+        #     print("  - oname")
+        #     print("  - coords")
+        #     print("  - ref_kappa")
+        #     print("  - observatory name")
+        #     print("  - T0")
+        #     print("  - period")
+        #     print("  - binsize")
+        #     print("  - directory")
+        #     exit()
 
     def parse(self, line):
         line = line.strip()
@@ -342,6 +346,29 @@ Generally we want to follow these steps:
             self.params['stdLogfile'] = stdLogfile
             print("Using the standard star in this log file,\n  {}".format(stdLogfile))
         
+        elif command == 'comparisonlogfiles':
+            # Read in log filenames, terminated by an empty line, i.e. in the format:
+            # logfiles
+            # file1
+            # file2
+            # file3 
+            #
+            # <continue>
+            fnames = []
+
+            line = self.inFile.readline().strip()
+            if '#' in line: line = line[:line.index('#')].strip()
+            while line!='':
+                fnames.append(line)
+                line = self.inFile.readline().strip()
+                if '#' in line: line = line[:line.index('#')].strip()
+            self.params['comparisonfnames'] = fnames
+
+            print("Using the following logfiles for calculating the SDSS correction on each eclipse:")
+            for fname in fnames:
+                print("- {}".format(fname))
+
+        
         elif command == 'stdmags':
             # Must be in the format <r' g' u'>
             if len(args) < 3:
@@ -407,9 +434,11 @@ Generally we want to follow these steps:
             fnames = []
 
             line = self.inFile.readline().strip()
+            if '#' in line: line = line[:line.index('#')].strip()
             while line!='':
                 fnames.append(line)
                 line = self.inFile.readline().strip()
+                if '#' in line: line = line[:line.index('#')].strip()
             self.params['fnames'] = fnames
 
             print("Using the following logfiles:")

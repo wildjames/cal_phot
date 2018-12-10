@@ -7,7 +7,7 @@ from astropy import time, coordinates as coord, units as u
 from astropy.coordinates import AltAz
 
 import hipercam as hcam
-from constructReference import construct_reference
+from constructReference import construct_reference, get_comparison_magnitudes
 from getEclipseTimes import read_ecl_file
 
 def sdss_mag2flux(mag):
@@ -78,7 +78,7 @@ def tcorrect(tseries, star, observatory, type='B'):
 
 # -------------------\inputted variables-------------------------------------- #
 
-def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, binsize=10, myLoc='.', ext=0.161, fnames=None):
+def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, std_fname=None, comp_fnames=None, binsize=10, myLoc='.', ext=0.161, fnames=None):
     '''
     oname      - Filename template for writing lightcurve plot and data. Appended with binning factor.
     coords     - RA and DEC of target star. As a string in a format that astropy can interpret.
@@ -112,7 +112,21 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
         if len(fnames) == 0:
             print("  I couldn't find any log files! Stopping...")
             exit()
+    if comp_fnames == None:
+        comp_fnames = fnames
+    
+    # Check we have the same number of comparison reductions as we do target reductions
+    if len(comp_fnames) != len(fnames):
+        print("Error! I got a different number of comparison reductions and target reductions!")
+        print("Comparisons:")
+        for f in comp_fnames:
+            print(f)
+        print("\nTargets:")
+        for f in fnames:
+            print(f)
+        exit()
 
+    print(comp_fnames)
     
     # Writing out
     try:
@@ -161,16 +175,22 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
 
     # I want a master pdf file with all the nights' lightcurves plotted
     with PdfPages(oname+'_all-nights.pdf') as pdf:
-        for fname in fnames:
+        for fname, refname in zip(fnames, comp_fnames):
             data = hcam.hlog.Hlog.from_ascii(fname)
             
             # Get the apertures of this data set
             aps = data.apnames
+            if aps != compdata.apnames:
+                print("Error! Mismatch in number of apertures between target reduction and comparison reduction!")
+                print("The error occured on the files:")
+                print("  {}\n  {}".format(fname, refname))
 
             # If we're in the SDSS field, grab the reference stars' magnitudes from their coords.
             if SDSS:
-                refname         = fname.replace('.log', '.coords')
+                refname         = refname.replace('.log', '.coords')
                 reference_stars = construct_reference(refname)
+            else:
+                reference_stars = get_comparison_magnitudes(std_fname, refname)
 
             # Plotting area
             fig, ax = plt.subplots(3, figsize=[12, 8])

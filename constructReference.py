@@ -136,8 +136,7 @@ def construct_reference(fetchFname):
 
             results = resp.json()[0]['Rows']
             if len(results) >= 5:
-                print('''You got a lot of results from the query. 
-You probably want to go and manually add this star to the JSON!''')
+                print('You got a lot of results from the SDSS query! Choose from the following VERY carefully.')
             if len(results) > 1:
                 print('''
 --------------------------------------------
@@ -163,9 +162,9 @@ More than one object found at that location!'''
                 #         )
                 #     )
             else:
-                print('''ERROR! Found no targets at this location!!)
-Try broadening the search radius in this script,
-and make sure that your targets are definitely in the SDSS field!''')
+                print('ERROR! Found no targets at the location: RA: {}, Dec: {}'.format(target['ra'], target['dec']))
+                print('Try broadening the search radius in this script,')
+                print('and make sure that your targets are definitely in the SDSS field!')
                 continue
 
             # pprint(target)
@@ -173,3 +172,11 @@ and make sure that your targets are definitely in the SDSS field!''')
 
     print("Done!\n")
     return toWrite
+
+
+def get_comparison_magnitudes(std_fname, comp_fname):
+    print("    Extracting comparison star SDSS magnitudes from the file '{}',".format(comp_fname))
+    print("    using the standard star found in {}".format(std_fname))
+    exit()
+    mags = []
+    return mags
