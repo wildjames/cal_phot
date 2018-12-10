@@ -308,7 +308,7 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
                     E = [t[1] for t in eclipse_data].index(E)
                     E = eclipse_data[E][0]
                     
-                    print("  I think that the eclipse spanning from {} to {} is cycle number {}".format(
+                    print("  I think that the eclipse spanning from {:.3f} to {:.3f} is cycle number {}".format(
                         ratio.t[0], ratio.t[-1], E)
                     )
 
