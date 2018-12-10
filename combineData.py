@@ -11,7 +11,7 @@ from constructReference import construct_reference
 
 def sdss_mag2flux(mag):
     '''Takes an SDSS magnitude, returns the corresponding flux in [mJy]'''
-    alpha = 3631.e3
+    alpha = 3631e3
 
     flux = 10**(-mag/2.5)
     flux*= alpha
@@ -189,7 +189,8 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
                 # Check that there is more than one aperture -- i.e. if a reference star exists
                 if len(ap) == 1:
                     print("  I can't do relative photometry with only one aperture!")
-                    continue
+                    print("!!! Bad log file, '{}'".format(fname))
+                    exit()
 
                 # Grab the target data
                 target = data.tseries(CCD, '1')
@@ -218,6 +219,9 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
                         [ float(refs[comp][ band[CCD_int] ])
                                 for comp in refs ]
                     )
+                    print("  CCD {} reference star magnitudes:".format(CCD))
+                    for m, mag in enumerate(mags):
+                        print("    Reference {}: {:.3f} mag".format(m, mag))
 
                     fluxs = sdss_mag2flux(mags)
                     meanFlux = np.mean(fluxs) # Actual FLUX of reference
@@ -257,7 +261,12 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
                             ## in line with true magnitude
                             mag = mag - ref_kappa[CCD_int]
                             mags.append(mag)
+
                     mags = np.array(mags)
+
+                    print("  CCD {} reference star magnitudes:".format(CCD))
+                    for m, mag in enumerate(mags):
+                        print("    Reference {}: {:.3f} mag".format(m, mag))
 
                     # Take reference mean
                     reference.y = reference.y / len(ap[1:])
