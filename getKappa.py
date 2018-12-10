@@ -8,20 +8,22 @@ from astropy.coordinates import AltAz, EarthLocation, SkyCoord
 
 def getKappa(lf, coords, obsname, mags, ext=0.161):
     '''
-lf      - Standard star reduced data in a logfile from the hipercam pipeline
-mags    - [<r' magnitude>, <g' band magnitude>, <u' band magnitude>] of standard
-coords  - RA and DEC of standard star, in hours and degrees, respectively.
-obsname - name of observatory
-ext     - optional parameter, if you want to use a different extinction coeff.
+    lf      - Standard star reduced data in a logfile from the hipercam pipeline
+    mags    - [<r' magnitude>, <g' band magnitude>, <u' band magnitude>] of standard
+    coords  - RA and DEC of standard star, in hours and degrees, respectively.
+    obsname - name of observatory
+    ext     - optional parameter, if you want to use a different extinction coeff.
 
 
-Takes a logfile containing the reduced lightcurve of a standard star, and a list of its magnitudes.
-Uses the observatory and coordinates of the star to get its airmass at the start of the run, and 
-assumes it's rouchly constant over the observations.
+    Takes a logfile containing the reduced lightcurve of a standard star, and a list of its magnitudes.
+    Uses the observatory and coordinates of the star to get its airmass at the start of the run, and 
+    assumes it's rouchly constant over the observations.
 
-From these, calculate the instrumental magnitude of the standard, and get the correction factor, kappa,
-in each band. Returns these as a list.
+    From these, calculate the instrumental magnitude of the standard, and get the correction factor, kappa,
+    in each band. Returns these as a list.
 '''
+    print("  Computing kappa magnitude corrections, from the file '{}'".format(lf))
+    print("  The standard star was observed at coordinates: {}, from {}".format(coords, obsname))
 
     # Double check our data are the right format
     extinction_coefficient = float(ext)
@@ -72,15 +74,17 @@ in each band. Returns these as a list.
             fluxs.append(flux)
 
         flux = np.mean(fluxs)
-        # print("For CCD{}, found a mean flux of {:.2f} counts/s".format(CCD, flux))
-        
+        print("    For CCD {}, found a mean flux of {:.2f} counts/s".format(CCD, flux))
+
         # Instrumental magnitude
         inst_mag = -2.5*np.log10(flux) - (extinction_coefficient*airmass)
+
+        print("    This is an instrumental magnitude of ")
 
         # Correction factor for this band
         kappa = inst_mag - mags[int(CCD)]
 
-        # print("This corresponds to a correction of {:.3} magnitudes.\n".format(kappa))
+        print("    This corresponds to a correction of {:.3} magnitudes.\n".format(kappa))
         kappas.append(kappa)
 
     return kappas

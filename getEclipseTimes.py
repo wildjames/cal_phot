@@ -1,6 +1,6 @@
 from hipercam.hlog import Hlog
 
-from astropy import coordinates as coord, units as u
+from astropy import coordinates as coord, units
 from astropy.time import Time
 from astropy.convolution import Box1DKernel, convolve
 from astropy.stats import sigma_clipped_stats
@@ -251,7 +251,7 @@ so was untrustworthy.
 
     star = coord.SkyCoord(
         coords,
-        unit=(u.hour, u.deg)
+        unit=(units.hour, units.deg)
     )
 
     if myLoc == None:
@@ -287,6 +287,9 @@ so was untrustworthy.
             log = Hlog.from_ascii(lf)
         except Exception:
             log = Hlog.from_ulog(lf)
+        else:
+            print("I failed to read the file {}!! ".format(lf))
+            exit()
             
         # Get the g band lightcurve, and correct it to the barycentric time
         gband = log.tseries('2', '1') / log.tseries('2', '2')
@@ -332,7 +335,7 @@ so was untrustworthy.
         bounds = gp.get_parameter_bounds()
         
 
-        # Find a solution using Stu's method
+        # Find a solution using Stu's minimisation method
         soln = minimize(neg_log_like, initial_params, jac=grad_neg_log_like,
                         method="L-BFGS-B", bounds=bounds, args=(y, gp))
         if not soln.success:
