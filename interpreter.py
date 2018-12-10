@@ -418,7 +418,11 @@ Generally we want to follow these steps:
 
         # plotAll 
         elif command == 'overplot':
-            plot_all(self.written_files, 'Overplot')
+            if len(args) > 0:
+                oname = args[0]
+            else:
+                oname = 'overplotted_eclipses'
+            plot_all(self.written_files, oname)
 
 
         # Unknown command handler
