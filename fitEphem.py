@@ -76,6 +76,8 @@ def fitEphem(myLoc, T0, period, simple=False):
         chisq = (y - fitfunc(pfinal, x))**2 / (ey**2)
         chisq = sum(chisq) / (len(chisq)-2)
 
+        resy = y - fitfunc(pfinal, x)
+
     else:
         # Use Stu's version of the fitting, which considers error
         def model(pars,x):
@@ -166,7 +168,7 @@ def fitEphem(myLoc, T0, period, simple=False):
                 P_err = uplim-lolim
         fig = mu.thumbPlot(chain,nameList)
         fig.savefig('/'.join([myLoc, 'ephemeris_cornerPlot.pdf']))
-        plt.close()
+        plt.close('all')
 
         resy = 86400.0*(y-model(bestPars,x))
         errs = ey.copy()
@@ -179,12 +181,6 @@ def fitEphem(myLoc, T0, period, simple=False):
         chisq = np.sum(resy**2.0/ey**2.0)
         print("    Chisq = {:.1f}, with {:d} degrees of freedom".format(chisq, int(x.size - 2)))
 
-        plt.errorbar(x,resy,yerr=ey,fmt='o',color='k',ecolor='k')
-        plt.axhline(ls='--',color='k')
-        plt.xlabel('Cycle No.')
-        plt.ylabel('O-C (s)')
-        plt.show()
-
     ### Reporting
     print("  Got a T0 of {:.10f}+/-{:.2e}".format(T0, T0_err))
     print("  Got a period of {:.10f}+/-{:.2e}".format(P, P_err))
@@ -195,5 +191,11 @@ def fitEphem(myLoc, T0, period, simple=False):
         dT = fitfunc([T0, P], t[0]) - t[1]
         dT *= 24*60*60
         print("  {:<15s} | {:>20.4f} | {:d}".format(source_key[str(int(t[3]))], dT , int(t[0]) ))
+
+    plt.errorbar(x,resy,yerr=ey,fmt='o',color='k',ecolor='k')
+    plt.axhline(ls='--',color='k')
+    plt.xlabel('Cycle No.')
+    plt.ylabel('O-C (s)')
+    plt.show()
 
     return T0, P
