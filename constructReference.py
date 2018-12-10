@@ -2,6 +2,8 @@ import json
 import requests
 from pprint import pprint
 import os
+import hipercam as hcam
+import numpy as np
 
 '''
 
@@ -173,10 +175,75 @@ More than one object found at that location!'''
     print("Done!\n")
     return toWrite
 
+def get_instrumental_mags(data):
+    '''
+    Takes a hipercam data object, and exctracts the instrumental magnitude of each aperture in each CCD
+    '''
+    all_mags = {}
+    aps = data.apnames
+    for CCD in aps:
+        CCD_int = int(CCD)
 
-def get_comparison_magnitudes(std_fname, comp_fname):
-    print("    Extracting comparison star SDSS magnitudes from the file '{}',".format(comp_fname))
-    print("    using the standard star found in {}".format(std_fname))
-    exit()
-    mags = []
+        # Get this frame's apertures
+        ap = aps[CCD]
+        # Check that there is more than one aperture -- i.e. if a reference star exists
+        if len(ap) == 1:
+            print("  I can't do relative photometry with only one aperture!")
+            exit()
+
+        # Grab the target data
+        target = data.tseries(CCD, '1')
+
+        # First reference star
+        reference = data.tseries(CCD, '2')
+        # mean reference counts/s, converted to magnitudes
+        fl = np.zeros(len(reference.y))
+        for i, count in enumerate(reference.y):
+            # the third column, data[CCD][i][3], contains the exposure time for that frame
+            fl[i] = count / data[CCD][i][3]
+
+        # Calculate the mean apparent magnitude of the reference star above the atmosphere
+        mag = -2.5*np.log10(np.mean(fl))
+        # reference star magnitudes
+        mags = [mag]
+        
+        # If we have more than one reference, handle that
+        if len(ap) > 1:
+            for comp in ap[2:]:
+                # Store the reference star in a temp variable
+                r = data.tseries(CCD, comp)
+                reference = reference + r
+
+                # Get the count flux of the reference star
+                fl = np.zeros(len(r.y))
+                for i, count in enumerate(r.y):
+                    #               \/ This is the exposure time for that frame
+                    fl[i] = count / float(data[CCD][i][3])
+
+                # Get the apparent magnitude of the standard
+                ## Instrumental magnitude
+                mag = -2.5*np.log10(np.mean(fl))
+                
+                mags.append(mag)
+        all_mags[CCD] = mags
     return mags
+
+def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords):
+    print("    Extracting comparison star SDSS magnitudes from the file '{}'".format(comp_fname))
+    print("    using the standard star found in {}".format(std_fname))
+    ### NON-SDSS FIELD ###
+
+    standard_data = hcam.hlog.Hlog.from_ascii(std_fname)
+    comp_data     = hcam.hlog.Hlog.from_ascii(comp_fname)
+
+    if standard_data.apnames != comp_data.apnames:
+        print("Error! Mismatch in number of apertures between target reduction and comparison reduction!")
+        print("The error occured on the files:")
+        print("  {}\n  {}".format(fname, refname))
+    
+    std_mags = get_instrumental_mags(standard_data)
+    comp_mags = get_instrumental_mags(comp_data)
+
+    comparison_apparent_mags = 
+
+    return comparison_apparent_mags

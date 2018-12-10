@@ -180,10 +180,7 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
             
             # Get the apertures of this data set
             aps = data.apnames
-            if aps != compdata.apnames:
-                print("Error! Mismatch in number of apertures between target reduction and comparison reduction!")
-                print("The error occured on the files:")
-                print("  {}\n  {}".format(fname, refname))
+            
 
             # If we're in the SDSS field, grab the reference stars' magnitudes from their coords.
             if SDSS:
