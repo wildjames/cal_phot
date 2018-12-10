@@ -8,6 +8,7 @@ from getKappa import getKappa
 from getEclipseTimes import getEclipseTimes
 from combineData import combineData
 from fitEphem import fitEphem
+from plotAll import plot_all
 
 class Interpreter:
     def __init__(self, inFile=None, prompt=[]):
@@ -21,6 +22,7 @@ class Interpreter:
             'fnames': None,
             'SDSS': 0
         }
+        self.written_files = []
 
         # parse prompt commands
         for line in prompt:
@@ -186,7 +188,7 @@ Generally we want to follow these steps:
             exit()
     
     def fitEphem(self):
-        print("--- CONSTRUCTION SITE ---")
+        # print("--- CONSTRUCTION SITE ---")
         directory = self.get_param('directory')
         T0 = self.get_param('T0')
         period = self.get_param('period')
@@ -206,12 +208,14 @@ Generally we want to follow these steps:
             
             print("Combining, calibrating, and plotting data...")
             if SDSS:
-                combineData(oname, coords, obsname, T0, period, SDSS=True, binsize=binsize,
+                written_files = combineData(oname, coords, obsname, T0, period, SDSS=True, binsize=binsize,
                 myLoc=myLoc, fnames=fnames)
             else:
                 ref_kappa = self.get_param('kappas')
-                combineData(oname, coords, obsname, T0, period, ref_kappa=ref_kappa, SDSS=False,
-                binsize=binsize, myLoc=myLoc, fnames=fnames)
+                written_files = combineData(oname, coords, obsname, T0, period, ref_kappa=ref_kappa, SDSS=False,
+                    binsize=binsize, myLoc=myLoc, fnames=fnames)
+            
+            self.written_files += written_files
         except AttributeError:
             print("I don't have enough data to do the data processing!")
             print("I failed to collect one or more of the following:")
@@ -412,6 +416,9 @@ Generally we want to follow these steps:
             for fname in fnames:
                 print("- {}".format(fname))
 
+        # plotAll 
+        elif command == 'overplot':
+            plot_all(self.written_files, 'Overplot')
 
 
         # Unknown command handler
