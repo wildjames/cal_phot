@@ -193,7 +193,33 @@ def grad_neg_log_like(params, y, gp):
     gp.set_parameter_vector(params)
     return -gp.grad_log_likelihood(y)[1]
 
-
+def read_ecl_file(fname):
+    # tecl list
+    tl = []
+    if path.isfile(fname):
+        # Read in the eclipsetimes.txt file
+        source_key = {}
+        tl = []
+        with open(fname, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line[0] == '#':
+                    line = line[1:].strip().split(",")
+                    source_key[line[1]] = line[0]
+                else:
+                    line = line.split(',')
+                    line[:3] = [float(x) for x in line[:3]]
+                    line[0] = int(line[0])
+                    line[3]  = source_key[line[3]]
+                    tl.append(line)
+        print("  Found these prior eclipse times:")
+        for t in tl:
+            print("  Cycle: {:5d} -- {:.7f}+/-{:.7f} from {}".format(t[0], t[1], t[2], t[3]))
+    else:
+        print("ERROR! Could not find the file '{}' to read eclipse data from...".format(fname))
+        exit()
+    print("")
+    return source_key, tl
 
 def getEclipseTimes(coords, obsname, myLoc=None):
     '''
@@ -240,27 +266,7 @@ so was untrustworthy.
     ### ------------------------------------------------- ###
     
     # tecl list
-    tl = []
-    if path.isfile(oname):
-        # Read in the eclipsetimes.txt file
-        source_key = {}
-        tl = []
-        with open(oname, 'r') as f:
-            for line in f:
-                line = line.strip()
-                if line[0] == '#':
-                    line = line[1:].strip().split(",")
-                    source_key[line[1]] = line[0]
-                else:
-                    line = line.split(',')
-                    line[:3] = [float(x) for x in line[:3]]
-                    line[0] = int(line[0])
-                    line[3]  = source_key[line[3]]
-                    tl.append(line)
-
-        print("  Found these prior eclipse times:")
-        for t in tl:
-            print("  Cycle: {:5d} -- {:.7f}+/-{:.7f} from {}".format(t[0], t[1], t[2], t[3]))
+    source_key, tl = read_ecl_file(oname)
     
     print("\n  Grabbing log files...")
     fnames = list(glob.iglob('{}/**/*.log'.format(myLoc), recursive=True))
@@ -429,7 +435,7 @@ so was untrustworthy.
     i = 0
     for c, t, t_e, source in tl:
         if source not in key:
-            key += "#{},{}\n".format(source, i)
+            key += "#{},{}".format(source, i)
             key_dict[source] = i
             i += 1
 
@@ -439,7 +445,7 @@ so was untrustworthy.
     with open(oname, 'w') as f:
         f.write(key)
         for c, t, t_e, source in tl:
-            f.write("{}, {}, {},{}\n".format(c, t, t_e, key_dict[source]))
+            f.write("\n{}, {}, {},{}".format(c, t, t_e, key_dict[source]))
     print("  Wrote eclipse data to {}\n".format(oname))
 
     #TODO:
