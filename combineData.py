@@ -8,6 +8,7 @@ from astropy.coordinates import AltAz
 
 import hipercam as hcam
 from constructReference import construct_reference
+from getEclipseTimes import read_ecl_file
 
 def sdss_mag2flux(mag):
     '''Takes an SDSS magnitude, returns the corresponding flux in [mJy]'''
@@ -148,7 +149,7 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
         T0 = 0.0
 
     band = ['', 'r',   'g',     'u'   ]
-    c    = ['', 'r', 'g', 'u']
+    c    = ['', 'red', 'green', 'blue']
     master = {}
 
 
@@ -157,6 +158,11 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
         for fname in fnames:
             data = hcam.hlog.Hlog.from_ascii(fname)
 
+            # Ephemeris info
+            eclFile = 'eclipse_times.txt'
+            eclFile = '/'.join([myLoc, eclFile])
+            source_key, eclipse_data = read_ecl_file(eclFile)
+            
             # Get the apertures of this data set
             aps = data.apnames
 
@@ -281,30 +287,52 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
 
                 ratio = tcorrect(ratio, star_loc, obsname)
 
-                
-                # Fold about the period
-                # ratio = ratio.fold(period, t0=T0) ## BUGGED! and not a LTT error?
-                fold_time = (((ratio.t - T0) / period) %1)
-                # fold time domain from -.5 to .5
-                fold_time[fold_time > 0.5] -= 1
-                sorted_args = np.argsort(fold_time)
-                ratio = hcam.hlog.Tseries(
-                    fold_time[sorted_args],
-                    ratio.y[sorted_args],
-                    ratio.ye[sorted_args],
-                    ratio.mask[sorted_args]
+                if False:
+                    # Fold about the period
+                    # ratio = ratio.fold(period, t0=T0) ## BUGGED! and not a LTT error?
+                    fold_time = (((ratio.t - T0) / period) %1)
+                    # fold time domain from -.5 to .5
+                    fold_time[fold_time > 0.5] -= 1
+                    sorted_args = np.argsort(fold_time)
+                    ratio = hcam.hlog.Tseries(
+                        fold_time[sorted_args],
+                        ratio.y[sorted_args],
+                        ratio.ye[sorted_args],
+                        ratio.mask[sorted_args]
+                        )
+                else:
+                    ### Cut out an eclipse, without folding it
+                    # get E from eclipse data, by interpolating
+                    
+                    E = min([t[1] for t in eclipse_data], key=lambda x:abs(x-np.mean(ratio.t)))
+                    E = [t[1] for t in eclipse_data].index(E)
+                    E = eclipse_data[E][0]
+                    
+                    print("  I think that the eclipse spanning from {} to {} is cycle number {}".format(
+                        ratio.t[0], ratio.t[-1], E)
                     )
-                
-                print("  Binning the night of {} by {}".format(fname.split('/')[-1][:-4], binsize))
-                ratio = ratio.bin(binsize)
+
+                    eclTime = T0 + E*period
+
+                    slice_time = (ratio.t - eclTime) / period
+                    slice_args = (slice_time < 0.5)  *  (slice_time > -0.5)
+
+                    ratio = hcam.hlog.Tseries(
+                        ratio.t[slice_args] - eclTime,
+                        ratio.y[slice_args],
+                        ratio.ye[slice_args],
+                        ratio.mask[slice_args]
+                        )
+
+                # print("  Binning the night of {} by {}".format(fname.split('/')[-1][:-4], binsize))
+                # ratio = ratio.bin(binsize)
                 
                 # Plotting
                 ratio.mplot(ax[CCD_int-1], colour=c[CCD_int])
                 ax[CCD_int-1].set_ylabel('Flux, mJy')
-                
                 filename = oname
                 filename = filename.replace('Reduced_Data', 'Reduced_Data/lightcurves')
-                filename = "{}_{}_{}.calib".format(filename, fname.split('/')[-1][:-4], c[CCD_int])
+                filename = "{}_{}_{}.calib".format(filename, fname.split('/')[-1][:-4], band[CCD_int])
 
                 with open(filename, 'w') as f:
                     f.write("# Phase, Flux, Err_Flux\n")
@@ -345,7 +373,7 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
         )
 
         # Bin the lightcurve by the number of nights
-        print("  Binning the folded, sum lightcurve by the number of eclipses +1, {}".format(len(fnames)+1))
+        print("  Binning the folded, sum lightcurve by (number of eclipses +1): {}".format(len(fnames)+1))
         master[CCD] = master[CCD].bin(len(fnames)+1)
 
     print("  Done!\n")
