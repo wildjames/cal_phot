@@ -155,7 +155,7 @@ def fitEphem(myLoc, T0, period, simple=False):
         for i in range(npars):
             par = chain[:,i]
             lolim,best,uplim = np.percentile(par,[16,50,84])
-            print("{} = {:.10f} +{:.10f} -{:.10f}".format(nameList[i],best,uplim-best,best-lolim))
+            print("    {} = {:.10f} +{:.10f} -{:.10f}".format(nameList[i],best,uplim-best,best-lolim))
             bestPars.append(best)
 
             if nameList[i] == 'T0':
