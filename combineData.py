@@ -156,6 +156,7 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
     band = ['', 'r',   'g',     'u'   ]
     c    = ['', 'red', 'green', 'blue']
     master = {}
+    written_files = []
 
 
     # I want a master pdf file with all the nights' lightcurves plotted
@@ -195,7 +196,7 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
                 # Check that there is more than one aperture -- i.e. if a reference star exists
                 if len(ap) == 1:
                     print("  I can't do relative photometry with only one aperture!")
-                    print("!!! Bad log file, '{}'".format(fname))
+                    print("!!! Bad log file, '{}' !!!".format(fname))
                     exit()
 
                 # Grab the target data
@@ -213,7 +214,7 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
                         # Take the mean
                         reference = reference / len(ap[1:])
                     
-                    ### <reference> is now a mean COUNT of the reference stars ### 
+                    ### <reference> is now a mean COUNT of the reference stars for each exposure ### 
                     ## Calculate their actual mean flux
                     
                     # List of the relevant reference star data
@@ -225,10 +226,6 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
                         [ float(refs[comp][ band[CCD_int] ])
                                 for comp in refs ]
                     )
-                    print("  CCD {} reference star magnitudes:".format(CCD))
-                    for m, mag in enumerate(mags):
-                        print("    Reference {}: {:.3f} mag".format(m, mag))
-
                     fluxs = sdss_mag2flux(mags)
                     meanFlux = np.mean(fluxs) # Actual FLUX of reference
                 else:
@@ -270,16 +267,17 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
 
                     mags = np.array(mags)
 
-                    print("  CCD {} reference star magnitudes:".format(CCD))
-                    for m, mag in enumerate(mags):
-                        print("    Reference {}: {:.3f} mag".format(m, mag))
-
                     # Take reference mean
-                    reference.y = reference.y / len(ap[1:])
+                    reference = reference / len(ap[1:])
                     ### <reference> is now a mean COUNT of the reference stars ### 
 
                     fluxs = sdss_mag2flux(mags)
                     meanFlux = np.mean(fluxs) # Actual MEAN FLUX of reference, mJy
+
+                print("  CCD {} complarison star magnitudes:".format(CCD))
+                for m, mag in enumerate(mags):
+                    print("    Comparison {}: {:.3f} mag".format(m, mag))
+                print("  ")
 
                 # Conversion of target lightcurve
                 reference = reference / meanFlux # Counts/mJy
@@ -333,6 +331,7 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
                 filename = oname
                 filename = filename.replace('Reduced_Data', 'Reduced_Data/lightcurves')
                 filename = "{}_{}_{}.calib".format(filename, fname.split('/')[-1][:-4], band[CCD_int])
+                written_files.append(filename)
 
                 with open(filename, 'w') as f:
                     f.write("# Phase, Flux, Err_Flux\n")
@@ -360,6 +359,8 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
     ## <master> is now a dict, containing 3 Tseries objects of the lightcurves.
 
     # Sort each CCD so all the observations are lined up
+    print("  Creating a master lightcurve, by binning the folded, sum lightcurve")
+    print("   by (number of eclipses +1): {}".format(len(fnames)+1))
     for CCD in ['1', '2', '3']:
         lightcurve = master[CCD]
 
@@ -373,7 +374,6 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
         )
 
         # Bin the lightcurve by the number of nights
-        print("  Binning the folded, sum lightcurve by (number of eclipses +1): {}".format(len(fnames)+1))
         master[CCD] = master[CCD].bin(len(fnames)+1)
 
     print("  Done!\n")
@@ -411,3 +411,5 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
         print("  Wrote out {}!".format(filename))
 
     print("\n  Done!")
+
+    return written_files
