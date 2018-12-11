@@ -78,7 +78,7 @@ def tcorrect(tseries, star, observatory, type='B'):
 
 # -------------------\inputted variables-------------------------------------- #
 
-def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, std_fname=None, comp_fnames=None, binsize=10, myLoc='.', ext=0.161, fnames=None):
+def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=True, std_fname=None, comp_fnames=None, binsize=10, myLoc='.', ext=0.161, fnames=None, std_coords=None, std_mags=None):
     '''
     oname      - Filename template for writing lightcurve plot and data. Appended with binning factor.
     coords     - RA and DEC of target star. As a string in a format that astropy can interpret.
@@ -187,7 +187,8 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
                 refname         = refname.replace('.log', '.coords')
                 reference_stars = construct_reference(refname)
             else:
-                reference_stars = get_comparison_magnitudes(std_fname, refname)
+                reference_stars = get_comparison_magnitudes(std_fname, refname, std_coords=std_coords, 
+                    comp_coords=coords, std_mags=std_mags, obsname=obsname)
 
             # Plotting area
             fig, ax = plt.subplots(3, figsize=[12, 8])
@@ -200,7 +201,7 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
             zenith_angle = 90. - star_loc_AltAz.alt.value
             airmass = 1. / np.cos(np.radians(zenith_angle))
             print("  For the night of {} (observing at {}), calculated altitude of {:.3f}, and airmass of {:.3f}".format(
-                fname.split('/')[-1], obs_T, star_loc_AltAz.alt.value, airmass)
+                fname.split('/')[-1], obs_T.iso, star_loc_AltAz.alt.value, airmass)
             )
 
             # Loop through the CCDs.
@@ -219,79 +220,35 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
                 # Grab the target data
                 target = data.tseries(CCD, '1')
 
-                # First reference star
-                reference = data.tseries(CCD, '2')
-                if SDSS:
-                    ## SDSS FIELD ##
-                    # If we have more than one reference, handle that
-                    if len(ap) > 1:
-                        # Add up the reference star fluxes
-                        for comp in ap[2:]:
-                            reference = reference + data.tseries(CCD, comp)
-                        # Take the mean
-                        reference = reference / len(ap[1:])
-                    
-                    ### <reference> is now a mean COUNT of the reference stars for each exposure ### 
-                    ## Calculate their actual mean flux
-                    
-                    # List of the relevant reference star data
-                    refs = reference_stars[CCD]
+                try:
+                    # First reference star
+                    reference = data.tseries(CCD, '2')
+                except:
+                    print("Whoops! {} only contains one aperture! I can't do relative photometry with only one!".format(
+                        fname
+                    ))
 
-                    # Construct an array of the reference magnitudes, with some super opaque list comprehension.
-                    # Just trust me on this one
-                    mags = np.array(
-                        [ float(refs[comp][ band[CCD_int] ])
-                                for comp in refs ]
-                    )
-                    fluxs = sdss_mag2flux(mags)
-                    meanFlux = np.mean(fluxs) # Actual FLUX of reference
-                else:
-                    ### NON-SDSS FIELD ###
-
-                    # mean reference counts/s, converted to magnitudes
-                    fl = np.zeros(len(reference.y))
-                    for i, count in enumerate(reference.y):
-                        # the third column, data[CCD][i][3], contains the exposure time for that frame
-                        fl[i] = count / data[CCD][i][3]
-
-                    # Calculate the mean apparent magnitude of the reference star above the atmosphere
-                    mag = -2.5*np.log10(np.mean(fl)) - (ext*airmass) - ref_kappa[CCD_int]
-                    # reference star magnitudes
-                    mags = [mag]
-                    
-                    # If we have more than one reference, handle that
-                    if len(ap) > 1:
-                        for comp in ap[2:]:
-                            # Store the reference star in a temp variable
-                            r = data.tseries(CCD, comp)
-                            reference = reference + r
-
-                            # Get the count flux of the reference star
-                            fl = np.zeros(len(r.y))
-                            for i, count in enumerate(r.y):
-                                #               \/ This is the exposure time for that frame
-                                fl[i] = count / float(data[CCD][i][3])
-
-                            # Get the apparent magnitude of the standard
-                            ## Instrumental magnitude
-                            mag = -2.5*np.log10(np.mean(fl))
-                            ## Extinction correction takes out the atmosphere
-                            mag = mag - (ext*airmass)
-                            ## Standard star correction, taken from SDSS field observation, brings us 
-                            ## in line with true magnitude
-                            mag = mag - ref_kappa[CCD_int]
-                            mags.append(mag)
-
-                    mags = np.array(mags)
-
-                    # Take reference mean
+                
+                ## SDSS FIELD ##
+                # If we have more than one reference, handle that
+                if len(ap) > 1:
+                    # Add up the reference star fluxes
+                    for comp in ap[2:]:
+                        reference = reference + data.tseries(CCD, comp)
+                    # Take the mean
                     reference = reference / len(ap[1:])
-                    ### <reference> is now a mean COUNT of the reference stars ### 
+                
+                ### <reference> is now a mean COUNT of the reference stars for each exposure ### 
+                ## Calculate their actual mean flux
+                
+                # refs is a List of the relevant reference star magnitudes
+                mags = reference_stars[CCD]
 
-                    fluxs = sdss_mag2flux(mags)
-                    meanFlux = np.mean(fluxs) # Actual MEAN FLUX of reference, mJy
+                fluxs = sdss_mag2flux(mags)
+                meanFlux = np.mean(fluxs) # Actual FLUX of reference
+                
 
-                print("  CCD {} complarison star magnitudes:".format(CCD))
+                print("  CCD {} comparison star magnitudes:".format(CCD))
                 for m, mag in enumerate(mags):
                     print("    Comparison {}: {:.3f} mag".format(m, mag))
                 print("  ")
@@ -317,15 +274,16 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
                         )
                 else:
                     ### Cut out an eclipse, without folding it
-                    # get E from eclipse data, by interpolating
-                    
-                    E = min([t[1] for t in eclipse_data], key=lambda x:abs(x-np.mean(ratio.t)))
-                    E = [t[1] for t in eclipse_data].index(E)
-                    E = eclipse_data[E][0]
-                    
-                    print("  I think that the eclipse spanning from {:.3f} to {:.3f} is cycle number {}".format(
-                        ratio.t[0], ratio.t[-1], E)
-                    )
+                    # get E from eclipse data, by interpolating. Only do this for the first CCD, since they should all have the same
+                    # timestamps
+                    if CCD == '1':
+                        E = min([t[1] for t in eclipse_data], key=lambda x:abs(x-np.mean(ratio.t)))
+                        E = [t[1] for t in eclipse_data].index(E)
+                        E = eclipse_data[E][0]
+                        
+                        print("  I think that the eclipse spanning from {:.3f} to {:.3f} is cycle number {}".format(
+                            ratio.t[0], ratio.t[-1], E)
+                        )
 
                     eclTime = T0 + E*period
 
@@ -430,6 +388,5 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=False, 
         print("  Wrote out {}!".format(filename))
 
     print("\n  Done!")
-    input('')
 
     return written_files
