@@ -60,7 +60,7 @@ def deg2arcsec(inp, ra):
 
 def construct_reference(fetchFname):
     '''
-    Queries the SDSS database for the magnitudes of the stars contained in <fetchname>, returns them as a dict of lists.
+    Queries the SDSS database for the magnitudes of the stars contained in <fetchFname>, returns them as a dict of lists.
 
     mags = {
         '1': [ap1, ap2, ap3],
@@ -68,7 +68,7 @@ def construct_reference(fetchFname):
         '3': [ap1, ap2, ap3, ap4]
     }
 
-    <fetchname> is formatted as follows:
+    <fetchFname> is formatted as follows:
         "CCD 1 reference 1 RA" "CCD 1 reference 1 Dec"
         "CCD 1 reference 2 RA" "CCD 1 reference 2 Dec"
 
@@ -103,19 +103,19 @@ def construct_reference(fetchFname):
         # If not, then we have no file. Create a template.
         else:
             with open(fetchFname, 'w') as f:
-                f.write('''<CCD 1 reference 1 RA> <CCD 1 reference 1 Dec>
-<CCD 1 reference 2 RA> <CCD 1 reference 2 Dec>
-
-<CCD 2 reference 1 RA> <CCD 2 reference 1 Dec>
-<CCD 2 reference 2 RA> <CCD 2 reference 2 Dec>
-<CCD 2 reference 3 RA> <CCD 2 reference 3 Dec>
-
-<CCD 3 reference 1 RA> <CCD 3 reference 1 Dec>
-<CCD 3 reference 2 RA> <CCD 3 reference 2 Dec>''')
-            print("Couldn't find that co-ordinate list! I created a template for you at the location you gave me.")
+                f.write('<CCD 1 reference 1 RA> <CCD 1 reference 1 Dec>\n')
+                f.write("<CCD 1 reference 2 RA> <CCD 1 reference 2 Dec>\n")
+                f.write("\n")
+                f.write("<CCD 2 reference 1 RA> <CCD 2 reference 1 Dec>\n")
+                f.write("<CCD 2 reference 2 RA> <CCD 2 reference 2 Dec>\n")
+                f.write("<CCD 2 reference 3 RA> <CCD 2 reference 3 Dec>\n")
+                f.write("\n")
+                f.write("<CCD 3 reference 1 RA> <CCD 3 reference 1 Dec>\n")
+                f.write("<CCD 3 reference 2 RA> <CCD 3 reference 2 Dec>\n")
+            print("Couldn't find that co-ordinate list! I created a template for you at the location you gave me, {}".format(fetchFname))
             exit()
 
-    print("    Getting SDSS magnitudes for the coordinates found in {}".format(fetchname))
+    print("    Getting SDSS magnitudes for the coordinates found in {}".format(fetchFname))
 
     with open(fetchFname) as f:
         x = 1
@@ -200,7 +200,7 @@ def construct_reference(fetchFname):
 
 def get_instrumental_mags(data, coords=None, obsname=None):
     '''
-    Takes a hipercam data object, and exctracts the instrumental magnitude of each aperture in each CCD.
+    Takes a hipercam data object, and exctracts the instrumental magnitude of each aperture in each CCD
 
     If Coords and an observatory are supplied, also correct for airmass.
     '''
@@ -211,51 +211,54 @@ def get_instrumental_mags(data, coords=None, obsname=None):
     for CCD in aps:
         # Get this frame's apertures
         ap = aps[CCD]
-        # Check that there is more than one aperture -- i.e. if a reference star exists
-        if len(ap) == 1:
-            print("    I can't do relative photometry with only one aperture!")
-            exit()
 
-        # First reference star
-        reference = data.tseries(CCD, '2')
-        # mean reference counts/s, converted to magnitudes
-        fl = np.zeros(len(reference.y))
+        star = data.tseries(CCD, '1')
+
+        # mean star counts/s, converted to magnitudes
+        fl = np.zeros(len(star.y))
+
         # I have to loop through the exposure times manually, as I can't figure out how to extract them with a built-in
         # and they're stored as a weird object that doesn't have a slice option...
-        for i, count in enumerate(reference.y):
+        for i, count in enumerate(star.y):
             # the third column, data[CCD][i][3], contains the exposure time for that frame
             fl[i] = count / data[CCD][i][3]
 
-        # Calculate the mean apparent magnitude of the reference star above the atmosphere
+        # Calculate the mean apparent magnitude of the star above the atmosphere
         mag = -2.5*np.log10(np.mean(fl))
-        # reference star magnitudes
+        # star magnitudes
         mags = [mag]
         
-        # If we have more than one reference, handle that
+        # If we have more than one star, handle that
         if len(ap) > 1:
             for comp in ap[2:]:
-                # Store the reference star in a temp variable
-                r = data.tseries(CCD, comp)
-                reference = reference + r
+                # Store the star in a temp variable
+                s = data.tseries(CCD, comp)
+                star = star + s
 
-                # Get the count flux of the reference star
-                fl = np.zeros(len(r.y))
-                for i, count in enumerate(r.y):
+                # Get the count flux of the star
+                fl = np.zeros(len(s.y))
+                for i, count in enumerate(s.y):
                     #               \/ This is the exposure time for that frame
                     fl[i] = count / float(data[CCD][i][3])
 
-                # Get the apparent magnitude of the standard
-                ## Instrumental magnitude
+                # Instrumental magnitude
                 mag = -2.5*np.log10(np.mean(fl))
-                
                 mags.append(mag)
 
 
         if coords != None and obsname != None:
-            print("    I'm correcting for airmass, using the following:")
-            print("     Extinction:  {} mags/airmass".format(ext))
-            print("     Ra, Dec:     {}".format(ext))
-            print("     Observatory: {}".format(ext))
+            print("\n    I'm correcting for airmass, using the following:")
+            print("      Extinction: {} mags/airmass".format(ext))
+            print("         Ra, Dec: {}".format(coords))
+            print("     Observatory: {}".format(obsname))
+            
+            # Where are we?
+            observatory = coord.EarthLocation.of_site(obsname)
+            star_loc = coord.SkyCoord(
+                coords,
+                unit=(u.hourangle, u.deg), frame='icrs'
+            )
+            
             # I want altitude converted to zenith angle. Airmass is roughly constant over 
             # a single eclipse so only do it once to save time.
             obs_T = float(data['1'][0][1])
@@ -263,16 +266,17 @@ def get_instrumental_mags(data, coords=None, obsname=None):
             star_loc_AltAz = star_loc.transform_to(AltAz(obstime=obs_T, location=observatory))
             zenith_angle = 90. - star_loc_AltAz.alt.value
             airmass = 1. / np.cos(np.radians(zenith_angle))
-            print("    For the night of {} (observing at {}), calculated altitude of {:.3f}, and airmass of {:.3f}\n".format(
-                fname.split('/')[-1], obs_T, star_loc_AltAz.alt.value, airmass))
+            print("    For the observations at {}, calculated altitude of {:.3f}, and airmass of {:.3f}".format(
+                obs_T.iso, star_loc_AltAz.alt.value, airmass))
+            print("    This gives an extinction of {:.3f} mags".format(ext*airmass))
             
             # Add the light lost to atmosphere back in
             mags = mags - (ext*airmass)
 
         all_mags[CCD] = mags
-    return mags
+    return all_mags
 
-def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords, obsname):
+def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords, std_mags, obsname):
     '''
     Takes two .log files, one containing the reduction of a standard star and the other the reduction of
     the target frame, using the same settings (aperture size, extraction method, etc.). 
@@ -283,19 +287,32 @@ def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords, ob
     '''
     print("    Extracting comparison star SDSS magnitudes from the file '{}'".format(comp_fname))
     print("    using the standard star found in {}".format(std_fname))
-    ### NON-SDSS FIELD ###
+
+    std_mags = np.array(std_mags)
 
     standard_data = hcam.hlog.Hlog.from_ascii(std_fname)
     comp_data     = hcam.hlog.Hlog.from_ascii(comp_fname)
 
-    if standard_data.apnames != comp_data.apnames:
-        print("Error! Mismatch in number of apertures between target reduction and comparison reduction!")
-        print("The error occured on the files:")
-        print("  {}\n  {}".format(std_fname, comp_fname))
-    
-    std_mags = get_instrumental_mags(standard_data)
-    comp_mags = get_instrumental_mags(comp_data)
+    print("-----------------  STANDARD  -----------------")
+    instrumental_std_mags = get_instrumental_mags(standard_data, std_coords, obsname)
 
-    comparison_apparent_mags = 
+    print("----------------- COMPARISON -----------------")
+    instrumental_comp_mags = get_instrumental_mags(comp_data, comp_coords, obsname)
 
-    return comparison_apparent_mags
+    print("Standard star instrumental magnitudes: ")
+    instrumental_std_mags = np.array([ instrumental_std_mags[str(i+1)] for i in range(len(instrumental_std_mags))]).flatten()
+    pprint(instrumental_std_mags)
+    ### CHECK THIS IS THE RIGHT WAY AROUND!
+    zero_points = instrumental_std_mags - std_mags
+    print("Zero points in each band (in order of CCD):")
+    pprint(zero_points)
+
+    print("Comparison star instrumental magnitudes:")
+    pprint(instrumental_comp_mags)
+    print("Comparison star apparent magnitudes:")
+    apparent_comp_mags = instrumental_comp_mags.copy()
+    for i, CCD in enumerate(apparent_comp_mags):
+        apparent_comp_mags[CCD] -= zero_points[i]
+    pprint(apparent_comp_mags)
+
+    return apparent_comp_mags
