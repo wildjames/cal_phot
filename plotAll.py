@@ -8,7 +8,7 @@ def plot_all(files, oname):
     Returns None
     '''
     if oname == '':
-        print("Invalid filename! using 'overplotted_eclipses.pdf'")
+        print("  Saving overplotted eclipses to 'overplotted_eclipses.pdf'")
         oname = 'overplotted_eclipses'
 
     # filter the files so we only have green lightcurves
@@ -42,21 +42,5 @@ def plot_all(files, oname):
     plt.tight_layout()
     plt.savefig(oname+'.pdf')
     plt.show()
-
-
-    # # Sort the data by phase
-    # sorted_args = np.argsort(odata[0,:])
-    # t = odata[0,sorted_args]
-    # y = odata[1,sorted_args]
-    # ye = odata[2,sorted_args]
-
-    # plt.step(t, y, color='black')
-    # plt.show()
-
-    # with open(oname, 'w') as f:
-    #     for ti, yi, yei in zip(t, y, ye):
-    #         f.write('{} {} {}\n'.format(ti, yi, yei))
-
-    # print('Wrote out binned lightcurve to {}'.format(oname))
 
     return None
