@@ -171,7 +171,7 @@ Generally we want to follow these steps:
         return None
 
     def getKappa(self):
-        ### DEPRIaCATED ###
+        ### DEPRICATED ###
         try:
             obsname = self.get_param('obsname')
             mags   = self.get_param('mags')
