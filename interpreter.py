@@ -10,8 +10,31 @@ from combineData import combineData
 from fitEphem import fitEphem
 from plotAll import plot_all
 
+class Logger(object):
+    def __init__(self, inFile=None):
+        self.terminal = sys.stdout
+        if os.path.isfile("CALIBRATIONLOGS.log"):
+            os.remove("CALIBRATIONLOGS.log")
+        self.log = open("CALIBRATIONLOGS.log", "a")
+        if inFile:
+            self.log.write("############## COPY OF INPUT FILE ##############\n")
+            with open(inFile, 'r') as f:
+                for line in f:
+                    self.log.write(line)
+            self.log.write("\n############## END OF INPUT FILE ##############\n\n\n")
+
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)  
+
+    def flush(self):
+        #this flush method is needed for python 3 compatibility.
+        #this handles the flush command by doing nothing.
+        #you might want to specify some extra behavior here.
+        pass  
+
 class Interpreter:
-    def __init__(self, inFile=None, prompt=[]):
+    def __init__(self, inFile=None, prompt=[], log=True):
         # Initialise variables. Store args in a dict.
         self.params = {
             'T0': None,
@@ -23,6 +46,9 @@ class Interpreter:
             'SDSS': 0
         }
         self.written_files = []
+
+        if log:
+            sys.stdout = Logger(inFile=inFile)
 
         # parse prompt commands
         for line in prompt:
