@@ -17,11 +17,12 @@ class Logger(object):
             os.remove("CALIBRATIONLOGS.log")
         self.log = open("CALIBRATIONLOGS.log", "a")
         if inFile:
-            self.log.write("############## COPY OF INPUT FILE ##############\n")
+            self.log.write("##############    COPY OF INPUT FILE    ##############\n")
             with open(inFile, 'r') as f:
                 for line in f:
                     self.log.write(line)
-            self.log.write("\n############## END OF INPUT FILE ##############\n\n\n")
+            self.log.write("\n##############    END OF INPUT FILE     ##############\n\n\n")
+            self.log.write("\n############## BEGIN CALIBRATION OUTPUT ##############\n")
 
     def write(self, message):
         self.terminal.write(message)
@@ -170,6 +171,7 @@ Generally we want to follow these steps:
         return None
 
     def getKappa(self):
+        ### DEPRIaCATED ###
         try:
             obsname = self.get_param('obsname')
             mags   = self.get_param('mags')
