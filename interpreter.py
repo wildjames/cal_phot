@@ -221,7 +221,6 @@ Generally we want to follow these steps:
         T0, period = fitEphem(directory, T0, period)
 
     def combineData(self):
-        # try:
         oname     = self.get_param('oname')
         coords    = self.get_param('coords')
         obsname   = self.get_param('obsname')
@@ -240,10 +239,13 @@ Generally we want to follow these steps:
             # Retrieve the SDSS-matching reductions for each night
             comparisons = self.get_param('comparisonfnames')
             stdLogfile  = self.get_param('stdLogfile')
+            stdCoords   = self.get_param('stdcoords')
+            stdMags     = self.get_param('mags')
             
             # ref_kappa = self.get_param('kappas')
             written_files = combineData(oname, coords, obsname, T0, period, SDSS=False,
-                binsize=binsize, myLoc=myLoc, fnames=fnames, comp_fnames=comparisons, std_fname=stdLogfile)
+                binsize=binsize, myLoc=myLoc, fnames=fnames, comp_fnames=comparisons, 
+                std_fname=stdLogfile, std_coords=stdCoords, std_mags=stdMags)
         
         self.written_files += written_files
         # except AttributeError:
@@ -309,8 +311,6 @@ Generally we want to follow these steps:
         
         elif command == 'coords':
             # Changes the coordinates of the object you're about to talk about.
-            ## TODO: 
-            # Evaluate -- maybe have separate std and targ coords to ensure users don't forget to change it?
             if len(args) < 2:
                 print("I didn't seem to get the right RA and Dec format!")
                 print("Please use:\n  RA - HH:MM:SS.SS\n  DEC - DD:MM:SS.SS\n")
@@ -321,6 +321,18 @@ Generally we want to follow these steps:
                 self.params['coords'] = coords
                 print("Using the following star coordinates:\n  RA:  {}\n  Dec: {}".format(args[0], args[1]))
         
+        elif command == 'stdcoords':
+            # Changes the coordinates of the object you're about to talk about.
+            if len(args) < 2:
+                print("I didn't seem to get the right RA and Dec format!")
+                print("Please use:\n  RA - HH:MM:SS.SS\n  DEC - DD:MM:SS.SS\n")
+                pass
+            else:
+                coords = '{} {}'.format(args[0], args[1])
+                coords.replace(':', ' ')
+                self.params['stdcoords'] = coords
+                print("Using the following standard star coordinates:\n  RA:  {}\n  Dec: {}".format(args[0], args[1]))
+
         elif command == 'directory':
             directory = ''.join(args)
             self.params['directory'] = directory
@@ -361,7 +373,8 @@ Generally we want to follow these steps:
             ref_file = args[0]
             self.params['ref_file'] = ref_file
             print("The SDSS reference star RA and Dec are contained in the file '{}'".format(ref_file))
-
+        
+        
 
         # getKappa stuff
         elif command == 'getkappa':
