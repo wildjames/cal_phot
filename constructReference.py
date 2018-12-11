@@ -5,6 +5,9 @@ import os
 import hipercam as hcam
 import numpy as np
 
+from astropy import time, coordinates as coord, units as u
+from astropy.coordinates import AltAz
+
 '''
 
 This script is going to take a list of co-ordinates, and use that to query SDSS for the magnitudes 
@@ -56,10 +59,31 @@ def deg2arcsec(inp, ra):
 
 
 def construct_reference(fetchFname):
+    '''
+    Queries the SDSS database for the magnitudes of the stars contained in <fetchname>, returns them as a dict of lists.
+
+    mags = {
+        '1': [ap1, ap2, ap3],
+        '2': [ap1, ap2],
+        '3': [ap1, ap2, ap3, ap4]
+    }
+
+    <fetchname> is formatted as follows:
+        "CCD 1 reference 1 RA" "CCD 1 reference 1 Dec"
+        "CCD 1 reference 2 RA" "CCD 1 reference 2 Dec"
+
+        "CCD 2 reference 1 RA" "CCD 2 reference 1 Dec"
+        "CCD 2 reference 2 RA" "CCD 2 reference 2 Dec"
+        "CCD 2 reference 3 RA" "CCD 2 reference 3 Dec"
+
+        "CCD 3 reference 1 RA" "CCD 3 reference 1 Dec"
+        "CCD 3 reference 2 RA" "CCD 3 reference 2 Dec"
+    '''
 
     print("Getting reference SDSS magnitudes from '{:s}'".format(fetchFname.split('/')[-1]))
 
     CCDs = ['1', '2', '3']
+    radius = '0.1' # arcseconds
 
     fetchme = {
         "1": [],
@@ -89,7 +113,9 @@ def construct_reference(fetchFname):
 <CCD 3 reference 1 RA> <CCD 3 reference 1 Dec>
 <CCD 3 reference 2 RA> <CCD 3 reference 2 Dec>''')
             print("Couldn't find that co-ordinate list! I created a template for you at the location you gave me.")
-            return None
+            exit()
+
+    print("    Getting SDSS magnitudes for the coordinates found in {}".format(fetchname))
 
     with open(fetchFname) as f:
         x = 1
@@ -111,20 +137,20 @@ def construct_reference(fetchFname):
     }
 
     for CCD in CCDs:
-        # print('CCD {}'.format(CCD))
+        print('  CCD {}'.format(CCD))
         # Grab the list of coordinates we want to query
         coords = fetchme[CCD]
 
         for i, coord in enumerate(coords):
             ra, dec = coord
 
-            # print('  ra: {}, dec: {}'.format(ra, dec))
+            print('    Searching -> RA, Dec: {}, {}'.format(ra, dec))
 
             # Construct the URL we're gonna post. First define what DB we want to search
             url  = 'http://skyserver.sdss.org/dr14/SkyserverWS/SearchTools/RadialSearch?'
             url += 'ra={}&dec={}&'.format(ra, dec)
             # I'm using a radial search, this is the readius of that search
-            url += 'radius=0.1&'
+            url += 'radius={}&'.format(radius)
             # Which coord system are we using. Can't imagine I'll want galactic...
             url += 'whichway=equitorial&'
             # If I'm getting more than 5 results, I've probably picked a crappy reference anyway...
@@ -140,10 +166,7 @@ def construct_reference(fetchFname):
             if len(results) >= 5:
                 print('You got a lot of results from the SDSS query! Choose from the following VERY carefully.')
             if len(results) > 1:
-                print('''
---------------------------------------------
-More than one object found at that location!'''
-                )
+                print("--------------------------------------------\nMore than one object found at that location!")
                 # Get the user to pick one:
                 for m, line in enumerate(results):
                     print("{}\n  RA: {}, Dec: {}\n  u: {}\n  g: {}\n  r: {}".format(
@@ -158,14 +181,14 @@ More than one object found at that location!'''
                 target = results[0]
                 ra = deg2arcsec(target['ra'], ra=True)
                 dec = deg2arcsec(target['dec'], ra=False)
-                # print("    Found one result:\n      ra: {}, dec: {}\n        u: {}\n        g: {}\n        r: {}".format(
-                #         ra, dec, 
-                #         target['u'], target['g'], target['r']
-                #         )
-                #     )
+                print("    Found one result:\n      ra: {}, dec: {}\n        u: {}\n        g: {}\n        r: {}".format(
+                        ra, dec, 
+                        target['u'], target['g'], target['r']
+                        )
+                    )
             else:
                 print('ERROR! Found no targets at the location: RA: {}, Dec: {}'.format(target['ra'], target['dec']))
-                print('Try broadening the search radius in this script,')
+                print('Try broadening the search radius in this script (was {}),'.format(radius))
                 print('and make sure that your targets are definitely in the SDSS field!')
                 continue
 
@@ -175,29 +198,30 @@ More than one object found at that location!'''
     print("Done!\n")
     return toWrite
 
-def get_instrumental_mags(data):
+def get_instrumental_mags(data, coords=None, obsname=None):
     '''
-    Takes a hipercam data object, and exctracts the instrumental magnitude of each aperture in each CCD
+    Takes a hipercam data object, and exctracts the instrumental magnitude of each aperture in each CCD.
+
+    If Coords and an observatory are supplied, also correct for airmass.
     '''
+    ext = 0.161
+
     all_mags = {}
     aps = data.apnames
     for CCD in aps:
-        CCD_int = int(CCD)
-
         # Get this frame's apertures
         ap = aps[CCD]
         # Check that there is more than one aperture -- i.e. if a reference star exists
         if len(ap) == 1:
-            print("  I can't do relative photometry with only one aperture!")
+            print("    I can't do relative photometry with only one aperture!")
             exit()
-
-        # Grab the target data
-        target = data.tseries(CCD, '1')
 
         # First reference star
         reference = data.tseries(CCD, '2')
         # mean reference counts/s, converted to magnitudes
         fl = np.zeros(len(reference.y))
+        # I have to loop through the exposure times manually, as I can't figure out how to extract them with a built-in
+        # and they're stored as a weird object that doesn't have a slice option...
         for i, count in enumerate(reference.y):
             # the third column, data[CCD][i][3], contains the exposure time for that frame
             fl[i] = count / data[CCD][i][3]
@@ -225,10 +249,38 @@ def get_instrumental_mags(data):
                 mag = -2.5*np.log10(np.mean(fl))
                 
                 mags.append(mag)
+
+
+        if coords != None and obsname != None:
+            print("    I'm correcting for airmass, using the following:")
+            print("     Extinction:  {} mags/airmass".format(ext))
+            print("     Ra, Dec:     {}".format(ext))
+            print("     Observatory: {}".format(ext))
+            # I want altitude converted to zenith angle. Airmass is roughly constant over 
+            # a single eclipse so only do it once to save time.
+            obs_T = float(data['1'][0][1])
+            obs_T = time.Time(obs_T, format='mjd')
+            star_loc_AltAz = star_loc.transform_to(AltAz(obstime=obs_T, location=observatory))
+            zenith_angle = 90. - star_loc_AltAz.alt.value
+            airmass = 1. / np.cos(np.radians(zenith_angle))
+            print("    For the night of {} (observing at {}), calculated altitude of {:.3f}, and airmass of {:.3f}\n".format(
+                fname.split('/')[-1], obs_T, star_loc_AltAz.alt.value, airmass))
+            
+            # Add the light lost to atmosphere back in
+            mags = mags - (ext*airmass)
+
         all_mags[CCD] = mags
     return mags
 
-def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords):
+def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords, obsname):
+    '''
+    Takes two .log files, one containing the reduction of a standard star and the other the reduction of
+    the target frame, using the same settings (aperture size, extraction method, etc.). 
+
+    Requires the RA and Dec of each, to correct for airmass.
+
+    Returns the SDSS magnitudes of the comparison star(s)
+    '''
     print("    Extracting comparison star SDSS magnitudes from the file '{}'".format(comp_fname))
     print("    using the standard star found in {}".format(std_fname))
     ### NON-SDSS FIELD ###
@@ -239,7 +291,7 @@ def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords):
     if standard_data.apnames != comp_data.apnames:
         print("Error! Mismatch in number of apertures between target reduction and comparison reduction!")
         print("The error occured on the files:")
-        print("  {}\n  {}".format(fname, refname))
+        print("  {}\n  {}".format(std_fname, comp_fname))
     
     std_mags = get_instrumental_mags(standard_data)
     comp_mags = get_instrumental_mags(comp_data)
