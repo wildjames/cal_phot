@@ -136,6 +136,8 @@ def construct_reference(fetchFname):
         '3':{}
     }
 
+    bands = ['', 'r', 'g', 'u']
+
     for CCD in CCDs:
         print('  CCD {}'.format(CCD))
         # Grab the list of coordinates we want to query
@@ -193,7 +195,7 @@ def construct_reference(fetchFname):
                 continue
 
             # pprint(target)
-            toWrite[CCD][str(i+2)] = target
+            toWrite[CCD][str(i+2)] = target[bands[int(CCD)]]
 
     print("Done!\n")
     return toWrite
