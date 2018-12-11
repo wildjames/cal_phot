@@ -204,7 +204,30 @@ def get_instrumental_mags(data, coords=None, obsname=None):
 
     If Coords and an observatory are supplied, also correct for airmass.
     '''
+    #TODO: I need to make the extinction coefficient different in each band.
     ext = 0.161
+
+    if coords != None and obsname != None:
+        print("    I'm correcting for airmass, using the following:")
+        print("      Extinction: {} mags/airmass".format(ext))
+        print("         Ra, Dec: {}".format(coords))
+        print("     Observatory: {}".format(obsname))
+        
+        # Where are we?
+        observatory = coord.EarthLocation.of_site(obsname)
+        star_loc = coord.SkyCoord(
+            coords,
+            unit=(u.hourangle, u.deg), frame='icrs')
+
+        # I want altitude converted to zenith angle. Airmass is roughly constant over 
+        # a single eclipse so only do it once to save time.
+        obs_T = float(data['1'][0][1])
+        obs_T = time.Time(obs_T, format='mjd')
+        star_loc_AltAz = star_loc.transform_to(AltAz(obstime=obs_T, location=observatory))
+        zenith_angle = 90. - star_loc_AltAz.alt.value
+        airmass = 1. / np.cos(np.radians(zenith_angle))
+        print("    For the observations at {}, calculated altitude of {:.3f}, and airmass of {:.3f}".format(
+            obs_T.iso, star_loc_AltAz.alt.value, airmass))
 
     all_mags = {}
     aps = data.apnames
@@ -244,31 +267,8 @@ def get_instrumental_mags(data, coords=None, obsname=None):
                 # Instrumental magnitude
                 mag = -2.5*np.log10(np.mean(fl))
                 mags.append(mag)
-
-
-        if coords != None and obsname != None:
-            print("\n    I'm correcting for airmass, using the following:")
-            print("      Extinction: {} mags/airmass".format(ext))
-            print("         Ra, Dec: {}".format(coords))
-            print("     Observatory: {}".format(obsname))
             
-            # Where are we?
-            observatory = coord.EarthLocation.of_site(obsname)
-            star_loc = coord.SkyCoord(
-                coords,
-                unit=(u.hourangle, u.deg), frame='icrs'
-            )
-            
-            # I want altitude converted to zenith angle. Airmass is roughly constant over 
-            # a single eclipse so only do it once to save time.
-            obs_T = float(data['1'][0][1])
-            obs_T = time.Time(obs_T, format='mjd')
-            star_loc_AltAz = star_loc.transform_to(AltAz(obstime=obs_T, location=observatory))
-            zenith_angle = 90. - star_loc_AltAz.alt.value
-            airmass = 1. / np.cos(np.radians(zenith_angle))
-            print("    For the observations at {}, calculated altitude of {:.3f}, and airmass of {:.3f}".format(
-                obs_T.iso, star_loc_AltAz.alt.value, airmass))
-            print("    This gives an extinction of {:.3f} mags".format(ext*airmass))
+            print("      This gives an extinction of {:.3f} mags".format(ext*airmass))
             
             # Add the light lost to atmosphere back in
             mags = mags - (ext*airmass)
@@ -293,26 +293,35 @@ def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords, st
     standard_data = hcam.hlog.Hlog.from_ascii(std_fname)
     comp_data     = hcam.hlog.Hlog.from_ascii(comp_fname)
 
-    print("-----------------  STANDARD  -----------------")
+    print("    -----------------  STANDARD  -----------------")
     instrumental_std_mags = get_instrumental_mags(standard_data, std_coords, obsname)
 
-    print("----------------- COMPARISON -----------------")
+    print("\n    ----------------- COMPARISON -----------------")
     instrumental_comp_mags = get_instrumental_mags(comp_data, comp_coords, obsname)
 
-    print("Standard star instrumental magnitudes: ")
-    instrumental_std_mags = np.array([ instrumental_std_mags[str(i+1)] for i in range(len(instrumental_std_mags))]).flatten()
-    pprint(instrumental_std_mags)
+    print("\n    Standard star instrumental magnitudes: ")
+    instrumental_std_mags = [ instrumental_std_mags[str(i+1)][0] for i in range(len(instrumental_std_mags))]
+    instrumental_std_mags = np.array(instrumental_std_mags)
+    print("      r': {:3.3f}, g': {:3.3f}, u': {:3.3f}".format(instrumental_std_mags[0], instrumental_std_mags[1], instrumental_std_mags[2]))
+    print("    Standard Star SDSS magnitudes:")
+    print("      r': {:3.3f}, g': {:3.3f}, u': {:3.3f}".format(std_mags[0], std_mags[1], std_mags[2]))
     ### CHECK THIS IS THE RIGHT WAY AROUND!
     zero_points = instrumental_std_mags - std_mags
-    print("Zero points in each band (in order of CCD):")
-    pprint(zero_points)
+    print("    Zero points in each band (in order of CCD):")
+    print("      r': {:3.3f}, g': {:3.3f}, u': {:3.3f}".format(zero_points[0], zero_points[1], zero_points[2]))
+    print("")
+    print("    Comparison star instrumental magnitudes:")
+    for CCD in instrumental_comp_mags:
+        print("      CCD {}: {}".format(CCD, 
+            np.array2string(instrumental_comp_mags[CCD], precision=3) ))
 
-    print("Comparison star instrumental magnitudes:")
-    pprint(instrumental_comp_mags)
-    print("Comparison star apparent magnitudes:")
+    print("    Comparison star apparent magnitudes:")
     apparent_comp_mags = instrumental_comp_mags.copy()
     for i, CCD in enumerate(apparent_comp_mags):
         apparent_comp_mags[CCD] -= zero_points[i]
-    pprint(apparent_comp_mags)
+    for CCD in apparent_comp_mags:
+        print("      CCD {}: {}".format(CCD, 
+            np.array2string(apparent_comp_mags[CCD], precision=3) ))
 
+    print('')
     return apparent_comp_mags
