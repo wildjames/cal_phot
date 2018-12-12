@@ -125,8 +125,6 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=True, s
         for f in fnames:
             print(f)
         exit()
-
-    print(comp_fnames)
     
     # Writing out
     try:
