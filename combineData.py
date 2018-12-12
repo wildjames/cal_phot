@@ -227,11 +227,10 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=True, s
                     print("Whoops! {} only contains one aperture! I can't do relative photometry with only one!".format(
                         fname
                     ))
+                    exit()
 
-                
-                ## SDSS FIELD ##
                 # If we have more than one reference, handle that
-                if len(ap) > 1:
+                if len(ap) > 2:
                     # Add up the reference star fluxes
                     for comp in ap[2:]:
                         reference = reference + data.tseries(CCD, comp)
@@ -239,7 +238,7 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=True, s
                     reference = reference / len(ap[1:])
                 
                 ### <reference> is now a mean COUNT of the reference stars for each exposure ### 
-                ## Calculate their actual mean flux
+                ## Calculate their actual mean flux from their apparent magnitudes
                 
                 # refs is a List of the relevant reference star magnitudes
                 mags = reference_stars[CCD]
