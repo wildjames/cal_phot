@@ -180,7 +180,8 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=True, s
             
             # Get the apertures of this data set
             aps = data.apnames
-            
+            CCDs = [str(i) for i in aps]
+            CCDs = sorted(CCDs)
 
             # If we're in the SDSS field, grab the reference stars' magnitudes from their coords.
             if SDSS:
@@ -206,7 +207,7 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=True, s
 
             # Loop through the CCDs.
             ### For each CCD, grab the target lightcurve, and the 
-            for CCD in aps:
+            for CCD in CCDs:
                 CCD_int = int(CCD)
 
                 # Get this frame's apertures

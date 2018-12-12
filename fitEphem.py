@@ -24,39 +24,21 @@ from matplotlib import pyplot as plt
 import pylab
 import mcmc_utils as mu
 
+from getEclipseTimes import read_ecl_file
+
 #import corner
 import time
 
 def fitEphem(myLoc, T0, period, simple=False):
     # Read in the eclipsetimes.txt file
     fname = '/'.join([myLoc, 'eclipse_times.txt'])
-    source_key = {}
-    tl = []
-    with open(fname, 'r') as f:
-        for line in f:
-            line = line.strip()
-            if line[0] == '#':
-                line = line[1:].strip().split(",")
-                source_key[line[1]] = line[0]
-            else:
-                line = line.split(',')
-                line[:3] = [float(x) for x in line[:3]]
-                line[0] = int(line[0])
-                line[3]  = int(line[3])
-                tl.append(line)
-    tl = np.array(tl)
+    source_key, tl = read_ecl_file(fname)
 
-    print("  Fitting these eclipse times:")
-    for t in tl:
-        print("  Cycle: {:5d} -- {:.7f}+/-{:.7f} from {}".format(int(t[0]), t[1], t[2], source_key[ str(int(t[3])) ] ))
-    print("\n  Starting from an initial ephem of T0: {}, P: {}".format(T0, period))
-    
     ### Fitting
-
-    x        = tl[:,0] # cycle number
-    y        = tl[:,1] # Time
-    ey       = tl[:,2] # Error
-    obsCodes = tl[:,3].astype('int') # Data source
+    x        = np.array([float(x[0]) for x in tl]) # cycle number
+    y        = np.array([float(x[1]) for x in tl]) # Time
+    ey       = np.array([float(x[2]) for x in tl]) # Error
+    obsCodes = np.array([x[3] for x in tl]) # Data source
 
     params = [T0, period]
 

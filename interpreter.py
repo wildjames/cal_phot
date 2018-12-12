@@ -13,9 +13,7 @@ from plotAll import plot_all
 class Logger(object):
     def __init__(self, inFile=None):
         self.terminal = sys.stdout
-        if os.path.isfile("CALIBRATIONLOGS.log"):
-            os.remove("CALIBRATIONLOGS.log")
-        self.log = open("CALIBRATIONLOGS.log", "a")
+        self.log = open("CALIBRATIONLOGS.log", "w")
         if inFile:
             self.log.write("##############    COPY OF INPUT FILE    ##############\n")
             with open(inFile, 'r') as f:
@@ -26,7 +24,8 @@ class Logger(object):
 
     def write(self, message):
         self.terminal.write(message)
-        self.log.write(message)  
+        if not 'Burning in' in message and not 'Sampling data' in message:
+            self.log.write(message)
 
     def flush(self):
         #this flush method is needed for python 3 compatibility.
@@ -172,48 +171,30 @@ Generally we want to follow these steps:
 
     def getKappa(self):
         ### DEPRICATED ###
-        try:
-            obsname = self.get_param('obsname')
-            mags   = self.get_param('mags')
-            coords = self.get_param('coords')
-            ext    = self.get_param('ext')
-            stdLogfile = self.get_param('stdLogfile')
-            
-            print("Computing instrumental magnitude to SDSS magnitude corrections...")
-            
-            kappas = getKappa(stdLogfile, coords, obsname, mags, ext)
-            self.params['kappas'] = kappas
+        obsname = self.get_param('obsname')
+        mags   = self.get_param('mags')
+        coords = self.get_param('coords')
+        ext    = self.get_param('ext')
+        stdLogfile = self.get_param('stdLogfile')
+        
+        print("Computing instrumental magnitude to SDSS magnitude corrections...")
+        
+        kappas = getKappa(stdLogfile, coords, obsname, mags, ext)
+        self.params['kappas'] = kappas
 
-            print("Computed the following correction factors:\n  r': {:.3f}\n  g': {:.3f}\n  u': {:.3f}\n".format(
-                kappas[1], kappas[2], kappas[3]
-                )
+        print("Computed the following correction factors:\n  r': {:.3f}\n  g': {:.3f}\n  u': {:.3f}\n".format(
+            kappas[1], kappas[2], kappas[3]
             )
-        except AttributeError:
-            print("I don't have enough data to determine Kappa correction!")
-            print("I need the following:")
-            print("  - Std. star photometry, in hipercam logfile.")
-            print("  - Std. star coordinates")
-            print("  - Std. star SDSS magnitudes, r', g', u'.")
-            print("  - Extinction coefficient")
-            print("  - Observatory name")
-            exit()
-
+        )
+        
     def getEclipseTimes(self):
-        try:
-            coords    = self.get_param('coords')
-            obsname   = self.get_param('obsname')
-            directory = self.get_param('directory')
+        coords    = self.get_param('coords')
+        obsname   = self.get_param('obsname')
+        directory = self.get_param('directory')
 
-            print("Getting eclipse times from data...")
-            getEclipseTimes(coords, obsname, myLoc=directory)
-            
-        except AttributeError:
-            print("I don't have enough data for ephemeris calculation!")
-            print('I need the following:')
-            print('  - Target coordinates')
-            print('  - Initial period guess')
-            print('  - Observatory name')
-            exit()
+        print("Getting eclipse times from data...")
+        getEclipseTimes(coords, obsname, myLoc=directory)
+        
     
     def fitEphem(self):
         # print("--- CONSTRUCTION SITE ---")
@@ -250,18 +231,6 @@ Generally we want to follow these steps:
                 std_fname=stdLogfile, std_coords=stdCoords, std_mags=stdMags)
         
         self.written_files += written_files
-        # except AttributeError:
-        #     print("I don't have enough data to do the data processing!")
-        #     print("I failed to collect one or more of the following:")
-        #     print("  - oname")
-        #     print("  - coords")
-        #     print("  - ref_kappa")
-        #     print("  - observatory name")
-        #     print("  - T0")
-        #     print("  - period")
-        #     print("  - binsize")
-        #     print("  - directory")
-        #     exit()
 
     def parse(self, line):
         line = line.strip()
@@ -339,6 +308,10 @@ Generally we want to follow these steps:
             directory = ''.join(args)
             self.params['directory'] = directory
             print("Working from directory: {}".format(directory))
+
+            # Check if we need to make that directory
+            if not os.path.exists(directory):
+                os.mkdir(directory)
 
             # Check if we have preexisting lightcurves
             if not os.path.exists('/'.join([directory, 'lightcurves'])):

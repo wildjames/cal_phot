@@ -37,7 +37,7 @@ class PlotPoints:
     def connect(self):
         self.cidpress = self.fig.canvas.mpl_connect('key_press_event', self.on_press)
         # self.cidclick = self.fig.canvas.mpl_connect('button_release_event', self.on_click)
-        print("  Hit 'q' to skip these data.\n  Hit 'a' on initial guesses for ingress and egress:")
+        print("\n\n  Hit 'q' to skip these data.\n  Hit 'a' on initial guesses for ingress and egress:")
 
     def disconnect(self):
         self.fig.canvas.mpl_disconnect(self.cidpress)
@@ -189,6 +189,7 @@ def log_like(params, y, gp):
 def neg_log_like(params, y, gp):
     gp.set_parameter_vector(params)
     return -gp.log_likelihood(y)
+
 def grad_neg_log_like(params, y, gp):
     gp.set_parameter_vector(params)
     return -gp.grad_log_likelihood(y)[1]
@@ -203,14 +204,16 @@ def read_ecl_file(fname):
         with open(fname, 'r') as f:
             for line in f:
                 line = line.strip()
-                if line[0] == '#':
+                if line == '':
+                    pass
+                elif line[0] == '#':
                     line = line[1:].strip().split(",")
                     source_key[line[1]] = line[0]
                 else:
                     line = line.split(',')
                     line[:3] = [float(x) for x in line[:3]]
                     line[0] = int(line[0])
-                    line[3]  = source_key[line[3]]
+                    line[3]  = int(line[3])
                     tl.append(line)
         print("  Found these prior eclipse times:")
         for t in tl:
@@ -262,11 +265,10 @@ so was untrustworthy.
     oname = '/'.join([myLoc, oname])
     if not path.isfile(oname):
         print("  Couldn't find previous eclipse times file, '{}'. Creating that file.".format(oname))
-    
-    ### ------------------------------------------------- ###
-    
-    # tecl list
-    source_key, tl = read_ecl_file(oname)
+        source_key, tl = {}, []
+    else:
+        # tecl list
+        source_key, tl = read_ecl_file(oname)
     
     print("\n  Grabbing log files...")
     fnames = list(glob.iglob('{}/**/*.log'.format(myLoc), recursive=True))
@@ -283,14 +285,13 @@ so was untrustworthy.
     
     for lf in fnames:
         # lets make the file reading more robust
-        try:
-            log = Hlog.from_ascii(lf)
-        except Exception:
-            log = Hlog.from_ulog(lf)
-        else:
-            print("I failed to read the file {}!! ".format(lf))
-            exit()
-            
+        log = Hlog.from_ascii(lf)
+        
+        aps = log.apnames
+        if len(aps['2']) < 2:
+            print("  Not looking for eclipses in {}, as only one aperture in the file.".format(lf))
+            continue
+
         # Get the g band lightcurve, and correct it to the barycentric time
         gband = log.tseries('2', '1') / log.tseries('2', '2')
         gband_corr = tcorrect(gband, star, obsname)
@@ -301,13 +302,15 @@ so was untrustworthy.
         yerr = 0.001*np.ones_like(x)
 
         fig, ax = plt.subplots()
+        ax.set_title("{}".format(lf))
         plt.plot(x, y)
         gauss = PlotPoints(fig)
         gauss.connect()
+        plt.tight_layout()
         plt.show()
 
         if gauss.flag:
-            print("  No eclipse taken from these data.")
+            print("  No eclipse taken from {}".format(lf))
             continue
 
         kwargs = gauss.gaussPars()
@@ -387,12 +390,10 @@ so was untrustworthy.
             sys.stdout.write("\r  Sampling data... [{}{}]".format('#'*n, ' '*(width - n))) 
         print("")
 
-        chain = sampler.flatchain
-
-        fig = mcmc_utils.thumbPlot(chain,['g1', 'g2', 'T0', 'sep', 'peak', 'log_sigma2'])
+        # chain = sampler.flatchain
+        # fig = mcmc_utils.thumbPlot(chain,['g1', 'g2', 'T0', 'sep', 'peak', 'log_sigma2'])
         # fig.savefig('/'.join([myLoc, 'eclipse_{}_cornerPlot.pdf'.format(lf.split('/')[-1])]))
-        # plt.close()
-        plt.show(block=False)
+        # plt.show(block=False)
 
         t_ecl = np.mean(sampler.flatchain[:,2])
         err = np.std(sampler.flatchain[:,2])
@@ -409,6 +410,7 @@ so was untrustworthy.
 
         # Plot the data
         color = "#ff7f0e"
+        plt.close('all')
         fig, ax = plt.subplots(2, 1, sharex=True)
         ax[0].plot(x, y, '.')
         ax[0].plot(x, mu, color=color)
@@ -421,25 +423,54 @@ so was untrustworthy.
 
         ax[0].set_title("maximum likelihood prediction - {}".format(lf.split('/')[-1]))
         plt.tight_layout()
+        print("  Plotting fit...")
         plt.show(block=False)
 
-        cont = input("  Save these data? y/n: ")
-        if cont.lower() == 'y':
-            locflag = input("    What is the source of these data: ")
-            tl.append(['<CYCLE NUMBER>', float(t_ecl), float(err), locflag])
-        else:
-            print("  Did not store that eclipse time.")
+        ## Disconnect from the logger
+        if str(type(sys.stdout)) == "<class '__main__.Logger'>":
+            hold = sys.stdout
+            sys.stdout = sys.__stdout__
 
-    print("  \nDone all the files!")
+            cont = input("  Save these data? y/n: ")
+            if cont.lower() == 'y':
+                locflag = input("    What is the source of these data: ")
+
+                for key in source_key:
+                    if locflag == source_key[key]:
+                        locflag = key
+                        break
+                if locflag != key:
+                    key = str(int(key)+1)
+                    source_key[key] = locflag
+                    locflag = key
+
+                tl.append(['<CYCLE NUMBER>', float(t_ecl), float(err), locflag])
+            else:
+                print("  Did not store eclipse time from {}.".format(lf))
+            
+            sys.stdout = hold
+            del hold
+            
+        else:
+            cont = input("  Save these data? y/n: ")
+            if cont.lower() == 'y':
+                locflag = input("    What is the source of these data: ")
+                tl.append(['<CYCLE NUMBER>', float(t_ecl), float(err), locflag])
+            else:
+                print("  Did not store eclipse time from {}.".format(lf))
+        
+        plt.close(fig)
+        del fig
+    
+    print("  \n  Done all the files!")
 
     # make a key for the data sources
     key = ''
-    key_dict = {}
     i = 0
     for c, t, t_e, source in tl:
+        source = source_key[str(source)]
         if source not in key:
-            key += "#{},{}".format(source, i)
-            key_dict[source] = i
+            key += "#{},{}\n".format(source, i)
             i += 1
 
     # Sort the list
@@ -448,7 +479,7 @@ so was untrustworthy.
     with open(oname, 'w') as f:
         f.write(key)
         for c, t, t_e, source in tl:
-            f.write("\n{}, {}, {},{}".format(c, t, t_e, key_dict[source]))
+            f.write("\n{}, {}, {},{}".format(c, t, t_e, source_key[str(source)]))
     print("  Wrote eclipse data to {}\n".format(oname))
 
     #TODO:
