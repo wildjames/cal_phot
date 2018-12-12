@@ -287,8 +287,8 @@ def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords, st
 
     Returns the SDSS magnitudes of the comparison star(s)
     '''
-    print("    Extracting comparison star SDSS magnitudes from the file '{}'".format(comp_fname))
-    print("    using the standard star found in {}".format(std_fname))
+    print("  Extracting comparison star SDSS magnitudes from the file '{}'".format(comp_fname))
+    print("  using the standard star found in {}".format(std_fname))
 
     std_mags = np.array(std_mags)
 
