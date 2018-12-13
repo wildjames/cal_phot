@@ -7,14 +7,16 @@ def plot_all(files, oname):
 
     Returns None
     '''
+    print("")
     if oname == '':
         print("  Saving overplotted eclipses to 'overplotted_eclipses.pdf'")
         oname = 'overplotted_eclipses'
 
     # filter the files so we only have green lightcurves
+    print("  Plotting the following g' lightcurves:")
     files = [x for x in files if '_g.calib' in x]
     for f in files:
-        print(f)
+        print("    - {}".format(f))
 
     
     CB_color_cycle = ['#377eb8', '#ff7f00', '#4daf4a',
