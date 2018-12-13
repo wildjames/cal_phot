@@ -216,8 +216,8 @@ def read_ecl_file(fname):
                     line[3]  = int(line[3])
                     tl.append(line)
         print("  Found these prior eclipse times:")
-        for t in tl:
-            print("  Cycle: {:5d} -- {:.7f}+/-{:.7f} from {}".format(t[0], t[1], t[2], t[3]))
+        for e, t, t_err, source in tl:
+            print("  Cycle: {:5d} -- {:.7f}+/-{:.7f} from {}".format(e, t, t_err, source_key[str(source)]))
     else:
         print("ERROR! Could not find the file '{}' to read eclipse data from...".format(fname))
         exit()
@@ -375,7 +375,7 @@ so was untrustworthy.
 
         # Burn in
         print("")
-        nsteps = 2500
+        nsteps = 1000
         for i, result in enumerate(sampler.sample(p0, iterations=nsteps)):
             n = int((width+1) * float(i) / nsteps)
             sys.stdout.write("\r  Burning in...    [{}{}]".format('#'*n, ' '*(width - n)))
@@ -383,7 +383,7 @@ so was untrustworthy.
         
         # Data
         sampler.reset()
-        nsteps = 2500
+        nsteps = 2000
 
         for i, result in enumerate(sampler.sample(pos, iterations=nsteps)):
             n = int((width+1) * float(i) / nsteps)
@@ -435,6 +435,7 @@ so was untrustworthy.
             if cont.lower() == 'y':
                 locflag = input("    What is the source of these data: ")
 
+                key = '-1'
                 for key in source_key:
                     if locflag == source_key[key]:
                         locflag = key
@@ -479,7 +480,7 @@ so was untrustworthy.
     with open(oname, 'w') as f:
         f.write(key)
         for c, t, t_e, source in tl:
-            f.write("\n{}, {}, {},{}".format(c, t, t_e, source_key[str(source)]))
+            f.write("\n{}, {}, {},{}".format(c, t, t_e, source))
     print("  Wrote eclipse data to {}\n".format(oname))
 
     #TODO:
