@@ -11,27 +11,79 @@ from fitEphem import fitEphem
 from plotAll import plot_all
 
 class Logger(object):
+    '''
+    Usage: 
+        sys.stdout = Logger()
+    
+    Takes all print outputs and mirrors them to a file.
+    '''
     def __init__(self, inFile=None):
         self.terminal = sys.stdout
         self.log = open("CALIBRATIONLOGS.log", "w")
         if inFile:
-            self.log.write("##############    COPY OF INPUT FILE    ##############\n")
+            self.log.write("#####################################    COPY OF INPUT FILE    #####################################\n")
             with open(inFile, 'r') as f:
                 for line in f:
                     self.log.write(line)
-            self.log.write("\n##############    END OF INPUT FILE     ##############\n\n\n")
-            self.log.write("\n############## BEGIN CALIBRATION OUTPUT ##############\n")
+            self.log.write("\n#####################################    END OF INPUT FILE     #####################################\n\n\n")
+            self.log.write("\n##################################### BEGIN CALIBRATION OUTPUT #####################################\n")
 
     def write(self, message):
         self.terminal.write(message)
         if not 'Burning in' in message and not 'Sampling data' in message:
             self.log.write(message)
-
+    
     def flush(self):
         #this flush method is needed for python 3 compatibility.
         #this handles the flush command by doing nothing.
         #you might want to specify some extra behavior here.
         pass  
+
+    def close(self):
+        return self.terminal.close()
+
+    def detatch(self):
+        return self.terminal.detach()
+
+    def fileno(self):
+        return self.terminal.fileno()
+
+    def flush(self):
+        return self.terminal.flush()
+
+    def isatty(self):
+        return self.terminal.isatty()
+
+    def read(self, size):
+        return self.terminal.read(size)
+    
+    def readable(self):
+        return self.terminal.readable()
+
+    def readline(self, size):
+        return self.terminal.readline(size)
+
+    def readlines(self, hint):
+        return self.terminal.readlines(hint)
+
+    def seek(self, cookie, whence):
+        return self.terminal.seek(cookie, whence)
+
+    def seekable(self):
+        return self.terminal.seekable()
+
+    def tell(self):
+        return self.terminal.tell()
+    
+    def truncate(self, pos):
+        return self.terminal.truncate(pos)
+
+    def writable(self):
+        return self.terminal.writable()
+
+    def writelines(self, lines):
+        self.terminal.writelines(lines)
+
 
 class Interpreter:
     def __init__(self, inFile=None, prompt=[], log=True):
@@ -170,7 +222,6 @@ Generally we want to follow these steps:
         return None
 
     def getKappa(self):
-        ### DEPRICATED ###
         obsname = self.get_param('obsname')
         mags   = self.get_param('mags')
         coords = self.get_param('coords')
