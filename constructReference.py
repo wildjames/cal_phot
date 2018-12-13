@@ -120,8 +120,6 @@ def construct_reference(fetchFname):
     with open(fetchFname) as f:
         x = 1
         for line in f:
-            if x > 3:
-                break
             if line[0] == '#':
                 # print(line.strip())
                 pass
@@ -131,9 +129,9 @@ def construct_reference(fetchFname):
                 fetchme[str(x)].append(line.split())
 
     toWrite = {
-        '1':{},
-        '2':{},
-        '3':{}
+        '1':[],
+        '2':[],
+        '3':[]
     }
 
     bands = ['', 'r', 'g', 'u']
@@ -195,7 +193,11 @@ def construct_reference(fetchFname):
                 continue
 
             # pprint(target)
-            toWrite[CCD][str(i+2)] = target[bands[int(CCD)]]
+            toWrite[CCD].append(
+                target[ bands[int(CCD)] ]
+            )
+    
+        toWrite[CCD] = np.array(toWrite[CCD])
 
     print("Done!\n")
     return toWrite
