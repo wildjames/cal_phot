@@ -229,8 +229,12 @@ Generally we want to follow these steps:
             written_files = combineData(oname, coords, obsname, T0, period, SDSS=False,
                 binsize=binsize, myLoc=myLoc, fnames=fnames, comp_fnames=comparisons, 
                 std_fname=stdLogfile, std_coords=stdCoords, std_mags=stdMags)
-        
+
         self.written_files += written_files
+        
+        print("So far, I've written the following files:")
+        for f in self.written_files:
+            print("-> {}".format(f))
 
     def parse(self, line):
         line = line.strip()
@@ -238,10 +242,10 @@ Generally we want to follow these steps:
         # Clean up input for parsing
         if line == '':
             command = None
-            args = None
+            args = []
         elif line[0] == '#':
             command = None
-            args = None
+            args = []
         elif '#' in line:
             cut = line.index('#')
             line = line[:cut]
@@ -250,7 +254,7 @@ Generally we want to follow these steps:
             if len(line) > 1:
                 args = [x for x in line[1:] if x not in ['', ',', ' ']]
             else:
-                args = None
+                args = []
         else:
             # Split the line into command and arguments, space separated
             line = line.split(' ')
@@ -258,7 +262,7 @@ Generally we want to follow these steps:
             if len(line) > 1:
                 args = [x for x in line[1:] if x not in ['', ',', ' ']]
             else:
-                args = None
+                args = []
 
         # print("  Command: {}\n  args: {}".format(command, args))
         
@@ -322,9 +326,6 @@ Generally we want to follow these steps:
             self.params['ext'] = ext
             print("Extinction coefficient: {}".format(ext))
         
-        elif command == 'plotall':
-            self.params['plotall'] = args[0] in ['y', '1', 'yes', 'true']
-
         elif command == 'writeparams':
             if args == None:
                 paramname = 'reduction_params.txt'
@@ -461,7 +462,7 @@ Generally we want to follow these steps:
 
         # plotAll 
         elif command == 'overplot':
-            if len(args) > 0:
+            if args != []:
                 oname = args[0]
             else:
                 oname = ''

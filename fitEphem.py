@@ -30,8 +30,6 @@ from getEclipseTimes import read_ecl_file
 import time
 
 def fitEphem(myLoc, T0, period, simple=False):
-    print("Fitting ephemeris parameters to eclipse times...")
-
     # Read in the eclipsetimes.txt file
     fname = '/'.join([myLoc, 'eclipse_times.txt'])
     source_key, tl = read_ecl_file(fname)
@@ -45,7 +43,6 @@ def fitEphem(myLoc, T0, period, simple=False):
     params = [T0, period]
 
     if simple:
-        print("  Fitting with the simple method...")
         def fitfunc(p,x):
             return p[0] + p[1]*x
         def errfunc(p,x,y,err):
@@ -64,7 +61,6 @@ def fitEphem(myLoc, T0, period, simple=False):
         resy = y - fitfunc(pfinal, x)
 
     else:
-        print("  Fitting with MCMC simulation, and error scaling by source...")
         # Use Stu's version of the fitting, which considers error
         def model(pars,x):
             return pars[0] + pars[1]*x
@@ -140,7 +136,6 @@ def fitEphem(myLoc, T0, period, simple=False):
 
         # Gather and report the best values
         bestPars = []
-        print("  MCMC fitting results:")
         for i in range(npars):
             par = chain[:,i]
             lolim,best,uplim = np.percentile(par,[16,50,84])
