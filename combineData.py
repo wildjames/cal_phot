@@ -69,6 +69,14 @@ def calc_E_Err(T, T0, P, T_err, T0_err, P_err):
     
 def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=True, std_fname=None, comp_fnames=None, binsize=10, myLoc='.', ext=0.161, fnames=None, std_coords=None, std_mags=None):
     '''
+    Takes a set of *CAM observations (and data on the system), and produces a set of phase folded lightcurves.
+
+    Arguments:
+    ----------
+    oname: str
+        Template for written files. Applied to 
+
+
     oname      - Filename template for writing lightcurve plot and data. Appended with binning factor.
     coords     - RA and DEC of target star. As a string in a format that astropy can interpret.
     obsname    - Observatory name
@@ -119,10 +127,13 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=True, s
     try:
         os.mkdir('/'.join([myLoc, 'Reduced_Data', 'lightcurves']))
     except: pass
-    oname = oname.split('/')
-    if oname[0] != 'Reduced_Data':
-        oname = ['Reduced_Data'] + oname
-    oname = '/'.join(oname)
+    oname = '/'.join([myLoc, 'Reduced_Data', oname])
+    print(oname)
+    exit()
+    # oname = oname.split('/')
+    # if oname[-2] != 'Reduced_Data':
+    #     oname = ['Reduced_Data'] + oname
+    # oname = '/'.join(oname)
 
 
     # Report the things we're working with
