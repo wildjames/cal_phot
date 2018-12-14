@@ -339,16 +339,19 @@ class Interpreter:
         # combineData
         elif command == 'combinedata':
             self.combineData()
+
         elif command == 'oname':
             if args == []:
                 printer("Warning! Didn't get a filename!\nUsage: oname [file]")
             oname = args[0]
             self.params['oname'] = oname
             printer("Using the following filename: {}".format(oname))
+
         elif command == 'binsize':
             binsize = int(args[0])
             self.params['binsize'] = binsize
             printer("Binning data by {}".format(binsize))
+            
         elif command == 'logfiles':
             # Read in logfilenames, terminated by an empty line, i.e. in the format:
             # logfiles

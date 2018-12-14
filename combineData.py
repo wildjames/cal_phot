@@ -67,14 +67,44 @@ def calc_E_Err(T, T0, P, T_err, T0_err, P_err):
     return E_err
 
     
-def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=True, std_fname=None, comp_fnames=None, binsize=10, myLoc='.', ext=0.161, fnames=None, std_coords=None, std_mags=None):
+def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, comp_fnames=None, binsize=1, myLoc='.', ext=0.161, fnames=None, std_coords=None, std_mags=None):
     '''
     Takes a set of *CAM observations (and data on the system), and produces a set of phase folded lightcurves.
+
+    If we're in the SDSS field, each .log file needs a corresponding .coords file that contains the RA and Dec of each aperture:
+        <CCD1 ap1 RA> <Dec>
+        <CCD1 ap2 RA> <Dec>
+
+        <CCD2 ap1 RA> <Dec>
+        <CCD2 ap2 RA> <Dec>
+
+        <CCD3 ap1 RA> <Dec>
+        <CCD3 ap2 RA> <Dec>
+        <CCD3 ap3 RA> <Dec>
+
+    If not, I need a standard star reduction, and each .log file needs a corresponding .log reduction that uses the same parameters
+    to ensure an accurate match. These should be specified in comp_fnames. If none are supplied, try searching for a 
+
 
     Arguments:
     ----------
     oname: str
         Template for written files. Applied to 
+
+    coords: str
+        RA, Dec of target. Must in in a format astropy can understand.
+    
+    obsname: str
+        Observatory location. See astropy for a list of valid names
+    
+    T0: float
+        Ephemeris data
+    
+    period: float
+        Ephemeris data
+    
+    SDSS: bool
+        If True, I'll do an SDSS lookup for the comparison star magnitudes. If False, 
 
 
     oname      - Filename template for writing lightcurve plot and data. Appended with binning factor.
@@ -109,8 +139,10 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=True, s
         if len(fnames) == 0:
             print("  I couldn't find any log files! Stopping...")
             exit()
+    
     if comp_fnames == None:
-        comp_fnames = fnames
+        "I didn't get any comparison reductions. Please supply these!"
+        raise NameError
     
     # Check we have the same number of comparison reductions as we do target reductions
     if len(comp_fnames) != len(fnames):
@@ -121,19 +153,17 @@ def combineData(oname, coords, obsname, T0, period, ref_kappa=None, SDSS=True, s
         print("\nTargets:")
         for f in fnames:
             print(f)
-        exit()
+        raise NameError
     
     # Writing out
     try:
         os.mkdir('/'.join([myLoc, 'Reduced_Data', 'lightcurves']))
     except: pass
-    oname = '/'.join([myLoc, 'Reduced_Data', oname])
-    print(oname)
-    exit()
-    # oname = oname.split('/')
-    # if oname[-2] != 'Reduced_Data':
-    #     oname = ['Reduced_Data'] + oname
-    # oname = '/'.join(oname)
+
+    oname = oname.split('/')
+    if oname[0] != 'Reduced_Data':
+        oname = ['Reduced_Data'] + oname
+    oname = '/'.join(oname)
 
 
     # Report the things we're working with
