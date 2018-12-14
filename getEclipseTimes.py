@@ -22,10 +22,10 @@ from matplotlib.pyplot import close as closeplot
 from matplotlib import pyplot as plt
 
 #import corner
-import time
 import glob
 
 import mcmc_utils
+from logger import printer
 
 class PlotPoints:
     def __init__(self, fig):
@@ -36,12 +36,10 @@ class PlotPoints:
 
     def connect(self):
         self.cidpress = self.fig.canvas.mpl_connect('key_press_event', self.on_press)
-        # self.cidclick = self.fig.canvas.mpl_connect('button_release_event', self.on_click)
         print("\n\n  Hit 'q' to skip these data.\n  Hit 'a' on initial guesses for ingress and egress:")
 
     def disconnect(self):
         self.fig.canvas.mpl_disconnect(self.cidpress)
-        # self.fig.canvas.mpl_disconnect(self.cidclick)
 
     def on_press(self, event):
         if 'q' in event.key:
@@ -51,18 +49,9 @@ class PlotPoints:
             print("  ")
             return
         if 'a' in event.key:
-            print('  added point at %.1f, %.1f' % (event.xdata, event.ydata))
+            print('  added point at {:.1f}, {:.1f}'.format(event.xdata, event.ydata))
             self.xcoords = np.append(self.xcoords, event.xdata)
             self.ycoords = np.append(self.ycoords, event.ydata)
-        if self.xcoords.size == 2:
-            self.disconnect()
-            closeplot()
-            print("  ")
-
-    def on_click(self, event):
-        print('  added point at %.1f, %.1f' % (event.xdata, event.ydata))
-        self.xcoords = np.append(self.xcoords, event.xdata)
-        self.ycoords = np.append(self.ycoords, event.ydata)
         if self.xcoords.size == 2:
             self.disconnect()
             closeplot()
@@ -73,6 +62,12 @@ class PlotPoints:
         peak = np.fabs(self.ycoords).mean()
         t0 = self.xcoords.mean()
         sigma = sep/20
+        printer("Took an initial guess with the following parameters:")
+        printer("        T0: {}".format(t0))
+        printer("      peak: {}".format(peak))
+        printer("       sep: {}".format(sep))
+        printer("log_sigma2: {}".format(np.log(sigma**2)))
+        printer("")
         return dict(t0=t0, peak=peak, sep=sep, log_sigma2=np.log(sigma**2))
 
 
@@ -195,6 +190,24 @@ def grad_neg_log_like(params, y, gp):
     return -gp.grad_log_likelihood(y)[1]
 
 def read_ecl_file(fname):
+    '''
+    Reads my eclipse files. Returns an array where each row (tl[i, :]) containing the data for a single eclipse.
+    Also returns a key for decoding the source ID
+
+
+    Arguments:
+    ----------
+    fname: string
+        The eclipse file to be read in
+    
+    Returns:
+    --------
+    source_key: dict
+        A dictionary, where each key ( str(int) ) corresponds to the source (string)
+    
+    tl: list
+        A 2D list containing the cycle number, eclipse time, their error, and source key for each data
+    '''
     # tecl list
     tl = []
     if path.isfile(fname):
@@ -215,81 +228,124 @@ def read_ecl_file(fname):
                     line[0] = int(line[0])
                     line[3]  = int(line[3])
                     tl.append(line)
-        print("  Found these prior eclipse times:")
+        printer("Found these prior eclipse times:")
         for e, t, t_err, source in tl:
-            print("  Cycle: {:5d} -- {:.7f}+/-{:.7f} from {}".format(e, t, t_err, source_key[str(source)]))
+            printer("-> Cycle: {:5d} -- {:.7f}+/-{:.7f} from {}".format(e, t, t_err, source_key[str(source)]))
     else:
-        print("ERROR! Could not find the file '{}' to read eclipse data from...".format(fname))
-        exit()
-    print("")
+        printer("Could not find the file '{}' to read eclipse data from! Creating a new file.".format(fname))
+        source_key, tl = {}, []
+    printer("")
     return source_key, tl
+
+def write_ecl_file(source_key, tl, oname):
+    """
+    Saves eclipse data to a file.
+
+
+    Arguments:
+    ----------
+    source_key: dict
+        A dict, with keys of '1', '2', '3', etc, where each key corresponds to a source string
+    
+    tl: numpy.array
+        An array of shape (N, 4), containing the cycle number, eclipse time, time error, and source ID 
+        of N eclipses
+
+    Returns:
+    --------
+    None
+    """
+    # make a key for the data sources
+    key = ''
+    i = 0
+    for c, t, t_e, source in tl:
+        source = source_key[str(source)]
+        if source not in key:
+            key += "#{},{}\n".format(source, i)
+            i += 1
+
+    # Sort the list
+    tl = sorted(tl,key=lambda x: (x[1]))
+
+    with open(oname, 'w') as f:
+        f.write(key)
+        for c, t, t_e, source in tl:
+            f.write("\n{},{},{},{}".format(c, t, t_e, source))
+    printer("Wrote eclipse data to {}\n".format(oname))
+
+    return
+
 
 def getEclipseTimes(coords, obsname, myLoc=None):
     '''
-coords  - "ra dec" - string, needs to be in a format that astropy can interpret.
-    ra  - Target Right Ascension, in hours
-    dec - Target Declination, in degrees
-obsname - Observing location. Currently must be the /name/ of the observatory.
-myLoc   - Working directory.
+    Searches <myLoc> for .log files, and uses them to get the times of the eclipses.
+
+    The technique for this is to make a smoothed plot of the numerical gradient, and look for two mirrored peaks - one 
+    where the lightcurve enters eclipse (showing as a trough in gradient), and one for egress (showing as a peak in 
+    gradient). Ideally, they will be mirrors of each other, with the same width and height (though one will be the negative
+    of the other). 
+
+    A double gaussian is fitted to it using a gaussian process, and the midpoint between their peaks is taken to be the 
+    eclipse time. To characterise the error of the eclipse time, an MCMC is used to sample the found fit. This is beefy, 
+    and takes a while, but the Hessian we were getting out of scipy.optimize was heavily dependant on initial conditions,
+    so was untrustworthy.
 
 
-Searches the current directory for a file containing eclipse times, and fits an ephemeris (T0 and period) to it. 
-If <analyse_new> is True, it also seraches <myLoc> for log files, and fits the for an eclipse time. 
+    Arguments:
+    ----------
+    coords: str
+        The RA and Dec of the stars in the eclipses you're fitting. Note that all data being fitted is assumed to be for
+        the same object, hence the RA and Dec used in each log file is the same. i.e., make sure you're not fitting data
+        for more than one object at once!
+        Note: must be readable by astropy!
 
-Searched <myLoc> for a file containing eclipse times. Searches <myLoc> for logfiles, and fits these for their 
-eclipse times.
+    obsname: str
+        The observatory name. See coord.EarthLocation.get_site_names() for a list.
 
-The technique for this is to make a smoothed plot of the numerical gradient, and look for two mirrored peaks - one 
-where the lightcurve enters eclipse (showing as a trough in gradient), and one for egress (showing as a peak in 
-gradient). Ideally, they will be mirrors of each other, with the same width and height (though one will be the negative
-of the other). 
-
-A double gaussian is fitted to it using a gaussian process, and the midpoint between their peaks is taken to be the 
-eclipse time. To characterise the error of the eclipse time, an MCMC is used to sample the found fit. This is beefy, 
-and takes a while, but the Hessian we were getting out of scipy.optimize was heavily dependant on initial conditions,
-so was untrustworthy.
-'''
-    ### VARIABLES ###
-    ### ------------------------------------------------- ###
+    myLoc: str, default None
+        The directory to search for eclipses. If None, searches the current working directory.
+    '''
+    printer("\n\n--- Getting eclipse times from the data ---")
 
     star = coord.SkyCoord(
         coords,
         unit=(units.hour, units.deg)
     )
 
+    # Where are we working?
     if myLoc == None:
-        print("  Defaulting to current directory")
         myLoc = path.curdir
+        printer("Defaulting to current directory: {}".format(myLoc))
 
+    # Where am I looking for prior data, and saving my new data?
     oname = 'eclipse_times.txt'
     oname = '/'.join([myLoc, oname])
-    if not path.isfile(oname):
-        print("  Couldn't find previous eclipse times file, '{}'. Creating that file.".format(oname))
-        source_key, tl = {}, []
-    else:
-        # tecl list
-        source_key, tl = read_ecl_file(oname)
+    source_key, tl = read_ecl_file(oname)
     
-    print("\n  Grabbing log files...")
+    # What am I using to get new data from?
+    printer("Grabbing log files...")
     fnames = list(glob.iglob('{}/**/*.log'.format(myLoc), recursive=True))
     
+
     if len(fnames) == 0:
-            print("  I couldn't find any log files! For reference, I searched the following:")
-            print("   - {}".format(myLoc))
-            exit()
+        printer("I couldn't find any log files in:")
+        printer("{}".format(myLoc))
+        raise FileNotFoundError
+    
     # List the files we found
-    print("  Found these log files: ")
+    printer("Found these log files: ")
     for i, fname in enumerate(fnames):
-        print("  {:2d} - {}".format(i, fname))
-    print('  ')
+        printer("  {:>2d} - {}".format(i, fname))
+    printer('  ')
     
     for lf in fnames:
         # lets make the file reading more robust
         log = Hlog.from_ascii(lf)
-        
         aps = log.apnames
+        
+        printer("File: {}".format(lf))
         if len(aps['2']) < 2:
-            print("  Not looking for eclipses in {}, as only one aperture in the file.".format(lf))
+            printer("-> Not looking for eclipses in {}, as only one aperture in the file.".format(lf))
             continue
 
         # Get the g band lightcurve, and correct it to the barycentric time
@@ -310,7 +366,7 @@ so was untrustworthy.
         plt.show()
 
         if gauss.flag:
-            print("  No eclipse taken from {}".format(lf))
+            printer("-> No eclipse taken from {}".format(lf))
             continue
 
         kwargs = gauss.gaussPars()
@@ -342,8 +398,8 @@ so was untrustworthy.
         soln = minimize(neg_log_like, initial_params, jac=grad_neg_log_like,
                         method="L-BFGS-B", bounds=bounds, args=(y, gp))
         if not soln.success:
-            print('  Warning: may not have converged')
-            print(soln.message)
+            printer('  Warning: may not have converged')
+            printer(soln.message)
 
         gp.set_parameter_vector(soln.x)
         mean_model.set_parameter_vector(gp.get_parameter_vector()[2:])
@@ -351,7 +407,7 @@ so was untrustworthy.
         out = soln['x']
         t_ecl = out[2]
 
-        print("  Using MCMC to characterise error at peak likelihood...")
+        printer("Using MCMC to characterise error at peak likelihood...")
 
 
         # Use an MCMC model, starting from the solution we found, to model the errors
@@ -399,7 +455,7 @@ so was untrustworthy.
         err = np.std(sampler.flatchain[:,2])
         sep = np.mean(sampler.flatchain[:,3])
 
-        print("    Got a solution: {:.7f}+/-{:.7f}\n".format(t_ecl, err))
+        printer("Got a solution: {:.7f}+/-{:.7f}\n".format(t_ecl, err))
         # print("  Got a Jacobian,\n {}".format(soln['jac']))
         # print("  Got a Hessian,\n {}".format(soln['hess_inv'].todense()))
         # print("  Final log-liklihood: {}".format(soln.fun))
@@ -426,74 +482,34 @@ so was untrustworthy.
         print("  Plotting fit...")
         plt.show(block=False)
 
-        ## Disconnect from the logger
-        if False:
-        # str(type(sys.stdout)) == "<class '__main__.Logger'>":
-            hold = sys.stdout
-            sys.stdout = sys.__stdout__
+        cont = input("  Save these data? y/n: ")
+        if cont.lower() == 'y':
+            locflag = input("    What is the source of these data: ")
 
-            cont = input("  Save these data? y/n: ")
-            if cont.lower() == 'y':
-                locflag = input("    What is the source of these data: ")
-
-                key = '-1'
-                for key in source_key:
-                    if locflag == source_key[key]:
-                        locflag = key
-                        break
-                if locflag != key:
-                    key = str(int(key)+1)
-                    source_key[key] = locflag
+            key = '-1' # This ensures that if source_key is empty, the new data are pushed to index '0'
+            for key in source_key:
+                if locflag == source_key[key]:
                     locflag = key
-
-                tl.append(['<CYCLE NUMBER>', float(t_ecl), float(err), locflag])
-            else:
-                print("  Did not store eclipse time from {}.".format(lf))
-            
-            sys.stdout = hold
-            del hold
-            
+                    break
+            if locflag != key:
+                key = str(int(key)+1)
+                source_key[key] = locflag
+                locflag = key
+            tl.append(['0', float(t_ecl), float(err), locflag])
+            printer("Saved the data: {}".format(['0', float(t_ecl), float(err), locflag]))
         else:
-            cont = input("  Save these data? y/n: ")
-            if cont.lower() == 'y':
-                locflag = input("    What is the source of these data: ")
-
-                key = '-1'
-                for key in source_key:
-                    if locflag == source_key[key]:
-                        locflag = key
-                        break
-                if locflag != key:
-                    key = str(int(key)+1)
-                    source_key[key] = locflag
-                    locflag = key
-                tl.append(['<CYCLE NUMBER>', float(t_ecl), float(err), locflag])
-            else:
-                print("  Did not store eclipse time from {}.".format(lf))
+            printer("  Did not store eclipse time from {}.".format(lf))
+        plt.close()
+        printer("")
     
-    print("  \n  Done all the files!")
+    printer("\nDone all the files!")
 
-    # make a key for the data sources
-    key = ''
-    i = 0
-    for c, t, t_e, source in tl:
-        source = source_key[str(source)]
-        if source not in key:
-            key += "#{},{}\n".format(source, i)
-            i += 1
-
-    # Sort the list
-    tl = sorted(tl,key=lambda x: (x[1]))
-
-    with open(oname, 'w') as f:
-        f.write(key)
-        for c, t, t_e, source in tl:
-            f.write("\n{}, {}, {},{}".format(c, t, t_e, source))
-    print("  Wrote eclipse data to {}\n".format(oname))
+    write_ecl_file(source_key, tl, oname)
 
     #TODO:
     # Temporary placeholder. Think about this.
     # - Get the rounded ephemeris fit from the period and T0 supplied?
     # - Might be best to force the user to do this manually, to make it more reliable?
-    print("  Please open the file, and edit in the eclipse numbers for each one.\n  Hit enter when you've done this!")
-    input()
+    printer("This string might help:\ncode {}".format(path.abspath(oname)))
+    printer("Please open the file, and edit in the eclipse numbers for each one.")
+    inputer("Hit enter when you've done this!")

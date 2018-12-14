@@ -5,16 +5,11 @@ import numpy as np
 from astropy import time, units as u
 from astropy.coordinates import AltAz, EarthLocation, SkyCoord
 
-from interpreter import printer
+from logger import printer
 
 def getKappa(lf, coords, obsname, mags, ext=0.161):
     '''
-    input:
-      lf      - Standard star reduced data in a logfile from the hipercam pipeline
-      coords  - RA and DEC of standard star, in hours and degrees, respectively.
-      obsname - name of observatory
-      mags    - [<r' magnitude>, <g' band magnitude>, <u' band magnitude>] of standard
-     [ext]    - optional parameter, if you want to use a different extinction coeff.
+    Get zero point corrections from a standard star reduction.
 
     Takes a logfile containing the reduced lightcurve of a standard star, and a list of its magnitudes.
     Uses the observatory and coordinates of the star to get its airmass at the start of the run, and 
@@ -23,9 +18,28 @@ def getKappa(lf, coords, obsname, mags, ext=0.161):
     From these, calculate the instrumental magnitude of the standard, and get the zero points, kappa,
     in each band. Returns these as a list.
 
-    output:
-      kappas - A list, in the order [r', g', u'], of the zero points in magnitudes
-'''
+    Arguments:
+    ----------
+    lf: string
+        Standard star reduced data in a logfile from the hipercam pipeline
+    
+    coords: string
+        RA and DEC of standard star, in hours and degrees, respectively.
+    
+    obsname: string
+        name of observatory
+    
+    mags: list
+        [<r' magnitude>, <g' band magnitude>, <u' band magnitude>] of standard
+    
+    [ext]: float
+        optional parameter, if you want to use a different extinction coeff.
+
+    Returns:
+    --------
+    kappas: numpy.array
+        np.array([nan, r', g', u']), of the zero points in magnitudes
+    '''
     printer("\n\n--- Computing zero point magnitude corrections ---\nUsing the file '{}'".format(lf))
     printer("The standard star was observed at coordinates: {}, from {}".format(coords, obsname))
 
@@ -61,6 +75,16 @@ def getKappa(lf, coords, obsname, mags, ext=0.161):
     # Calculate the altitude at that time
     star_loc_AltAz = star_loc.transform_to(AltAz(obstime=T, location=observatory))
     zenith_angle = 90. - star_loc_AltAz.alt.value
+
+    # Check the star is in a sane location
+    if zenith_angle > 90:
+        printer("That star is below the horizon, according to the info I have!")
+        printer("RA, Dec: {}".format(coords))
+        printer("   Time: {}".format(T))
+        printer("    Loc: {}".format(observatory))
+        raise ValueError
+    elif zenith_angle > 60:
+        printer("!!! Zenith angle is low !!!")
     
     # Calculate the airmass
     airmass = 1. / np.cos(np.radians(zenith_angle))
@@ -71,8 +95,8 @@ def getKappa(lf, coords, obsname, mags, ext=0.161):
     kappas = [np.nan]
     # Get the fluxes from each CCD
     for CCD in ['1', '2', '3']:
-        fluxs = []
         star = data.tseries(CCD, '1')
+        fluxs = []
         for counts, line in zip(star.y, data[CCD]):
             # Third column contains exposure time
             flux = counts / float(line[3])
@@ -85,12 +109,15 @@ def getKappa(lf, coords, obsname, mags, ext=0.161):
         inst_mag = -2.5*np.log10(flux) - (extinction_coefficient*airmass)
 
         printer("--> Instrumental magnitude: {}".format(inst_mag))
-        printer("--> Apparent magnitude: {}".format(mags[int(CCD)))
+        printer("--> Apparent magnitude: {}".format(
+            mags[int(CCD)]
+            )
+        )
 
         # Correction factor for this band
         kappa = inst_mag - mags[int(CCD)]
 
-        printer("---> Zero point of {:.3} mag.".format(kappa))
+        printer("---> Zero point: {:.3} mag.".format(kappa))
         kappas.append(kappa)
 
     kappas = np.array(kappas)

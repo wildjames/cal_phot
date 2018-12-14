@@ -25,11 +25,48 @@ import pylab
 import mcmc_utils as mu
 
 from getEclipseTimes import read_ecl_file
+from logger import printer
 
 #import corner
 import time
 
 def fitEphem(myLoc, T0, period, simple=False):
+    """
+    Takes eclipse time data from a file, and fits ephemeris parameters (T0, period) to them 
+    from an initial guess. 
+
+    There are two fitting options available: simple and complex.
+    simple: 
+        Fits a simple linear regression fit to the data. Report the minimum chisq params
+    complex:
+        Uses an MCMC chain and a gaussian process to fit the data. Also considers that the 
+        reported error is not accurate, and allows data from different sources to have their
+        error bars scaled to get a chisq closer to unity. This is far more reliable and accurate,
+        but takes significantly longer to run. 
+
+    Arguments:
+    ----------
+    myLoc: str
+        Tells the function where to look for both logfiles and prior eclipse data
+    
+    T0: float
+        Initial guess for T0
+    
+    period: float
+        Initial guess for the period
+    
+    simple: bool
+        If true, use a linear regression fit on the data. If false, use an MCMC chain.
+
+    Returns:
+    --------
+    T0: float
+        Best T0
+    period: float
+        Best period
+    """
+    printer("\n\n--- Fitting ephemeris to data ---")
+
     # Read in the eclipsetimes.txt file
     fname = '/'.join([myLoc, 'eclipse_times.txt'])
     source_key, tl = read_ecl_file(fname)
@@ -139,7 +176,7 @@ def fitEphem(myLoc, T0, period, simple=False):
         for i in range(npars):
             par = chain[:,i]
             lolim,best,uplim = np.percentile(par,[16,50,84])
-            print("    {} = {:.10f} +{:.10f} -{:.10f}".format(nameList[i],best,uplim-best,best-lolim))
+            printer("{:>20s} = {:.10f} +{:.10f} -{:.10f}".format(nameList[i],best,uplim-best,best-lolim))
             bestPars.append(best)
 
             if nameList[i] == 'T0':
@@ -150,6 +187,7 @@ def fitEphem(myLoc, T0, period, simple=False):
                 P_err = uplim-lolim
         fig = mu.thumbPlot(chain,nameList)
         fig.savefig('/'.join([myLoc, 'ephemeris_cornerPlot.pdf']))
+        printer("Saved a corner plot of the MCMC fit (including error scaling factors) to:\n-> {}".format('/'.join([myLoc, 'ephemeris_cornerPlot.pdf'])))
         plt.close('all')
 
         resy = 86400.0*(y-model(bestPars,x))
@@ -161,18 +199,18 @@ def fitEphem(myLoc, T0, period, simple=False):
         ey   = 86400.0*errs
 
         chisq = np.sum(resy**2.0/ey**2.0)
-        print("    Chisq = {:.1f}, with {:d} degrees of freedom".format(chisq, int(x.size - 2)))
+        printer("\nChisq = {:.1f}, with {:d} degrees of freedom".format(chisq, int(x.size - 2)))
 
     ### Reporting
-    print("  Got a T0 of {:.10f}+/-{:.2e}".format(T0, T0_err))
-    print("  Got a period of {:.10f}+/-{:.2e}".format(P, P_err))
-    print("  This fit had a reduced chisq value of {}".format(chisq))
-    print('  ')
-    print("  Source          |  (Obs) - (Calc), sec | Cycle Number")
+    printer("Got a T0 of     {:>5.10f}+/-{:<.2e}".format(T0, T0_err))
+    printer("Got a period of {:>5.10f}+/-{:<.2e}".format(P, P_err))
+    printer("This fit had a reduced chisq value of {:.3f}".format(chisq))
+    printer('')
+    printer("Source          |  (Obs) - (Calc), sec | Cycle Number")
     for t in tl:
         dT = fitfunc([T0, P], t[0]) - t[1]
         dT *= 24*60*60
-        print("  {:<15s} | {:>20.4f} | {:d}".format(source_key[str(int(t[3]))], dT , int(t[0]) ))
+        printer(" {:<14s} | {:>20.4f} | {:d}".format(source_key[str(int(t[3]))], dT , int(t[0]) ))
 
     plt.errorbar(x,resy,yerr=ey,fmt='o',color='k',ecolor='k')
     plt.axhline(ls='--',color='k')
@@ -180,4 +218,5 @@ def fitEphem(myLoc, T0, period, simple=False):
     plt.ylabel('O-C (s)')
     plt.show()
 
+    printer("")
     return T0, P
