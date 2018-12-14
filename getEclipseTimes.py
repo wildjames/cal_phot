@@ -427,7 +427,8 @@ so was untrustworthy.
         plt.show(block=False)
 
         ## Disconnect from the logger
-        if str(type(sys.stdout)) == "<class '__main__.Logger'>":
+        if False:
+        # str(type(sys.stdout)) == "<class '__main__.Logger'>":
             hold = sys.stdout
             sys.stdout = sys.__stdout__
 
@@ -456,12 +457,19 @@ so was untrustworthy.
             cont = input("  Save these data? y/n: ")
             if cont.lower() == 'y':
                 locflag = input("    What is the source of these data: ")
+
+                key = '-1'
+                for key in source_key:
+                    if locflag == source_key[key]:
+                        locflag = key
+                        break
+                if locflag != key:
+                    key = str(int(key)+1)
+                    source_key[key] = locflag
+                    locflag = key
                 tl.append(['<CYCLE NUMBER>', float(t_ecl), float(err), locflag])
             else:
                 print("  Did not store eclipse time from {}.".format(lf))
-        
-        plt.close(fig)
-        del fig
     
     print("  \n  Done all the files!")
 
