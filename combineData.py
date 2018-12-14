@@ -103,26 +103,37 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
     period: float
         Ephemeris data
     
-    SDSS: bool
-        If True, I'll do an SDSS lookup for the comparison star magnitudes. If False, 
+    SDSS: bool, optional
+        If True, I'll do an SDSS lookup for the comparison star magnitudes. If False, use a standard star to calibrate
 
+    std_fname: str, optional
+        .log file containing a standard star reduction, to calibrate flux of comparisons
 
-    oname      - Filename template for writing lightcurve plot and data. Appended with binning factor.
-    coords     - RA and DEC of target star. As a string in a format that astropy can interpret.
-    obsname    - Observatory name
-    T0         - Ephemeris zero point
-    period     - Ephemeris period
-    ref_kappa  - kappa corrections
-    SDSS       - Are we in the SDSS field? If we are, I'll do a lookup for reference magnitudes using coordinates from a '.coords' 
-                file of the same name as the logfile (i.e. logfile.log -> logfile.coords), and get the data from there.
-    binsize    - Lightcurve binning
-    myLoc      - Logfile search directory. Looks here for a directory called 'Reduced_Data', and pulls logfiles from there.
-    ext        - Atmospheric extinction, mags/airmass
+    comp_fnames: list, optional
+        list of comparison reductions that match the standard star reduction. 
 
-    Overall goal: Construct a folded lightcurve of an object. 
+    binsize: int, optional
+        Binning of the data. 
 
-    Looks in <myLoc> for the directory 'Reduced_Data', and pulls all the logfiles from there for analysis.
-    Then, for each observing run, 
+    myLoc: str, optional
+        Working directory. If not supplied, default to current working directory
+
+    ext: float, optional
+        Extinction coeffiecient, mags/airmass
+
+    fnames: list, optional
+        List of target reduction files. If not supplied, searches for log files
+
+    std_coords: str, optional
+        Ra, Dec of standard star, as a string that Astropy can read
+
+    std_mags: list of float, optional
+        Apparent magnitude of the standard in each CCD
+
+    Returns:
+    --------
+    written_files: list
+        List of created .calib files.
     '''
 
     ## First, find the logfiles we want to use
