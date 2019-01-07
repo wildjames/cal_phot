@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def plot_all(files, oname):
+def plot_all(files, oname, band):
     '''
     Takes a list of .calib files, and plots them all over each other as a step plot.
 
@@ -13,8 +13,8 @@ def plot_all(files, oname):
         oname = 'overplotted_eclipses'
 
     # filter the files so we only have green lightcurves
-    print("  Plotting the following g' lightcurves:")
-    files = [x for x in files if '_g.calib' in x]
+    print("  Plotting the following {} lightcurves:".format(band))
+    files = [x for x in files if '_{}.calib'.format(band) in x]
     for f in files:
         print("    - {}".format(f))
 
@@ -40,9 +40,10 @@ def plot_all(files, oname):
         odata = np.append(odata, d, axis=1)
         i+= 1
 
+    plt.title("{} band eclispes".format(band))
     plt.legend()
     plt.tight_layout()
-    plt.savefig(oname+'.pdf')
+    plt.savefig('Reduced_Data/'+oname+'.pdf')
     plt.show()
 
     return None
