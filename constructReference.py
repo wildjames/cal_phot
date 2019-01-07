@@ -264,7 +264,7 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
         star_loc_AltAz = star_loc.transform_to(AltAz(obstime=obs_T, location=observatory))
         zenith_angle = 90. - star_loc_AltAz.alt.value
         airmass = 1. / np.cos(np.radians(zenith_angle))
-        printer("For the observations at {}, calculated altitude of {:.3f}, and airmass of {:.3f}".format(
+        printer("  For the observations at {}, calculated altitude of {:.3f}, and airmass of {:.3f}\n".format(
             obs_T.iso, star_loc_AltAz.alt.value, airmass))
     else:
         airmass = 0.0
@@ -316,9 +316,15 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
         printer("  CCD {} extinction: {:.3f} mags".format(CCD, ex*airmass))
         
         mags = np.array(mags)
+        
+        printer("    Before applying extinction correction:")
+        printer(mags)
 
         # Add the light lost to atmosphere back in
         mags = mags - (ex*airmass)
+
+        printer("    After extinction correction:")
+        printer(mags)
 
         all_mags[CCD] = mags
     return all_mags
@@ -330,9 +336,27 @@ def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords,
     the target frame, using the same settings (aperture size, extraction method, etc.). Uses this to 
     compute the apparent magnitudes of comparison stars in comp_fname
 
-    Requires the RA and Dec of each, to correct for airmass.
+    Requires the RA and Dec to correct for airmass.
 
-    Returns the SDSS magnitudes of the comparison star(s)
+    Arguments:
+    ----------
+    std_fname: str
+        file containing the standard observations
+    comp_fname: str
+        file containing the target frame, reduced with identical parameters as the standard
+    std_coords: str
+        String containing the RA and Dec of the standard, in a style astropy can take.
+    comp_coords: str
+        String containing the RA and Dec of the target frame, in a style astropy can take.
+    std_mags: list
+        list containing the SDSS magnitude of the standard in each CCD, inorder
+    obsname: str
+        Observatory name
+    ext: list
+        Extinction coefficients, in order of CCD
+
+    Returns:
+    --------
     '''
     printer("\n\n--- Extracting comparison star SDSS magnitudes from the file '{}'---".format(comp_fname))
     printer("     using the standard star found in {}\n".format(std_fname))
@@ -343,36 +367,42 @@ def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords,
     comp_data     = hcam.hlog.Hlog.from_ascii(comp_fname)
 
     printer("-----------------  STANDARD  -----------------")
+    # Extract the instrumental magnitudes of the standard
     instrumental_std_mags = get_instrumental_mags(standard_data, std_coords, obsname, ext)
-    instrumental_std_mags = [ instrumental_std_mags[str(i+1)][0] for i in range(len(instrumental_std_mags))]
+    # Convert the dict recieved into a list
+    instrumental_std_mags = [instrumental_std_mags[str(i+1)][0] for i in range(len(instrumental_std_mags))]
     instrumental_std_mags = np.array(instrumental_std_mags)
-    printer("\n  Standard star instrumental magnitudes: ")
-    printer("    r': {:3.3f}, g': {:3.3f}, u': {:3.3f}".format(instrumental_std_mags[0], instrumental_std_mags[1], instrumental_std_mags[2]))
-    
-    printer("  Standard Star SDSS magnitudes:")
-    printer("    r': {:3.3f}, g': {:3.3f}, u': {:3.3f}".format(std_mags[0], std_mags[1], std_mags[2]))
-    
+    # The zero points are the difference between observed and expected.
     zero_points = instrumental_std_mags - std_mags
-    printer("  Zero points in each band (in order of CCD):")
-    printer("    r': {:3.3f}\n    g': {:3.3f}\n    u': {:3.3f}".format(zero_points[0], zero_points[1], zero_points[2]))
-    printer("")
+    
+    printer("\n  Standard star instrumental magnitudes: ")
+    for i, m in enumerate(instrumental_std_mags):
+        printer("    CCD {}: {:3.3f}".format(i, m))
+    
+    printer("\n  Standard Star SDSS magnitudes:")
+    for i, m in enumerate(std_mags):
+        printer("    CCD {}: {:3.3f}".format(i, m))
+    
+    printer("\n  Zero points in each band (in order of CCD, will be subtracted from the inst. mags):")
+    for i, m in enumerate(zero_points):
+        printer("    CCD {}: {:3.3f}".format(i, m))
 
     printer("\n----------------- COMPARISON -----------------")
     instrumental_comp_mags = get_instrumental_mags(comp_data, comp_coords, obsname, ext)
 
 
-    printer("  Comparison star instrumental magnitudes:")
+    printer("\n  Comparison star instrumental magnitudes:")
     for CCD in instrumental_comp_mags:
         printer("    CCD {}: {}".format(CCD, 
             np.array2string(instrumental_comp_mags[CCD], precision=3) ))
 
-    printer("  Comparison star apparent magnitudes:")
+    printer("\n  Comparison star apparent magnitudes:")
     apparent_comp_mags = instrumental_comp_mags.copy()
     for i, CCD in enumerate(apparent_comp_mags):
         apparent_comp_mags[CCD] -= zero_points[i]
     for CCD in apparent_comp_mags:
-        printer("  - CCD {}: {}".format(CCD, 
+        printer("    CCD {}: {}".format(CCD, 
             np.array2string(apparent_comp_mags[CCD], precision=3) ))
 
-    printer('')
+    printer('\n  --- Done getting magnitudes ---\n\n')
     return apparent_comp_mags
