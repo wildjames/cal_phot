@@ -66,8 +66,9 @@ def calc_E_Err(T, T0, P, T_err, T0_err, P_err):
     E_err = N * err
     return E_err
 
-    
-def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, comp_fnames=None, binsize=1, myLoc='.', ext=0.161, fnames=None, std_coords=None, std_mags=None):
+
+def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, comp_fnames=None, 
+                binsize=1, myLoc='.', ext=None, fnames=None, std_coords=None, std_mags=None):
     '''
     Takes a set of *CAM observations (and data on the system), and produces a set of phase folded lightcurves.
 
@@ -230,7 +231,7 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
                 reference_stars = construct_reference(refname)
             else:
                 reference_stars = get_comparison_magnitudes(std_fname, refname, std_coords=std_coords, 
-                    comp_coords=coords, std_mags=std_mags, obsname=obsname)
+                    comp_coords=coords, std_mags=std_mags, obsname=obsname, ext=ext)
 
             # Plotting area
             fig, ax = plt.subplots(3, figsize=[12, 8])
@@ -288,6 +289,7 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
                     E = calc_E(mintime, T0, period)
                     E = np.rint(E)
 
+                    # The above can be off, if the eclipse isnt the minimum. in/decriment until it's within bounds
                     while T0 + E*period < ratio.t[0]:
                         print("  !!! Eclipse time not within these data! Attempting to fix...")
                         E += 1
@@ -301,24 +303,6 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
 
                     eclTime = T0 + E*period
                     print("  The eclipse is then at time {:.3f}".format(eclTime))
-
-                # if False:
-                #     # Fold about the period
-                #     # ratio = ratio.fold(period, t0=T0) ## BUGGED! and not a LTT error?
-                #     fold_time = (((ratio.t - T0) / period) %1)
-                #     # fold time domain from -.5 to .5
-                #     fold_time[fold_time > 0.5] -= 1
-                #     sorted_args = np.argsort(fold_time)
-                #     ratio = hcam.hlog.Tseries(
-                #         fold_time[sorted_args],
-                #         ratio.y[sorted_args],
-                #         ratio.ye[sorted_args],
-                #         ratio.mask[sorted_args]
-                #         )
-                # else:
-                ### Cut out an eclipse, without folding it
-                # get E from eclipse data, by interpolating. Only do this for the first CCD, since they should all have the same
-                # timestamps
                 
                 slice_time = (ratio.t - eclTime) / period
                 slice_args = (slice_time < 0.5)  *  (slice_time > -0.5)
@@ -373,65 +357,3 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
     plt.close('all')
 
     return written_files
-
-    # ## <master> is now a dict, containing 3 Tseries objects of the lightcurves.
-
-    # # Sort each CCD so all the observations are lined up
-    # print("  Creating a master lightcurve, by binning the folded, sum lightcurve")
-    # masterBin = len(fnames)+1
-    # print("   by (number of eclipses +1): {}".format(masterBin))
-    # for CCD in ['1', '2', '3']:
-    #     print("  MASTER[{}].t has a length {}".format(CCD, len(master[CCD].t)))
-    #     lightcurve = master[CCD]
-
-    #     times = lightcurve.t.copy()
-    #     sorted_args = np.argsort(times)
-    #     print(sorted_args)
-    #     master[CCD] = hcam.hlog.Tseries(
-    #         lightcurve.t[sorted_args],
-    #         lightcurve.y[sorted_args],
-    #         lightcurve.ye[sorted_args],
-    #         lightcurve.mask[sorted_args]
-    #     )
-
-    #     # Bin the lightcurve by the number of nights
-    #     master[CCD] = master[CCD].bin(masterBin)
-
-    # print("  Done!\n")
-
-    # print("  Plotting...")
-    # if binsize > 1:
-    #     oname += '_bin{:02d}'.format(binsize)
-    # else:
-    #     oname += "_unbinned"
-    # # Plotting
-    # fig, ax = plt.subplots(3, figsize=[24, 8])
-
-    # master['1'].mplot(ax[0], colour='red')
-    # master['2'].mplot(ax[1], colour='green')
-    # master['3'].mplot(ax[2], colour='blue')
-
-    # for x in ax:
-    #     x.set_ylabel('Flux, mJy')
-    # ax[2].set_xlabel('Phase, days')
-
-    # plt.tight_layout()
-    # plt.savefig(oname+'.pdf')
-    # # plt.show()
-    # plt.close('all')
-    # print('  Saved to {}'.format(oname+'.pdf'))
-    # print("  Done!\n")
-
-    # print("  Writing to files...")
-
-    # for i, col in zip(['1', '2', '3'], c[1:]):
-    #     filename = oname+'_{}.calib'.format(col)
-    #     with open(filename, 'w') as f:
-    #         f.write("# Phase, Flux, Err_Flux, Mask\n")
-    #         for t, y, ye, mask in zip(master[i].t, master[i].y, master[i].ye, master[i].mask):
-    #             f.write("{}, {}, {}, {}\n".format(t, y, ye, mask))
-    #     print("  Wrote out {}!".format(filename))
-
-    # print("\n  Done!")
-
-    # return written_files
