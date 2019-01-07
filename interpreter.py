@@ -143,21 +143,13 @@ class Interpreter:
         line = line.strip()
 
         # Clean up input for parsing
+        if '#' in line:
+            cut = line.index('#')
+            line = line[:cut]
+        
         if line == '':
             command = None
             args = []
-        elif line[0] == '#':
-            command = None
-            args = []
-        elif '#' in line:
-            cut = line.index('#')
-            line = line[:cut]
-            line = line.split(' ')
-            command = line[0].lower()
-            if len(line) > 1:
-                args = [x for x in line[1:] if x not in ['', ',', ' ']]
-            else:
-                args = []
         else:
             # Split the line into command and arguments, space separated
             line = line.split(' ')
