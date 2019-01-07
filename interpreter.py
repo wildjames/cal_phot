@@ -115,11 +115,12 @@ class Interpreter:
         myLoc     = self.get_param('directory')
         fnames    = self.get_param('fnames')
         SDSS      = self.get_param('SDSS')
+        ext       = self.get_param('ext')
         
         printer("Combining, calibrating, and plotting data...")
         if SDSS:
             written_files = combineData(oname, coords, obsname, T0, period, SDSS=True, binsize=binsize,
-            myLoc=myLoc, fnames=fnames)
+            myLoc=myLoc, fnames=fnames, ext=ext)
         else:
             # Retrieve the SDSS-matching reductions for each night
             comparisons = self.get_param('comparisonfnames')
@@ -130,7 +131,7 @@ class Interpreter:
             # ref_kappa = self.get_param('kappas')
             written_files = combineData(oname, coords, obsname, T0, period, SDSS=False,
                 binsize=binsize, myLoc=myLoc, fnames=fnames, comp_fnames=comparisons, 
-                std_fname=stdLogfile, std_coords=stdCoords, std_mags=stdMags)
+                std_fname=stdLogfile, std_coords=stdCoords, std_mags=stdMags, ext=ext)
 
         self.written_files += written_files
         
@@ -216,9 +217,9 @@ class Interpreter:
                 printer("Using the following star coordinates:\n  RA:  {}\n  Dec: {}".format(args[0], args[1]))
         
         elif command == 'extinction':
-            ext = float(args[0])
+            ext = [float(i) for i in args]
             self.params['ext'] = ext
-            printer("Extinction coefficient: {}".format(ext))
+            printer("Extinction coefficients (in order of CCD): {}".format(ext))
         
         elif command == 'writeparams':
             if args == None:
@@ -382,9 +383,10 @@ class Interpreter:
         elif command == 'overplot':
             if args != []:
                 oname = args[0]
+                band  = args[1]
             else:
                 oname = ''
-            plot_all(self.written_files, oname)
+            plot_all(self.written_files, oname, band)
 
 
         # Unknown command handler
