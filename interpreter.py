@@ -263,12 +263,15 @@ class Interpreter:
             fnames = []
             line = self.inFile.readline().strip()
             while line!='':
-                if '#' in line: 
-                    while line[0] == '#':
-                        line = self.inFile.readline().strip()
-                    if '#' in line:
+                while '#' in line:
+                    # If the hash is not in the first space, cut the line to size
+                    if '#' in line[1:]:
                         line = line[:line.index('#')].strip()
-                fnames.append(line)
+                    # If the hash is in the first space, read the next line
+                    else:
+                        line = self.inFile.readline().strip()
+                if line != '': 
+                    fnames.append(line)
                 line = self.inFile.readline().strip()
 
             printer("Using the following logfiles for calculating the SDSS correction on each eclipse:")
@@ -356,14 +359,17 @@ class Interpreter:
             fnames = []
             line = self.inFile.readline().strip()
             while line!='':
-                if '#' in line: 
-                    while line[0] == '#':
-                        line = self.inFile.readline().strip()
-                    if '#' in line:
+                while '#' in line:
+                    # If the hash is not in the first space, cut the line to size
+                    if '#' in line[1:]:
                         line = line[:line.index('#')].strip()
-                fnames.append(line)
+                    # If the hash is in the first space, read the next line
+                    else:
+                        line = self.inFile.readline().strip()
+                if line != '': 
+                    fnames.append(line)
                 line = self.inFile.readline().strip()
-
+            
             self.params['fnames'] = fnames
 
             printer("Using the following logfiles:")
