@@ -59,16 +59,16 @@ def calc_E(T, T0, P):
     E = (T-T0) / P
     return E
 def calc_E_Err(T, T0, P, T_err, T0_err, P_err):
-    N = E(T, T0, P) 
+    N = E(T, T0, P)
     err = np.sqrt(
-        ( np.sqrt(T_err**2 + T0_err**2)/(T-T0) )**2 + 
+        ( np.sqrt(T_err**2 + T0_err**2)/(T-T0) )**2 +
         (P_err/P)**2
     )
     E_err = N * err
     return E_err
 
 
-def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, comp_fnames=None, 
+def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, comp_fnames=None,
                 binsize=1, myLoc='.', ext=None, fnames=None, std_coords=None, std_mags=None):
     '''
     Takes a set of *CAM observations (and data on the system), and produces a set of phase folded lightcurves.
@@ -85,26 +85,26 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
         <CCD3 ap3 RA> <Dec>
 
     If not, I need a standard star reduction, and each .log file needs a corresponding .log reduction that uses the same parameters
-    to ensure an accurate match. These should be specified in comp_fnames. If none are supplied, try searching for a 
+    to ensure an accurate match. These should be specified in comp_fnames. If none are supplied, try searching for a
 
 
     Arguments:
     ----------
     oname: str
-        Template for written files. Applied to 
+        Template for written files. Applied to
 
     coords: str
         RA, Dec of target. Must in in a format astropy can understand.
-    
+
     obsname: str
         Observatory location. See astropy for a list of valid names
-    
+
     T0: float
         Ephemeris data
-    
+
     period: float
         Ephemeris data
-    
+
     SDSS: bool, optional
         If True, I'll do an SDSS lookup for the comparison star magnitudes. If False, use a standard star to calibrate
 
@@ -112,10 +112,10 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
         .log file containing a standard star reduction, to calibrate flux of comparisons
 
     comp_fnames: list, optional
-        list of comparison reductions that match the standard star reduction. 
+        list of comparison reductions that match the standard star reduction.
 
     binsize: int, optional
-        Binning of the data. 
+        Binning of the data.
 
     myLoc: str, optional
         Working directory. If not supplied, default to current working directory
@@ -152,11 +152,11 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
         if len(fnames) == 0:
             printer("  I couldn't find any log files! Stopping...")
             exit()
-    
+
     if comp_fnames == None:
         "I didn't get any comparison reductions. Please supply these!"
         raise NameError
-    
+
     # Check we have the same number of comparison reductions as we do target reductions
     if len(comp_fnames) != len(fnames):
         printer("Error! I got a different number of comparison reductions and target reductions!")
@@ -167,7 +167,7 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
         for f in fnames:
             printer(f)
         raise NameError
-    
+
     # Writing out
     try:
         os.mkdir('/'.join([myLoc, 'Reduced_Data', 'lightcurves']))
@@ -191,7 +191,7 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
     printer("  Correcting observations from MJD to BMJD (observed from '{}')".format(obsname))
 
     printer("  Phase folding data for a T0: {:}, period: {:}".format(T0, period))
-    
+
     # Where are we?
     observatory = coord.EarthLocation.of_site(obsname)
     star_loc = coord.SkyCoord(
@@ -209,25 +209,26 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
     with PdfPages(oname+'_all-nights.pdf') as pdf:
         for fname, refname in zip(fnames, comp_fnames):
 
-            printer("\n--------------------------------\n--------------------------------\n")
-            printer("Calibrating lightcurves for {}\n".format(fname))
+            printer("\n----------------------------------------------------------------\n----------------------------------------------------------------\n")
+            printer("Calibrating lightcurves for {}".format(fname))
+            printer("\n----------------------------------------------------------------\n----------------------------------------------------------------\n")
             data = hcam.hlog.Hlog.from_ascii(fname)
-            
+
             # Get the apertures of this data set
             aps = data.apnames
             CCDs = [str(i) for i in aps]
             CCDs = sorted(CCDs)
 
-            # I want altitude converted to zenith angle. Airmass is roughly constant over 
-            # a single eclipse so only do it once to save time.
-            obs_T = float(data['1'][0][1])
-            obs_T = time.Time(obs_T, format='mjd')
-            star_loc_AltAz = star_loc.transform_to(AltAz(obstime=obs_T, location=observatory))
-            zenith_angle = 90. - star_loc_AltAz.alt.value
-            airmass = 1. / np.cos(np.radians(zenith_angle))
-            printer("  For the night of {} (observing at {}), calculated altitude of {:.3f}, and airmass of {:.3f}".format(
-                fname.split('/')[-1], obs_T.iso, star_loc_AltAz.alt.value, airmass)
-            )
+            # # I want altitude converted to zenith angle. Airmass is roughly constant over
+            # # a single eclipse so only do it once to save time.
+            # obs_T = float(data['1'][0][1])
+            # obs_T = time.Time(obs_T, format='mjd')
+            # star_loc_AltAz = star_loc.transform_to(AltAz(obstime=obs_T, location=observatory))
+            # zenith_angle = 90. - star_loc_AltAz.alt.value
+            # airmass = 1. / np.cos(np.radians(zenith_angle))
+            # printer("  For the night of {} (observing at {}), calculated altitude of {:.3f}, and airmass of {:.3f}".format(
+            #     fname.split('/')[-1], obs_T.iso, star_loc_AltAz.alt.value, airmass)
+            # )
 
             # If we're in the SDSS field, grab the reference stars' magnitudes from their coords.
             if SDSS:
@@ -236,7 +237,7 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
                 reference_stars = construct_reference(refname)
             else:
                 printer("  Getting comparison star apparent magnitudes, from standard observation")
-                reference_stars = get_comparison_magnitudes(std_fname, refname, std_coords=std_coords, 
+                reference_stars = get_comparison_magnitudes(std_fname, refname, std_coords=std_coords,
                     comp_coords=coords, std_mags=std_mags, obsname=obsname, ext=ext)
 
             # Plotting area
@@ -256,31 +257,29 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
                     printer("I can't do relative photometry with only one aperture!")
                     printer("!!! Bad log file, '{}' !!!".format(fname))
                     exit()
-                
-                temp, temp_ax = plt.subplots()
 
                 # Grab the target data
                 target = data.tseries(CCD, '1')
-                
+
                 # First reference star
                 reference = data.tseries(CCD, '2')
-                
+
                 # Add up the reference star fluxes
                 for comp in ap[2:]:
                     reference = reference + data.tseries(CCD, comp)
                 # Take the mean
                 reference = reference / len(ap[1:])
                 printer("  Instrumental mean counts per frame ({} frames) of {} reference stars: {:.1f}".format(len(reference.y), len(ap[1:]), np.mean(reference.y)))
-                
-                ### <reference> is now a mean COUNT of the reference stars for each exposure ### 
+
+                ### <reference> is now a mean COUNT of the reference stars for each exposure ###
                 ## Calculate their actual mean flux from their apparent magnitudes
-                
+
                 # refs is a List of the relevant reference star magnitudes
                 mags = reference_stars[CCD]
 
                 fluxs = sdss_mag2flux(mags)
                 meanFlux = np.mean(fluxs) # Actual FLUX of reference
-                
+
                 printer("  Comparison star magnitudes:".format())
                 for m, mag in enumerate(mags):
                     printer("    Star {} -> {:.3f} mag".format(m, mag))
@@ -309,7 +308,7 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
                     while T0 + E*period > ratio.t[-1]:
                         printer("  !!! Eclipse time not within these data! Attempting to fix...")
                         E -= 1
-                    
+
                     printer("  I think that the eclipse spanning from {:.3f} to {:.3f} is cycle number {}".format(
                         ratio.t[0], ratio.t[-1], E)
                     )
@@ -319,7 +318,7 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
 
                     printer("")
 
-                
+
                 slice_time = (ratio.t - eclTime) / period
                 slice_args = (slice_time < 0.5)  *  (slice_time > -0.5)
 
@@ -332,10 +331,6 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
 
                 printer("  I sliced out {} data from the lightcurve".format(len(ratio.t)))
 
-                # print("  Binning the night of {} by {}".format(fname.split('/')[-1][:-4], binsize))
-                # ratio = ratio.bin(binsize)
-                
-
                 # Plotting
                 ratio.mplot(ax[CCD_int-1], colour=c[CCD_int])
                 ax[CCD_int-1].set_ylabel('Flux, mJy')
@@ -347,7 +342,8 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
                 with open(filename, 'w') as f:
                     f.write("# Phase, Flux, Err_Flux\n")
                     for t, y, ye, mask in zip(ratio.t, ratio.y, ratio.ye, ratio.mask):
-                        f.write("{} {} {}\n".format(t, y, ye))
+                        if not mask:
+                            f.write("{} {} {}\n".format(t, y, ye))
 
                 # Store the lightcurve in the master dict
                 try:
@@ -356,7 +352,7 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
                 except KeyError:
                     # Otherwise, create a new entry
                     master[CCD] = ratio
-                
+
                 printer("  Finished CCD {}\n".format(CCD))
                 del reference
                 del target
