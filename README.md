@@ -59,3 +59,24 @@ The following are all case-insensitive.
   - The previously known T0 of the system
 - *Writeparams* \[filename, str]: 
   - Write out all the parameters as they stand at that point, to the file given
+
+
+## Usage
+- getEclipseTimes:
+  - coords: Needed to correct the observation time to Barycentric MJD
+  - obsname: Observing location, for the same
+  - directory: The directory to search for .log files to analyse. Also saves eclipse times to this folder.
+- fitEphem:
+  - directory: The directory to search for prior eclipse times. Also saves the resulting corner plot from the fit.
+  - T0: Initial value
+  - Period: Initial value
+- combineData:
+  - oname: Naming template for created files.
+  - coords: RA and Dec of the target star.
+  - Observatory: Observatory location
+  - T0: Ephemeris data
+  - Period: Ephemeris data
+  - directory: Location to put created files. If it's 'Reduced_Data/\*', put it there, if not, create a subfolder called 'Reduced_Data' and puts stuff in that.
+  - logFileNames: Location of the target systems' .log files. 
+  - SDSS: Are we in the SDSS field?
+  - extinction: Extinction coeffiecients. 
