@@ -4,7 +4,6 @@ import numpy as np
 import sys
 import os
 
-from getKappa import getKappa
 from getEclipseTimes import getEclipseTimes
 from combineData import combineData
 from fitEphem import fitEphem
@@ -48,65 +47,65 @@ class Interpreter:
 
     def help(self):
         print('''
- This is an interpreter script that sits on top of a few data HiPERCAM/ULTRACAM reduction scripts I wrote to do calibrated photometry.
- As a warning, I keep my data in this kind of structure:
- - Object name
- -- Observing night 1
- -- Observing night 2
- -- ...
- -- Reduced_Data
- --- Night 1 reduction
- --- Night 2 reduction
- --- ...
+        This is an interpreter script that sits on top of a few data HiPERCAM/ULTRACAM reduction scripts I wrote to do calibrated photometry.
+        As a warning, I keep my data in this kind of structure:
+        - Object name
+        -- Observing night 1
+        -- Observing night 2
+        -- ...
+        -- Reduced_Data
+        --- Night 1 reduction
+        --- Night 2 reduction
+        --- ...
 
- If you want to ensure the script works properly, it's best to follow this convention.
+        If you want to ensure the script works properly, it's best to follow this convention.
 
- The following are all case-insensitive. A hash causes the interpreter to ignore the rest of the line.
+        The following are all case-insensitive. A hash causes the interpreter to ignore the rest of the line.
 
- - *binsize* [int]:
-   - CURRENTLY REMOVED. DO MANUALLY AFTER THE FACT.
- - *CombineData*:
-   - Triggers the actual flux calibration script, using the supplied parameters.
- - *ComparisonLogFiles*:
-   - Starts reading the input file for the comparison star reductions, reduced with the same settings as the standard.
-   - Reads each following line for a filename, until it finds a blank line.
- - *Coords* [RA, str] [Dec, str]:
-   - RA and Dec of the target star
- - *Directory* [str]:
-   - Change the working location of the script. If it doesn't exist, create it.
- - *Extinction* [CCD1, float] [CCD2, float] [CCD3, float] ...:
-   - Extinction coefficients, in order of CCD. i.e. for ULTRACAM, r', g', 'u.
- - *fitEphemeris*:
-   - Take the ephemeris data contained in eclipse_times.txt (if this doesn't exist, creates it), and fits period and T0 to it starting with the previously found values.
- - *GetEclipseTimes*:
-   - Search the directory supplied by the *directory* command for .log files, and uses them to search for eclipse times. Saves to file
- - *Help*:
-   - Print the help string
- - *LogFiles*:
-   - Read in filenames for the target reduction. One file per line, terminated by an empty line.
- - *Observatory* [str]:
-   - Change the observation location. Must be interpreted by Astropy ([list here](http://docs.astropy.org/en/stable/api/astropy.coordinates.EarthLocation.html#astropy.coordinates.EarthLocation.of_site))
- - *oname* [str]:
-   - User-supplied template for writing the lightcurve files.
- - *overplot* [filename, str] [band, str]:
-   - plots the lightcurves from the given band (e.g. u, g, r) and saves to the filename given
- - *Period* [P, float]:
-   - The previously known period of the system
- - *SDSS* [bool]:
-   - Tell the script whether we're in the SDSS field or not. If we are, do a lookup for comparison magnitudes. If not, use a standard star observation.
- - *StdCoords* [RA, str] [Dec, str]:
-   - RA and Dec of the standard observation, if we're not in the SDSS.
- - *StdLogfile* [file, str]:
-   - Tells the script where to look for the standard star reduction
- - *StdMags* [CCD1, float] [CCD2, float] [CCD3, float]...:
-   - The apparent magnitude of the standard star, in CCD order.
- - *Stop/Exit/Quit*:
-   - Halt the reduction
- - *T0* [T0, float]:
-   - The previously known T0 of the system
- - *Writeparams* [filename, str]:
-   - Write out all the parameters as they stand at that point, to the file given
- ''')
+        - *binsize* [int]:
+         - CURRENTLY REMOVED. DO MANUALLY AFTER THE FACT.
+        - *CombineData*:
+         - Triggers the actual flux calibration script, using the supplied parameters.
+        - *ComparisonLogFiles*:
+         - Starts reading the input file for the comparison star reductions, reduced with the same settings as the standard.
+         - Reads each following line for a filename, until it finds a blank line.
+        - *Coords* [RA, str] [Dec, str]:
+         - RA and Dec of the target star
+        - *Directory* [str]:
+         - Change the working location of the script. If it doesn't exist, create it.
+        - *Extinction* [CCD1, float] [CCD2, float] [CCD3, float] ...:
+         - Extinction coefficients, in order of CCD. i.e. for ULTRACAM, r', g', 'u.
+        - *fitEphemeris*:
+         - Take the ephemeris data contained in eclipse_times.txt (if this doesn't exist, creates it), and fits period and T0 to it starting with the previously found values.
+        - *GetEclipseTimes*:
+         - Search the directory supplied by the *directory* command for .log files, and uses them to search for eclipse times. Saves to file
+        - *Help*:
+         - Print the help string
+        - *LogFiles*:
+         - Read in filenames for the target reduction. One file per line, terminated by an empty line.
+        - *Observatory* [str]:
+         - Change the observation location. Must be interpreted by Astropy ([list here](http://docs.astropy.org/en/stable/api/astropy.coordinates.EarthLocation.html#astropy.coordinates.EarthLocation.of_site))
+        - *oname* [str]:
+         - User-supplied template for writing the lightcurve files.
+        - *overplot* [filename, str] [band, str]:
+         - plots the lightcurves from the given band (e.g. u, g, r) and saves to the filename given
+        - *Period* [P, float]:
+         - The previously known period of the system
+        - *SDSS* [bool]:
+         - Tell the script whether we're in the SDSS field or not. If we are, do a lookup for comparison magnitudes. If not, use a standard star observation.
+        - *StdCoords* [RA, str] [Dec, str]:
+         - RA and Dec of the standard observation, if we're not in the SDSS.
+        - *StdLogfile* [file, str]:
+         - Tells the script where to look for the standard star reduction
+        - *StdMags* [CCD1, float] [CCD2, float] [CCD3, float]...:
+         - The apparent magnitude of the standard star, in CCD order.
+        - *Stop/Exit/Quit*:
+         - Halt the reduction
+        - *T0* [T0, float]:
+         - The previously known T0 of the system
+        - *Writeparams* [filename, str]:
+         - Write out all the parameters as they stand at that point, to the file given
+        ''')
 
     def get_param(self, pname):
         try:
@@ -120,23 +119,6 @@ class Interpreter:
     def test(self, args):
         printer('Entered the testing function, with the arguments:\n  {}'.format(args))
         return None
-
-    def getKappa(self):
-        obsname    = self.get_param('obsname')
-        mags       = self.get_param('mags')
-        coords     = self.get_param('coords')
-        ext        = self.get_param('ext')
-        stdLogfile = self.get_param('stdLogfile')
-
-        printer("Computing instrumental magnitude to SDSS magnitude corrections...")
-
-        kappas = getKappa(stdLogfile, coords, obsname, mags, ext)
-        self.params['kappas'] = kappas
-
-        printer("Computed the following correction factors:\n  r': {:.3f}\n  g': {:.3f}\n  u': {:.3f}\n".format(
-            kappas[1], kappas[2], kappas[3]
-            )
-        )
 
     def getEclipseTimes(self):
         coords    = self.get_param('coords')
@@ -163,7 +145,7 @@ class Interpreter:
         obsname   = self.get_param('obsname')
         T0        = self.get_param('T0')
         period    = self.get_param('period')
-        binsize   = self.get_param('binsize')
+        binsize   = 1
         myLoc     = self.get_param('directory')
         fnames    = self.get_param('fnames')
         SDSS      = self.get_param('SDSS')
@@ -435,10 +417,8 @@ if __name__ == "__main__":
     f = sys.argv
 
     if len(f) == 1:
-        interp = Interpreter(prompt=['help'])
+        interp = Interpreter(prompt=True)
 
     if os.path.isfile(f[1]):
         infile = f[1]
         interp = Interpreter(inFile=infile)
-    else:
-        interp = Interpreter(prompt=True)
