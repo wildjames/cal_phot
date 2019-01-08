@@ -120,8 +120,8 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
     myLoc: str, optional
         Working directory. If not supplied, default to current working directory
 
-    ext: float, optional
-        Extinction coeffiecient, mags/airmass
+    ext: list, optional
+        Extinction coeffiecients, in order of CCD, mags/airmass
 
     fnames: list, optional
         List of target reduction files. If not supplied, searches for log files

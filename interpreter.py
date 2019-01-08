@@ -25,7 +25,7 @@ class Interpreter:
             'SDSS': 0
         }
         self.written_files = []
-        
+
         # parse file commands
         if inFile != None:
             header(inFile)
@@ -40,21 +40,73 @@ class Interpreter:
                 except ValueError:
                     break
             self.inFile.close()
-        
+
         if prompt:
             while True:
                 line = input("> ")
                 self.parse(line)
-    
+
     def help(self):
         print('''
-        This is an interpreter script that sits on top of a few data HiPERCAM/ULTRACAM reduction scripts I wrote to do calibrated photometry.
-        As a warning, I keep my data in this kind of structure:
-        - Object name
-        -- Observing night 1
-        -- Observing night 2
-        If you want to ensure the script works properly, it's best to follow this convention.
-        ''')
+ This is an interpreter script that sits on top of a few data HiPERCAM/ULTRACAM reduction scripts I wrote to do calibrated photometry.
+ As a warning, I keep my data in this kind of structure:
+ - Object name
+ -- Observing night 1
+ -- Observing night 2
+ -- ...
+ -- Reduced_Data
+ --- Night 1 reduction
+ --- Night 2 reduction
+ --- ...
+
+ If you want to ensure the script works properly, it's best to follow this convention.
+
+ The following are all case-insensitive. A hash causes the interpreter to ignore the rest of the line.
+
+ - *binsize* [int]:
+   - CURRENTLY REMOVED. DO MANUALLY AFTER THE FACT.
+ - *CombineData*:
+   - Triggers the actual flux calibration script, using the supplied parameters.
+ - *ComparisonLogFiles*:
+   - Starts reading the input file for the comparison star reductions, reduced with the same settings as the standard.
+   - Reads each following line for a filename, until it finds a blank line.
+ - *Coords* [RA, str] [Dec, str]:
+   - RA and Dec of the target star
+ - *Directory* [str]:
+   - Change the working location of the script. If it doesn't exist, create it.
+ - *Extinction* [CCD1, float] [CCD2, float] [CCD3, float] ...:
+   - Extinction coefficients, in order of CCD. i.e. for ULTRACAM, r', g', 'u.
+ - *fitEphemeris*:
+   - Take the ephemeris data contained in eclipse_times.txt (if this doesn't exist, creates it), and fits period and T0 to it starting with the previously found values.
+ - *GetEclipseTimes*:
+   - Search the directory supplied by the *directory* command for .log files, and uses them to search for eclipse times. Saves to file
+ - *Help*:
+   - Print the help string
+ - *LogFiles*:
+   - Read in filenames for the target reduction. One file per line, terminated by an empty line.
+ - *Observatory* [str]:
+   - Change the observation location. Must be interpreted by Astropy ([list here](http://docs.astropy.org/en/stable/api/astropy.coordinates.EarthLocation.html#astropy.coordinates.EarthLocation.of_site))
+ - *oname* [str]:
+   - User-supplied template for writing the lightcurve files.
+ - *overplot* [filename, str] [band, str]:
+   - plots the lightcurves from the given band (e.g. u, g, r) and saves to the filename given
+ - *Period* [P, float]:
+   - The previously known period of the system
+ - *SDSS* [bool]:
+   - Tell the script whether we're in the SDSS field or not. If we are, do a lookup for comparison magnitudes. If not, use a standard star observation.
+ - *StdCoords* [RA, str] [Dec, str]:
+   - RA and Dec of the standard observation, if we're not in the SDSS.
+ - *StdLogfile* [file, str]:
+   - Tells the script where to look for the standard star reduction
+ - *StdMags* [CCD1, float] [CCD2, float] [CCD3, float]...:
+   - The apparent magnitude of the standard star, in CCD order.
+ - *Stop/Exit/Quit*:
+   - Halt the reduction
+ - *T0* [T0, float]:
+   - The previously known T0 of the system
+ - *Writeparams* [filename, str]:
+   - Write out all the parameters as they stand at that point, to the file given
+ ''')
 
     def get_param(self, pname):
         try:
@@ -75,9 +127,9 @@ class Interpreter:
         coords     = self.get_param('coords')
         ext        = self.get_param('ext')
         stdLogfile = self.get_param('stdLogfile')
-        
+
         printer("Computing instrumental magnitude to SDSS magnitude corrections...")
-        
+
         kappas = getKappa(stdLogfile, coords, obsname, mags, ext)
         self.params['kappas'] = kappas
 
@@ -85,7 +137,7 @@ class Interpreter:
             kappas[1], kappas[2], kappas[3]
             )
         )
-        
+
     def getEclipseTimes(self):
         coords    = self.get_param('coords')
         obsname   = self.get_param('obsname')
@@ -94,8 +146,8 @@ class Interpreter:
         printer("Getting eclipse times from data...")
 
         getEclipseTimes(coords, obsname, myLoc=directory)
-        
-    
+
+
     def fitEphem(self):
         directory = self.get_param('directory')
         T0        = self.get_param('T0')
@@ -116,7 +168,7 @@ class Interpreter:
         fnames    = self.get_param('fnames')
         SDSS      = self.get_param('SDSS')
         ext       = self.get_param('ext')
-        
+
         printer("Combining, calibrating, and plotting data...")
         if SDSS:
             written_files = combineData(oname, coords, obsname, T0, period, SDSS=True, binsize=binsize,
@@ -127,14 +179,14 @@ class Interpreter:
             stdLogfile  = self.get_param('stdLogfile')
             stdCoords   = self.get_param('stdcoords')
             stdMags     = self.get_param('mags')
-            
+
             # ref_kappa = self.get_param('kappas')
             written_files = combineData(oname, coords, obsname, T0, period, SDSS=False,
-                binsize=binsize, myLoc=myLoc, fnames=fnames, comp_fnames=comparisons, 
+                binsize=binsize, myLoc=myLoc, fnames=fnames, comp_fnames=comparisons,
                 std_fname=stdLogfile, std_coords=stdCoords, std_mags=stdMags, ext=ext)
 
         self.written_files += written_files
-        
+
         printer("So far, I've written the following files:")
         for f in self.written_files:
             printer("-> {}".format(f))
@@ -146,7 +198,7 @@ class Interpreter:
         if '#' in line:
             cut = line.index('#')
             line = line[:cut]
-        
+
         if line == '':
             command = None
             args = []
@@ -160,7 +212,7 @@ class Interpreter:
                 args = []
 
         # print("  Command: {}\n  args: {}".format(command, args))
-        
+
         ## Housekeeping commands
         if   command == 'test':
             self.test(args)
@@ -195,7 +247,7 @@ class Interpreter:
             obsname = args[0]
             self.params['obsname'] = obsname
             printer("Observing location: {}".format(obsname))
-        
+
         elif command == 'coords':
             # Changes the coordinates of the object you're about to talk about.
             if len(args) < 2:
@@ -207,12 +259,12 @@ class Interpreter:
                 coords.replace(':', ' ')
                 self.params['coords'] = coords
                 printer("Using the following star coordinates:\n  RA:  {}\n  Dec: {}".format(args[0], args[1]))
-        
+
         elif command == 'extinction':
             ext = [float(i) for i in args]
             self.params['ext'] = ext
             printer("Extinction coefficients (in order of CCD): {}".format(ext))
-        
+
         elif command == 'writeparams':
             if args == None:
                 paramname = 'reduction_params.txt'
@@ -232,7 +284,7 @@ class Interpreter:
             SDSS = args[0] in ['y', '1', 'yes', 'true']
             self.params['SDSS'] = SDSS
             printer("Are we in the SDSS field? [{}]".format(SDSS))
-        
+
         elif command == 'stdcoords':
             # Changes the coordinates of the object you're about to talk about.
             if len(args) < 2:
@@ -251,13 +303,13 @@ class Interpreter:
             stdLogfile = args[0]
             self.params['stdLogfile'] = stdLogfile
             printer("Using the standard star in this log file,\n  {}".format(stdLogfile))
-        
+
         elif command == 'comparisonlogfiles':
             # Read in log filenames, terminated by an empty line, i.e. in the format:
             # logfiles
             # file1
             # file2
-            # file3 
+            # file3
             #
             # <continue>
             fnames = []
@@ -270,7 +322,7 @@ class Interpreter:
                     # If the hash is in the first space, read the next line
                     else:
                         line = self.inFile.readline().strip()
-                if line != '': 
+                if line != '':
                     fnames.append(line)
                 line = self.inFile.readline().strip()
 
@@ -295,29 +347,12 @@ class Interpreter:
                 printer("  r': {:.3f}\n  g': {:.3f}\n  u': {:.3f}".format(
                     mags[0], mags[1], mags[2]
                 ))
-        
-
-
-        # getKappa stuff <-- Depricated!
-        elif command == 'getkappa':
-            self.getKappa()
-        
-        elif command == 'kappa_corr':
-            kappas = [np.nan, np.nan, np.nan, np.nan]
-            kappas[1:] = [float(x) for x in args[:3]]
-            self.params['kappas']
-
-            printer("Using the Kappa Corrections:")
-            printer("  r': {}\n  g': {}\n  u': {}".format(
-                kappas[1], kappas[2], kappas[3]
-            ))
-
 
 
         # Eclipse times, and ephemeris stuff
         elif command == 'geteclipsetimes':
             self.getEclipseTimes()
-        
+
         elif command == 'period':
             period = float(args[0])
             self.params['period'] = period
@@ -347,13 +382,13 @@ class Interpreter:
             binsize = int(args[0])
             self.params['binsize'] = binsize
             printer("Binning data by {}".format(binsize))
-            
+
         elif command == 'logfiles':
             # Read in logfilenames, terminated by an empty line, i.e. in the format:
             # logfiles
             # file1
             # file2
-            # file3 
+            # file3
             #
             # <continue>
             fnames = []
@@ -366,10 +401,10 @@ class Interpreter:
                     # If the hash is in the first space, read the next line
                     else:
                         line = self.inFile.readline().strip()
-                if line != '': 
+                if line != '':
                     fnames.append(line)
                 line = self.inFile.readline().strip()
-            
+
             self.params['fnames'] = fnames
 
             printer("Using the following logfiles:")
@@ -377,7 +412,7 @@ class Interpreter:
                 printer("- {}".format(fname))
             printer("")
 
-        # plotAll 
+        # plotAll
         elif command == 'overplot':
             if args != []:
                 oname = args[0]
