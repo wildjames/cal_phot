@@ -274,8 +274,11 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
                 ### <reference> is now a mean COUNT of the reference stars for each exposure ###
                 ## Calculate their actual mean flux from their apparent magnitudes
 
-                # refs is a List of the relevant reference star magnitudes
-                mags = reference_stars[CCD]
+                # mags is a list of the relevant reference star magnitudes
+                mags = reference_stars[CCD][1:]
+
+                if len(mags) != len(ap[1:]):
+                    printer("!!!!!---- len(mags): {} --- len(reference): {}".format(len(mags), len(ap[1:])))
 
                 fluxs = sdss_mag2flux(mags)
                 meanFlux = np.mean(fluxs) # Actual FLUX of reference
