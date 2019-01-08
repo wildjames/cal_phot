@@ -4,6 +4,7 @@ from pprint import pprint
 import os
 import hipercam as hcam
 import numpy as np
+from copy import deepcopy
 
 from astropy import time, coordinates as coord, units as u
 from astropy.coordinates import AltAz
@@ -243,10 +244,9 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
         instrumental magnitudes, in the order they're found in the aperture list.
     '''
     printer("------- Getting instrumental magnitude -------")
-    #TODO: I need to make the extinction coefficient different in each band.
 
     if coords != None and obsname != None:
-        printer("-> I'm correcting for airmass, using the following:")
+        printer("  I'm correcting for airmass, using the following:")
         printer("     Extinction: {} mags/airmass".format(ext))
         printer("        Ra, Dec: {}".format(coords))
         printer("    Observatory: {}".format(obsname))
@@ -267,6 +267,7 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
         printer("  For the observations at {}, calculated altitude of {:.3f}, and airmass of {:.3f}\n".format(
             obs_T.iso, star_loc_AltAz.alt.value, airmass))
     else:
+        printer("  No coordinates or observatory provided, setting airmass to 0.0")
         airmass = 0.0
 
 
@@ -298,10 +299,9 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
         
         # If we have more than one star, handle that
         if len(ap) > 1:
-            for comp in ap[2:]:
+            for comp in ap[1:]:
                 # Store the star in a temp variable
                 s = data.tseries(CCD, comp)
-                star = star + s
 
                 # Get the count flux of the star
                 fl = np.zeros(len(s.y))
@@ -313,18 +313,13 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
                 mag = -2.5*np.log10(np.mean(fl))
                 mags.append(mag)
         
-        printer("  CCD {} extinction: {:.3f} mags".format(CCD, ex*airmass))
         
         mags = np.array(mags)
         
-        printer("    Before applying extinction correction:")
-        printer(mags)
-
         # Add the light lost to atmosphere back in
+        printer("  CCD {} extinction: {:.3f} mags".format(CCD, ex*airmass))
         mags = mags - (ex*airmass)
 
-        printer("    After extinction correction:")
-        printer(mags)
 
         all_mags[CCD] = mags
     return all_mags
@@ -392,10 +387,9 @@ def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords,
     instrumental_comp_mags = get_instrumental_mags(comp_data, comp_coords, obsname, ext)
 
     # Get a copy of the dict
-    apparent_comp_mags = instrumental_comp_mags.copy()
+    apparent_comp_mags = deepcopy(instrumental_comp_mags)
     # For each CCD, subtract the zero points to convert to an apparent magnitude
     for i, CCD in enumerate(apparent_comp_mags):
-        printer("CCD: {} - i: {}".format(CCD, i))
         apparent_comp_mags[CCD] -= zero_points[i]
 
     printer("\n  Comparison star instrumental magnitudes:")
