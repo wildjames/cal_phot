@@ -23,7 +23,7 @@ def plot_all(files, oname, band):
                     '#f781bf', '#a65628', '#984ea3',
                     '#999999', '#e41a1c', '#dede00']
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=[12,8])
 
     d = np.loadtxt(files[0], delimiter=' ')
     d = np.transpose(d)
