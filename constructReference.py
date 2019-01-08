@@ -388,8 +388,15 @@ def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords,
         printer("    CCD {}: {:3.3f}".format(i, m))
 
     printer("\n----------------- COMPARISON -----------------")
+    # Get the comparison instrumental mags, in the taget frame
     instrumental_comp_mags = get_instrumental_mags(comp_data, comp_coords, obsname, ext)
 
+    # Get a copy of the dict
+    apparent_comp_mags = instrumental_comp_mags.copy()
+    # For each CCD, subtract the zero points to convert to an apparent magnitude
+    for i, CCD in enumerate(apparent_comp_mags):
+        printer("CCD: {} - i: {}".format(CCD, i))
+        apparent_comp_mags[CCD] -= zero_points[i]
 
     printer("\n  Comparison star instrumental magnitudes:")
     for CCD in instrumental_comp_mags:
@@ -397,9 +404,6 @@ def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords,
             np.array2string(instrumental_comp_mags[CCD], precision=3) ))
 
     printer("\n  Comparison star apparent magnitudes:")
-    apparent_comp_mags = instrumental_comp_mags.copy()
-    for i, CCD in enumerate(apparent_comp_mags):
-        apparent_comp_mags[CCD] -= zero_points[i]
     for CCD in apparent_comp_mags:
         printer("    CCD {}: {}".format(CCD, 
             np.array2string(apparent_comp_mags[CCD], precision=3) ))
