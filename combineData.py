@@ -153,20 +153,23 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
             printer("  I couldn't find any log files! Stopping...")
             exit()
 
-    if comp_fnames == None:
-        "I didn't get any comparison reductions. Please supply these!"
-        raise NameError
+    if SDSS:
+        comp_fnames = [x.replace('.log', '.coords') for x in fnames]
+    else:
+        if comp_fnames == None:
+            "I didn't get any comparison reductions. Please supply these!"
+            raise NameError
 
-    # Check we have the same number of comparison reductions as we do target reductions
-    if len(comp_fnames) != len(fnames):
-        printer("Error! I got a different number of comparison reductions and target reductions!")
-        printer("Comparisons:")
-        for f in comp_fnames:
-            printer(f)
-        printer("\nTargets:")
-        for f in fnames:
-            printer(f)
-        raise NameError
+        # Check we have the same number of comparison reductions as we do target reductions
+        if len(comp_fnames) != len(fnames):
+            printer("Error! I got a different number of comparison reductions and target reductions!")
+            printer("Comparisons:")
+            for f in comp_fnames:
+                printer(f)
+            printer("\nTargets:")
+            for f in fnames:
+                printer(f)
+            raise NameError
 
     # Writing out
     try:
@@ -219,21 +222,9 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
             CCDs = [str(i) for i in aps]
             CCDs = sorted(CCDs)
 
-            # # I want altitude converted to zenith angle. Airmass is roughly constant over
-            # # a single eclipse so only do it once to save time.
-            # obs_T = float(data['1'][0][1])
-            # obs_T = time.Time(obs_T, format='mjd')
-            # star_loc_AltAz = star_loc.transform_to(AltAz(obstime=obs_T, location=observatory))
-            # zenith_angle = 90. - star_loc_AltAz.alt.value
-            # airmass = 1. / np.cos(np.radians(zenith_angle))
-            # printer("  For the night of {} (observing at {}), calculated altitude of {:.3f}, and airmass of {:.3f}".format(
-            #     fname.split('/')[-1], obs_T.iso, star_loc_AltAz.alt.value, airmass)
-            # )
-
             # If we're in the SDSS field, grab the reference stars' magnitudes from their coords.
             if SDSS:
                 printer("  Looking up SDSS magnitudes from the database")
-                refname         = refname.replace('.log', '.coords')
                 reference_stars = construct_reference(refname)
             else:
                 printer("  Getting comparison star apparent magnitudes, from standard observation")
@@ -275,7 +266,9 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
                 ## Calculate their actual mean flux from their apparent magnitudes
 
                 # mags is a list of the relevant reference star magnitudes
-                mags = reference_stars[CCD][1:]
+                mags = reference_stars[CCD]
+                if not SDSS:
+                    mags = mags[1:]
 
                 if len(mags) != len(ap[1:]):
                     printer("!!!!!---- len(mags): {} --- len(reference): {}".format(len(mags), len(ap[1:])))
