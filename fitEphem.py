@@ -32,29 +32,29 @@ import time
 
 def fitEphem(myLoc, T0, period, simple=False):
     """
-    Takes eclipse time data from a file, and fits ephemeris parameters (T0, period) to them 
-    from an initial guess. 
+    Takes eclipse time data from a file, and fits ephemeris parameters (T0, period) to them
+    from an initial guess.
 
     There are two fitting options available: simple and complex.
-    simple: 
+    simple:
         Fits a simple linear regression fit to the data. Report the minimum chisq params
     complex:
-        Uses an MCMC chain and a gaussian process to fit the data. Also considers that the 
+        Uses an MCMC chain and a gaussian process to fit the data. Also considers that the
         reported error is not accurate, and allows data from different sources to have their
         error bars scaled to get a chisq closer to unity. This is far more reliable and accurate,
-        but takes significantly longer to run. 
+        but takes significantly longer to run.
 
     Arguments:
     ----------
     myLoc: str
         Tells the function where to look for both logfiles and prior eclipse data
-    
+
     T0: float
         Initial guess for T0
-    
+
     period: float
         Initial guess for the period
-    
+
     simple: bool
         If true, use a linear regression fit on the data. If false, use an MCMC chain.
 
@@ -101,14 +101,14 @@ def fitEphem(myLoc, T0, period, simple=False):
         # Use Stu's version of the fitting, which considers error
         def model(pars,x):
             return pars[0] + pars[1]*x
-            
+
         def chisq(pars,x,y,yerr):
             resids = ( y - model(pars,x) ) / yerr
             return np.sum(resids*resids)
-            
+
         def reducedChisq(pars,x,y,yerr):
             return chisq(pars,x,y,yerr) / (len(x) - len(pars) - 1)
-            
+
         def ln_likelihood(pars,x,y,yerr,obsCodes):
             errs = yerr.copy()
             # scale errors by amount set by observatory code
@@ -116,7 +116,7 @@ def fitEphem(myLoc, T0, period, simple=False):
             multipliers  = emul_factors[obsCodes-1]
             errs = errs*multipliers
             return -0.5*(np.sum( np.log( 2.0*np.pi*errs**2 ) ) + chisq(pars,x,y,errs))
-        
+
         def ln_prior(pars):
             lnp = 0.0
             # only priors are on error scaling - assume good to 2 orders of magnitude
@@ -124,8 +124,8 @@ def fitEphem(myLoc, T0, period, simple=False):
             for param in pars[2:]:
                 lnp += prior.ln_prob(param)
             return lnp
-        
-        def ln_prob(pars,x,y,yerr,obsCodes): 
+
+        def ln_prob(pars,x,y,yerr,obsCodes):
             lnp = ln_prior(pars)
             if np.isfinite(lnp):
                 return lnp + ln_likelihood(pars,x,y,yerr,obsCodes)
@@ -135,19 +135,19 @@ def fitEphem(myLoc, T0, period, simple=False):
         # p = [T0, period]
         def fitfunc(p,x):
             return p[0] + p[1]*x
-        
+
 
         # Get the number of sources, which will each have their errors scaled differently
         numObs = len(source_key)
 
-        
+
         # Set up the MCMC chain.
         npars = 2+numObs                # The parameters are the T0, P, and the error scale of each source
-        nwalkers = max(16,4*(2+numObs)) # The number of walklers wants to be at least 16, 
+        nwalkers = max(16,4*(2+numObs)) # The number of walklers wants to be at least 16,
                                         # or enough to sample our parameter space properly
         params = np.lib.polynomial.polyfit(x,y,1).tolist() # just fit times and cycle numbers to get guesses
         params = params[::-1]
-        
+
         # Construct a list of parameters for the model, i.e. T0, P, and the error scale factor of each source
         nameList = ['T0','P']
         for i, key in enumerate(source_key):
@@ -167,7 +167,7 @@ def fitEphem(myLoc, T0, period, simple=False):
 
         #production
         sampler.reset()
-        nprod = 4000
+        nprod = 9000
         sampler = mu.run_mcmc_save(sampler,pos,nprod,state,"chain.txt")
         chain = mu.flatchain(sampler.chain,npars,thin=1)
 
