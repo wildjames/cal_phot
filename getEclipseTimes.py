@@ -199,12 +199,12 @@ def read_ecl_file(fname):
     ----------
     fname: string
         The eclipse file to be read in
-    
+
     Returns:
     --------
     source_key: dict
         A dictionary, where each key ( str(int) ) corresponds to the source (string)
-    
+
     tl: list
         A 2D list containing the cycle number, eclipse time, their error, and source key for each data
     '''
@@ -246,9 +246,9 @@ def write_ecl_file(source_key, tl, oname):
     ----------
     source_key: dict
         A dict, with keys of '1', '2', '3', etc, where each key corresponds to a source string
-    
+
     tl: numpy.array
-        An array of shape (N, 4), containing the cycle number, eclipse time, time error, and source ID 
+        An array of shape (N, 4), containing the cycle number, eclipse time, time error, and source ID
         of N eclipses
 
     Returns:
@@ -280,13 +280,13 @@ def getEclipseTimes(coords, obsname, myLoc=None):
     '''
     Searches <myLoc> for .log files, and uses them to get the times of the eclipses.
 
-    The technique for this is to make a smoothed plot of the numerical gradient, and look for two mirrored peaks - one 
-    where the lightcurve enters eclipse (showing as a trough in gradient), and one for egress (showing as a peak in 
+    The technique for this is to make a smoothed plot of the numerical gradient, and look for two mirrored peaks - one
+    where the lightcurve enters eclipse (showing as a trough in gradient), and one for egress (showing as a peak in
     gradient). Ideally, they will be mirrors of each other, with the same width and height (though one will be the negative
-    of the other). 
+    of the other).
 
-    A double gaussian is fitted to it using a gaussian process, and the midpoint between their peaks is taken to be the 
-    eclipse time. To characterise the error of the eclipse time, an MCMC is used to sample the found fit. This is beefy, 
+    A double gaussian is fitted to it using a gaussian process, and the midpoint between their peaks is taken to be the
+    eclipse time. To characterise the error of the eclipse time, an MCMC is used to sample the found fit. This is beefy,
     and takes a while, but the Hessian we were getting out of scipy.optimize was heavily dependant on initial conditions,
     so was untrustworthy.
 
@@ -321,28 +321,28 @@ def getEclipseTimes(coords, obsname, myLoc=None):
     oname = 'eclipse_times.txt'
     oname = '/'.join([myLoc, oname])
     source_key, tl = read_ecl_file(oname)
-    
+
     # What am I using to get new data from?
     printer("Grabbing log files...")
     fnames = list(glob.iglob('{}/**/*.log'.format(myLoc), recursive=True))
-    
+
 
     if len(fnames) == 0:
         printer("I couldn't find any log files in:")
         printer("{}".format(myLoc))
         raise FileNotFoundError
-    
+
     # List the files we found
     printer("Found these log files: ")
     for i, fname in enumerate(fnames):
         printer("  {:>2d} - {}".format(i, fname))
     printer('  ')
-    
+
     for lf in fnames:
         # lets make the file reading more robust
         log = Hlog.from_ascii(lf)
         aps = log.apnames
-        
+
         printer("File: {}".format(lf))
         if len(aps['2']) < 2:
             printer("-> Not looking for eclipses in {}, as only one aperture in the file.".format(lf))
@@ -392,7 +392,7 @@ def getEclipseTimes(coords, obsname, myLoc=None):
         # Fit for the maximum likelihood parameters
         initial_params = gp.get_parameter_vector()
         bounds = gp.get_parameter_bounds()
-        
+
 
         # Find a solution using Stu's minimisation method
         soln = minimize(neg_log_like, initial_params, jac=grad_neg_log_like,
@@ -403,7 +403,7 @@ def getEclipseTimes(coords, obsname, myLoc=None):
 
         gp.set_parameter_vector(soln.x)
         mean_model.set_parameter_vector(gp.get_parameter_vector()[2:])
-        
+
         out = soln['x']
         t_ecl = out[2]
 
@@ -414,13 +414,13 @@ def getEclipseTimes(coords, obsname, myLoc=None):
         ndim     = 6
         nwalkers = 100
 
-        # Initial positions. 
+        # Initial positions.
         p0 = np.random.rand(ndim * nwalkers).reshape((nwalkers, ndim))
         scatter = 0.0005 # Scatter by ~ 40s in time
         p0 *= scatter
         p0 -= (scatter/2)
         p0 = np.transpose(np.repeat(out, nwalkers).reshape((ndim, nwalkers))) + p0
-        
+
         # print(86400*(p0[:,2] - np.transpose(np.repeat(out, nwalkers).reshape((ndim, nwalkers)))[:,2]))
 
         # Construct a sampler
@@ -436,14 +436,14 @@ def getEclipseTimes(coords, obsname, myLoc=None):
             n = int((width+1) * float(i) / nsteps)
             sys.stdout.write("\r  Burning in...    [{}{}]".format('#'*n, ' '*(width - n)))
         pos, prob, state = result
-        
+
         # Data
         sampler.reset()
         nsteps = 2000
 
         for i, result in enumerate(sampler.sample(pos, iterations=nsteps)):
             n = int((width+1) * float(i) / nsteps)
-            sys.stdout.write("\r  Sampling data... [{}{}]".format('#'*n, ' '*(width - n))) 
+            sys.stdout.write("\r  Sampling data... [{}{}]".format('#'*n, ' '*(width - n)))
         print("")
 
         # chain = sampler.flatchain
@@ -474,7 +474,7 @@ def getEclipseTimes(coords, obsname, myLoc=None):
         ax[0].plot(x, mean_model.get_value(x), 'k-')
         ax[0].axvline(t_ecl, color='magenta')
         ax[0].set_xlim(left=t_ecl-(1*sep), right=t_ecl+(1*sep))
-        
+
         gband_corr.mplot(ax[1])
 
         ax[0].set_title("maximum likelihood prediction - {}".format(lf.split('/')[-1]))
@@ -501,7 +501,7 @@ def getEclipseTimes(coords, obsname, myLoc=None):
             printer("  Did not store eclipse time from {}.".format(lf))
         plt.close()
         printer("")
-    
+
     printer("\nDone all the files!")
 
     write_ecl_file(source_key, tl, oname)
@@ -512,4 +512,4 @@ def getEclipseTimes(coords, obsname, myLoc=None):
     # - Might be best to force the user to do this manually, to make it more reliable?
     printer("This string might help:\ncode {}".format(path.abspath(oname)))
     printer("Please open the file, and edit in the eclipse numbers for each one.")
-    inputer("Hit enter when you've done this!")
+    input("Hit enter when you've done this!")
