@@ -2,36 +2,32 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 files = [
-    # 'MASJ0014_0_2016-08-22_r.calib',
-    # 'MASJ0014_0_2016-08-23_r.calib',
-    # 'MASJ0014_0_2016-08-24_r.calib',
-    # 'MASJ0014_0_2016-08-25_r.calib',
-    # 'MASJ0014_1_2016-11-07_r.calib',
-    # 'MASJ0014_1_2017-06-09_r.calib',
-    # 'MASJ0014_1_2017-06-11_r.calib'
+  'ASASSN-16kr_2018-10-12_r.calib',
+  'ASASSN-16kr_2018-10-15_r.calib',
+'ASASSN-16kr_2018-10-16_A_r.calib',
+'ASASSN-16kr_2018-10-16_B_r.calib',
 ]
 binsize = len(files)
 
+print("Binning by {}".format(binsize))
 
 master_ts = []
 master_fl = []
 master_fe = []
 
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(2, figsize=[8, 6], sharex=True, sharey=True)
 for file in files:
     data = np.loadtxt(file, delimiter=' ')
     ts = data[:,0]
     fl = data[:,1]
     fe = data[:,2]
 
-    ax.step(ts, fl, label=file)
+    ax[1].step(ts, fl, label=file)
 
     master_ts += list(ts)
     master_fl += list(fl)
     master_fe += list(fe)
 
-plt.legend()
-plt.show(block=False)
 
 master_ts = np.array(master_ts)
 master_fl = np.array(master_fl)
@@ -56,15 +52,21 @@ while end < len(master_ts):
     i += 1
     end = i*binsize
 
+    err = master_fe[beg:end] ** 2
+    err = np.mean(err)
+    err = np.sqrt(err)
+
     bin_ts.append(np.mean(master_ts[beg:end]))
     bin_fl.append(np.mean(master_fl[beg:end]))
-    bin_fe.append(np.mean(master_fe[beg:end]))
+    bin_fe.append(err)
 
+ax[0].step(bin_ts, bin_fl)
 
-fig, ax = plt.subplots()
-ax.step(bin_ts, bin_fl)
+plt.legend()
+plt.tight_layout()
 plt.show(block=False)
 
+print("The result has {} data points.".format(len(bin_ts)))
 cont = input("Write to a file? y/n: ")
 if cont.lower()[0] == 'y':
     oname = input("Enter a filename: ")
