@@ -52,6 +52,10 @@ class PlotPoints:
             print('  added point at {:.1f}, {:.1f}'.format(event.xdata, event.ydata))
             self.xcoords = np.append(self.xcoords, event.xdata)
             self.ycoords = np.append(self.ycoords, event.ydata)
+        if 'r' in event.key:
+            self.xcoords = np.array([])
+            self.ycoords = np.array([])
+
         if self.xcoords.size == 2:
             self.disconnect()
             closeplot()
