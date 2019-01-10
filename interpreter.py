@@ -169,6 +169,8 @@ class Interpreter:
 
         self.written_files += written_files
 
+        self.written_files = sorted(self.written_files)
+
         printer("So far, I've written the following files:")
         for f in self.written_files:
             printer("-> {}".format(f))
