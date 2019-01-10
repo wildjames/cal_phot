@@ -168,7 +168,7 @@ def fitEphem(myLoc, T0, period, simple=False):
         #production
         sampler.reset()
         nprod = 9000
-        sampler = mu.run_mcmc_save(sampler,pos,nprod,state,"chain.txt")
+        sampler = mu.run_mcmc_save(sampler,pos,nprod,state,"{}/ephemerisChain.txt".format(myLoc))
         chain = mu.flatchain(sampler.chain,npars,thin=1)
 
         # Gather and report the best values
