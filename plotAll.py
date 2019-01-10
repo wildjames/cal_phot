@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from logger import printer
 
 def plot_all(files, oname, band):
     '''
@@ -7,18 +8,18 @@ def plot_all(files, oname, band):
 
     Returns None
     '''
-    print("")
+    printer("")
     if oname == '':
-        print("  Saving overplotted eclipses to 'overplotted_eclipses.pdf'")
+        printer("  Saving overplotted eclipses to 'overplotted_eclipses.pdf'")
         oname = 'overplotted_eclipses'
 
     # filter the files so we only have green lightcurves
-    print("  Plotting the following {} lightcurves:".format(band))
+    printer("  Plotting the following {} lightcurves:".format(band))
     files = [x for x in files if '_{}.calib'.format(band) in x]
     for f in files:
-        print("    - {}".format(f))
+        printer("    - {}".format(f))
 
-    
+
     CB_color_cycle = ['#377eb8', '#ff7f00', '#4daf4a',
                     '#f781bf', '#a65628', '#984ea3',
                     '#999999', '#e41a1c', '#dede00']
