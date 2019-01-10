@@ -202,8 +202,8 @@ def fitEphem(myLoc, T0, period, simple=False):
         printer("\nChisq = {:.1f}, with {:d} degrees of freedom".format(chisq, int(x.size - 2)))
 
     ### Reporting
-    printer("Got a T0 of     {:>5.10f}+/-{:<.2e}".format(T0, T0_err))
-    printer("Got a period of {:>5.10f}+/-{:<.2e}".format(P, P_err))
+    printer("Got a T0 of     {:>5.15f}+/-{:<.2e}".format(T0, T0_err))
+    printer("Got a period of {:>5.15f}+/-{:<.2e}".format(P, P_err))
     printer("This fit had a reduced chisq value of {:.3f}".format(chisq))
     printer('')
     printer("Source          |  (Obs) - (Calc), sec | Cycle Number")
