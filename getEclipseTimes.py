@@ -325,7 +325,7 @@ def getEclipseTimes(coords, obsname, myLoc=None):
     # What am I using to get new data from?
     printer("Grabbing log files...")
     fnames = list(glob.iglob('{}/**/*.log'.format(myLoc), recursive=True))
-
+    fnames = sorted(fnames)
 
     if len(fnames) == 0:
         printer("I couldn't find any log files in:")
