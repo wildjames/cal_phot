@@ -1,19 +1,21 @@
 import json
 import requests
-from pprint import pprint
 import os
-import hipercam as hcam
-import numpy as np
 from copy import deepcopy
 
+import numpy as np
+import matplotlib.pyplot as plt
+
 from astropy import time, coordinates as coord, units as u
+from astropy.stats import sigma_clipped_stats
 from astropy.coordinates import AltAz
 
+import hipercam as hcam
 from logger import printer
 
 '''
 
-This script is going to take a list of co-ordinates, and use that to query SDSS for the magnitudes 
+This script is going to take a list of co-ordinates, and use that to query SDSS for the magnitudes
 of those stars.
 
 SDSS REST format:
@@ -40,22 +42,30 @@ It will construct a dict of the magnitudes from the result and return it.
 
 '''
 
+def robust_mag(cps):
+    '''Converts a list of fluxes
+
+    '''
+    mean, median, sigma = sigma_clipped_stats(cps, iters=2, sigma=3)
+    return -2.5*np.log10(mean)
+
+
 def deg2arcsec(inp, ra):
     sign = '+'
     if inp < 0:
         inp = -inp
         sign = '-'
-    
+
     if ra:
         hh = (24./360.) * inp
     else:
         hh = inp
     mm = (hh - int(hh)) * 60
     ss = (mm - int(mm)) * 60
-    
+
     hh = int(hh)
     mm = int(mm)
-    
+
     output = '{}{:d}:{:d}:{:.2f}'.format(sign, hh, mm, ss)
 
     return output
@@ -87,7 +97,7 @@ def construct_reference(fetchFname):
     ----------
     fetchFname: string
         File containing the RA and Dec of the stars, in the format above
-    
+
 
     Returns:
     --------
@@ -105,7 +115,7 @@ def construct_reference(fetchFname):
         "2": [],
         "3": []
     }
-    
+
     if not os.path.isfile(fetchFname):
         printer("The file I was passed, {}, does not exist!".format(fetchFname))
         # Check that we;ve not been given a directory with a 'coord_list' file in it:
@@ -175,8 +185,6 @@ def construct_reference(fetchFname):
 
             resp = requests.post(url)
 
-            # pprint(resp.json())
-
             results = resp.json()[0]['Rows']
             if len(results) >= 5:
                 printer('You got a lot of results from the SDSS query! Choose from the following VERY carefully.')
@@ -185,7 +193,7 @@ def construct_reference(fetchFname):
                 # Get the user to pick one:
                 for m, line in enumerate(results):
                     printer("{}\n  RA: {}, Dec: {}\n  u: {}\n  g: {}\n  r: {}".format(
-                        m, line['ra'], line['dec'], 
+                        m, line['ra'], line['dec'],
                         line['u'], line['g'], line['r']
                         )
                     )
@@ -198,7 +206,7 @@ def construct_reference(fetchFname):
                 ra = deg2arcsec(target['ra'], ra=True)
                 dec = deg2arcsec(target['dec'], ra=False)
                 printer("    Found one result:\n      ra: {}, dec: {}\n        u: {}\n        g: {}\n        r: {}".format(
-                        ra, dec, 
+                        ra, dec,
                         target['u'], target['g'], target['r']
                         )
                     )
@@ -212,7 +220,7 @@ def construct_reference(fetchFname):
             toWrite[CCD].append(
                 target[ bands[int(CCD)] ]
             )
-    
+
         toWrite[CCD] = np.array(toWrite[CCD])
 
     printer("Done!\n")
@@ -224,23 +232,23 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
 
     If Coords and an observatory are supplied, also correct for airmass, using supplied extinction coeffiecients
 
-    
+
     Arguments:
     ----------
     data: hipercam.Tseries
         The data to analyse
-    
+
     coords: str
         Optional. Ra, Dec of the data. Must be readable by Astropy.
-    
+
     obsname: str
-        Optional. Observing location name of the data. 
+        Optional. Observing location name of the data.
 
 
     Returns:
     --------
     all_mags: dict
-        Dict, with the keys corresponding to the CCD numbers. Each entry is a numpy array of the 
+        Dict, with the keys corresponding to the CCD numbers. Each entry is a numpy array of the
         instrumental magnitudes, in the order they're found in the aperture list.
     '''
     printer("------- Getting instrumental magnitude -------")
@@ -250,14 +258,14 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
         printer("     Extinction: {} mags/airmass".format(ext))
         printer("        Ra, Dec: {}".format(coords))
         printer("    Observatory: {}".format(obsname))
-        
+
         # Where are we?
         observatory = coord.EarthLocation.of_site(obsname)
         star_loc = coord.SkyCoord(
             coords,
             unit=(u.hourangle, u.deg), frame='icrs')
 
-        # I want altitude converted to zenith angle. Airmass is roughly constant over 
+        # I want altitude converted to zenith angle. Airmass is roughly constant over
         # a single eclipse so only do it once to save time.
         obs_T = float(data['1'][0][1])
         obs_T = time.Time(obs_T, format='mjd')
@@ -273,9 +281,9 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
 
     all_mags = {}
     aps = data.apnames
+    CCDs = [str(i+1) for i, key in enumerate(aps)]
 
-
-    for CCD in aps:
+    for CCD in CCDs:
         # Get this frame's apertures
         ap = sorted(aps[CCD])
 
@@ -283,20 +291,31 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
 
         star = data.tseries(CCD, '1')
 
-        # mean star counts/s, converted to magnitudes
-        fl = np.zeros(len(star.y))
-
-        # I have to loop through the exposure times manually, as I can't figure out how to extract them with a built-in
-        # and they're stored as a weird object that doesn't have a slice option...
-        for i, count in enumerate(star.y):
-            # the third column, data[CCD][i][3], contains the exposure time for that frame
-            fl[i] = count / data[CCD][i][3]
+        # star counts/s
+        fl = star.y / data[CCD]['Exptim']
 
         # Calculate the mean apparent magnitude of the star above the atmosphere
-        mag = -2.5*np.log10(np.mean(fl))
+        mag = robust_mag(fl)
         # star magnitudes
         mags = [mag]
-        
+
+        # mean, median, sigma = sigma_clipped_stats(fl, iters=2, sigma=3)
+        # regMean = np.mean(fl)
+        # printer("CCD {}, Aperture {} clipped mean count flux: {:.3f}".format(CCD, '1', mean))
+
+        # fig, ax = plt.subplots(figsize=[8,6])
+        # ax.scatter([i for i, val in enumerate(fl)], fl, color='black')
+        # # Poissonian error only
+        # ax.errorbar([i for i, val in enumerate(fl)], fl, np.sqrt(fl), linestyle='', color='black')
+        # ax.axhline(mean, color='black', linestyle='--')
+        # ax.axhline(regMean, color='red', linestyle='--')
+
+        # ax.set_title('{}\nCCD {}, Ap {} - Poissonian errors - mean flux = {:.3f} counts/s'.format(
+        #     obs_T.iso, CCD, '1', mean))
+        # ax.set_xlabel('Frame')
+        # ax.set_ylabel('Flux, counts/s')
+        # plt.show()
+
         # If we have more than one star, handle that
         if len(ap) > 1:
             for comp in ap[1:]:
@@ -304,31 +323,30 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
                 s = data.tseries(CCD, comp)
 
                 # Get the count flux of the star
-                fl = np.zeros(len(s.y))
-                for i, count in enumerate(s.y):
-                    #               \/ This is the exposure time for that frame
-                    fl[i] = count / float(data[CCD][i][3])
+                fl = s.y / data[CCD]['Exptim']
 
                 # Instrumental magnitude
-                mag = -2.5*np.log10(np.mean(fl))
+                mag = robust_mag(fl)
+                printer("CCD {}, Ap {}, mag: {:.3f}".format(CCD, comp, mag-(ex*airmass)))
                 mags.append(mag)
-        
-        
+
+
         mags = np.array(mags)
-        
+
         # Add the light lost to atmosphere back in
         printer("  CCD {} extinction: {:.3f} mags".format(CCD, ex*airmass))
         mags = mags - (ex*airmass)
 
 
-        all_mags[CCD] = mags
+        all_mags[CCD] = np.array(mags)
+        del mags
     return all_mags
 
 def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords,
                                 std_mags, obsname, ext):
     '''
     Takes two .log files, one containing the reduction of a standard star and the other the reduction of
-    the target frame, using the same settings (aperture size, extraction method, etc.). Uses this to 
+    the target frame, using the same settings (aperture size, extraction method, etc.). Uses this to
     compute the apparent magnitudes of comparison stars in comp_fname
 
     Requires the RA and Dec to correct for airmass.
@@ -361,45 +379,60 @@ def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords,
     standard_data = hcam.hlog.Hlog.from_ascii(std_fname)
     comp_data     = hcam.hlog.Hlog.from_ascii(comp_fname)
 
-    printer("-----------------  STANDARD  -----------------")
     # Extract the instrumental magnitudes of the standard
     instrumental_std_mags = get_instrumental_mags(standard_data, std_coords, obsname, ext)
-    # Convert the dict recieved into a list
-    instrumental_std_mags = [instrumental_std_mags[str(i+1)][0] for i in range(len(instrumental_std_mags))]
-    instrumental_std_mags = np.array(instrumental_std_mags)
+
+    # Convert the dict recieved into an array, so that we have the zero points [r, g, b, ..] in CCD order
+    # instrumental_std_mags = [instrumental_std_mags[str(i+1)][0] for i, _ in enumerate(instrumental_std_mags)]
+    temp = []
+    for i, CCD in enumerate(instrumental_std_mags):
+        temp.append( instrumental_std_mags[str(i+1)][0] )
+    instrumental_std_mags = np.array(temp)
+
     # The zero points are the difference between observed and expected.
     zero_points = instrumental_std_mags - std_mags
-    
-    printer("\n  Standard star instrumental magnitudes: ")
-    for i, m in enumerate(instrumental_std_mags):
-        printer("    CCD {}: {:3.3f}".format(i, m))
-    
-    printer("\n  Standard Star SDSS magnitudes:")
-    for i, m in enumerate(std_mags):
-        printer("    CCD {}: {:3.3f}".format(i, m))
-    
-    printer("\n  Zero points in each band (in order of CCD, will be subtracted from the inst. mags):")
-    for i, m in enumerate(zero_points):
-        printer("    CCD {}: {:3.3f}".format(i, m))
 
-    printer("\n----------------- COMPARISON -----------------")
+
     # Get the comparison instrumental mags, in the taget frame
     instrumental_comp_mags = get_instrumental_mags(comp_data, comp_coords, obsname, ext)
+
+    # Discard the variable star magnitude
+    for i, CCD in enumerate(instrumental_comp_mags):
+        instrumental_comp_mags[str(i+1)] = instrumental_comp_mags[str(i+1)][1:]
 
     # Get a copy of the dict
     apparent_comp_mags = deepcopy(instrumental_comp_mags)
     # For each CCD, subtract the zero points to convert to an apparent magnitude
     for i, CCD in enumerate(apparent_comp_mags):
-        apparent_comp_mags[CCD] -= zero_points[i]
+        apparent_comp_mags[str(i+1)] -= zero_points[i]
 
+
+
+
+    printer("-----------------  STANDARD  -----------------")
+    printer("\n  Standard star instrumental magnitudes: ")
+    for i, m in enumerate(instrumental_std_mags):
+        printer("    CCD {}: {:3.3f}".format(i+1, m))
+
+    printer("\n  Standard Star SDSS magnitudes:")
+    for i, m in enumerate(std_mags):
+        printer("    CCD {}: {:3.3f}".format(i+1, m))
+
+    printer("\n  Zero points in each band (in order of CCD, will be subtracted from the inst. mags):")
+    for i, m in enumerate(zero_points):
+        printer("    CCD {}: {:3.3f}".format(i+1, m))
+
+    printer("\n----------------- COMPARISON -----------------")
     printer("\n  Comparison star instrumental magnitudes:")
-    for CCD in instrumental_comp_mags:
-        printer("    CCD {}: {}".format(CCD, 
+    for i, _ in enumerate(instrumental_comp_mags):
+        CCD = str(i+1)
+        printer("    CCD {}: {}".format(CCD,
             np.array2string(instrumental_comp_mags[CCD], precision=3) ))
 
     printer("\n  Comparison star apparent magnitudes:")
-    for CCD in apparent_comp_mags:
-        printer("    CCD {}: {}".format(CCD, 
+    for i, _ in enumerate(instrumental_comp_mags):
+        CCD = str(i+1)
+        printer("    CCD {}: {}".format(CCD,
             np.array2string(apparent_comp_mags[CCD], precision=3) ))
 
     printer('\n  --- Done getting magnitudes ---\n\n')

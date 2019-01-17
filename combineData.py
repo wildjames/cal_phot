@@ -1,10 +1,14 @@
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+
 import numpy as np
+
 import os
 import copy
+
 from astropy import time, coordinates as coord, units as u
 from astropy.coordinates import AltAz
+from astropy.stats import sigma_clipped_stats
 
 import hipercam as hcam
 from constructReference import construct_reference, get_comparison_magnitudes
@@ -260,21 +264,23 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
                     reference = reference + data.tseries(CCD, comp)
                 # Take the mean
                 reference = reference / len(ap[1:])
-                printer("  Instrumental mean counts per frame ({} frames) of {} reference stars: {:.1f}".format(len(reference.y), len(ap[1:]), np.mean(reference.y)))
+                printer("  Instrumental mean counts per frame ({} frames) of {} reference stars: {:.1f}".format(
+                    len(reference.y), len(ap[1:]), np.mean(reference.y)
+                ))
 
                 ### <reference> is now a mean COUNT of the reference stars for each exposure ###
                 ## Calculate their actual mean flux from their apparent magnitudes
 
                 # mags is a list of the relevant reference star magnitudes
                 mags = reference_stars[CCD]
-                if not SDSS:
-                    mags = mags[1:]
+
 
                 if len(mags) != len(ap[1:]):
                     printer("!!!!!---- len(mags): {} --- len(reference): {}".format(len(mags), len(ap[1:])))
 
                 fluxs = sdss_mag2flux(mags)
-                meanFlux = np.mean(fluxs) # Actual FLUX of reference
+                # meanFlux, medianFlux, sigmaFlux = sigma_clipped_stats(fluxs, iters=2, sigma=3)
+                meanFlux  = np.mean(fluxs) # Actual FLUX of constructed comparison star
 
                 printer("  Comparison star magnitudes:".format())
                 for m, mag in enumerate(mags):
