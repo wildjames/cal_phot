@@ -318,16 +318,15 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
 
         # If we have more than one star, handle that
         if len(ap) > 1:
-            for comp in ap[1:]:
-                # Store the star in a temp variable
-                s = data.tseries(CCD, comp)
+            for comp in ap:
+                star = data.tseries(CCD, comp)
 
-                # Get the count flux of the star
-                fl = s.y / data[CCD]['Exptim']
+                # star counts/s
+                fl = star.y / data[CCD]['Exptim']
 
-                # Instrumental magnitude
+                # Calculate the mean apparent magnitude of the star above the atmosphere
                 mag = robust_mag(fl)
-                printer("CCD {}, Ap {}, mag: {:.3f}".format(CCD, comp, mag-(ex*airmass)))
+                printer("  Pre-ext correct: CCD {}, Ap {}, mag: {:.3f}".format(CCD, comp, mag))
                 mags.append(mag)
 
 
