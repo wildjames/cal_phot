@@ -141,6 +141,7 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
     written_files: list
         List of created .calib files.
     '''
+    nCCD = 3
 
     ## First, find the logfiles we want to use
     if fnames==None:
@@ -212,10 +213,24 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
     written_files = []
 
 
+    # Plotting area
+    print("Making plotting area...")
+    plt.ion()
+    fig, ax = plt.subplots(nCCD, figsize=[12, 8], sharex=True)
+    for a in ax:
+        a.set_ylabel('Flux, mJy')
+    ax[-1].set_xlabel('Phase, days')
+    ax[0].set_title('Waiting for data...')
+    fig.tight_layout()
+
+    compFig, compAx = plt.subplots(3, figsize=[12, 8], sharex=True,)
+    compFig.tight_layout()
+    plt.show()
+    print("Done!")
+
     # I want a master pdf file with all the nights' lightcurves plotted
     with PdfPages(oname+'_all-nights.pdf') as pdf:
         for fname, refname in zip(fnames, comp_fnames):
-
             printer("\n----------------------------------------------------------------\n----------------------------------------------------------------\n")
             printer("Calibrating lightcurves for {}".format(fname))
             printer("\n----------------------------------------------------------------\n----------------------------------------------------------------\n")
@@ -235,8 +250,11 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
                 reference_stars = get_comparison_magnitudes(std_fname, refname, std_coords=std_coords,
                     comp_coords=coords, std_mags=std_mags, obsname=obsname, ext=ext)
 
-            # Plotting area
-            fig, ax = plt.subplots(3, figsize=[12, 8])
+            for a in ax:
+                    a.clear()
+                    a.set_ylabel('Flux, mJy')
+            ax[-1].set_xlabel('Phase, days')
+            ax[0].set_title('Waiting for data...')
 
             # Loop through the CCDs.
             ### For each CCD, grab the target lightcurve, and the comparisons
@@ -247,7 +265,7 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
 
                 # Get this frame's apertures
                 ap = aps[CCD]
-                # Check that there is more than one aperture -- i.e. if a reference star exists
+                # Check that there is more than one aperture -- i.e. if a comparison star exists
                 if len(ap) == 1:
                     printer("I can't do relative photometry with only one aperture!")
                     printer("!!! Bad log file, '{}' !!!".format(fname))
@@ -256,46 +274,78 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
                 # Grab the target data
                 target = data.tseries(CCD, '1')
 
-                # First reference star
-                reference = data.tseries(CCD, '2')
+                # First comparison star
+                comparison = data.tseries(CCD, '2')
+
+                # Plot the comparison we construct
+                compAx[CCD_int-1].clear()
+                compAx[CCD_int-1].set_title("CCD {}, comparison star".format(CCD))
+                compAx[-1].set_xlabel("Time, days")
+                compAx[CCD_int-1].set_ylabel("Counts per frame")
+
+                # First comparison plot
+                compAx[CCD_int-1].scatter(comparison.t, comparison.y,
+                    label='Aperture 2', alpha=0.3, s=10
+                )
 
                 # Add up the reference star fluxes
-                for comp in ap[2:]:
-                    reference = reference + data.tseries(CCD, comp)
-                # Take the mean
-                reference = reference / len(ap[1:])
-                printer("  Instrumental mean counts per frame ({} frames) of {} reference stars: {:.1f}".format(
-                    len(reference.y), len(ap[1:]), np.mean(reference.y)
-                ))
+                N = 1
+                for a in ap[2:]:
+                    N += 1
+                    comparison = comparison + data.tseries(CCD, a)
 
-                ### <reference> is now a mean COUNT of the reference stars for each exposure ###
+                    compAx[CCD_int-1].scatter(data.tseries(CCD, a).t, data.tseries(CCD, a).y,
+                        s=10,
+                        label="Aperture {}".format(a),
+                        alpha=0.3
+                    )
+
+                # Take the mean
+                comparison = comparison / N
+
+                # Plot the mean count flux on the figure
+                compAx[CCD_int-1].scatter(comparison.t, comparison.y, s=5, label='Mean', color='black')
+                compAx[CCD_int-1].axhline(np.mean(comparison.y), linestyle='--', color='black')
+
+
+                ### <comparison> is now a mean COUNT of the comparison stars for each exposure ###
                 ## Calculate their actual mean flux from their apparent magnitudes
 
-                # mags is a list of the relevant reference star magnitudes
+                # mags is a list of the relevant comparison star magnitudes.
+                # For non-SDSS fields, this is the clipped mean magnitude of each object.
                 mags = reference_stars[CCD]
 
 
-                if len(mags) != len(ap[1:]):
-                    printer("!!!!!---- len(mags): {} --- len(reference): {}".format(len(mags), len(ap[1:])))
+                if len(mags) != N:
+                    print(N)
+                    print(ap)
+                    print(mags)
+                    printer("!!!!!---- len(mags): {} --- len(comparison): {}".format(len(mags), len(ap[1:])))
 
                 fluxs = sdss_mag2flux(mags)
                 # meanFlux, medianFlux, sigmaFlux = sigma_clipped_stats(fluxs, iters=2, sigma=3)
                 meanFlux  = np.mean(fluxs) # Actual FLUX of constructed comparison star
 
-                printer("  Comparison star magnitudes:".format())
+                printer("  Comparison star apparent SDSS magnitudes:".format())
                 for m, mag in enumerate(mags):
                     printer("    Star {} -> {:.3f} mag".format(m, mag))
                 printer("")
                 printer("  Apparent fluxes of the comparison stars:")
                 for i, flux in enumerate(fluxs):
                     printer("    Star {} -> {:.3f} mJy".format(i, flux))
-                printer('  Mean Flux: {:.3f} mJy\n'.format(meanFlux))
-                printer("  mJy per count: {:.3e}".format(meanFlux/np.mean(reference.y)))
+                printer('  Mean apparent Flux: {:.3f} mJy\n'.format(meanFlux))
+                printer("  Instrumental mean counts per frame ({} frames) of {} comparison stars: {:.1f}".format(
+                    len(comparison.y), len(ap[1:]), np.mean(comparison.y)
+                ))
+                printer("  mJy per count: {:.3e}".format(meanFlux/np.mean(comparison.y)))
+
+
 
                 # Conversion of target lightcurve
-                reference = reference / meanFlux # Counts/mJy
-                ratio = target / reference # mJy
+                comparison = comparison / meanFlux # Counts/mJy
+                ratio = target / comparison # mJy
 
+                printer("  Correcting data to BMJD time...")
                 ratio = tcorrect(ratio, star_loc, obsname)
 
                 if CCD == '1':
@@ -331,16 +381,27 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
                     ratio.mask[slice_args]
                     )
 
-                printer("  I sliced out {} data from the lightcurve".format(len(ratio.t)))
+                printer("  I sliced out {} data from the lightcurve about the eclipse.".format(len(ratio.t)))
 
                 # Plotting
+                ax[CCD_int-1].clear()
+                if CCD_int == 1:
+                    ax[0].set_title(fname.split('/')[-1])
                 ratio.mplot(ax[CCD_int-1], colour=c[CCD_int])
                 ax[CCD_int-1].set_ylabel('Flux, mJy')
+
+                compAx[CCD_int-1].legend()
+                plt.tight_layout()
+                compFig.canvas.draw_idle()
+
+
+                # File handling stuff
                 filename = oname
                 filename = filename.replace('Reduced_Data', 'Reduced_Data/lightcurves')
                 filename = "{}_{}_{}.calib".format(filename, fname.split('/')[-1][:-4], band[CCD_int])
                 written_files.append(filename)
 
+                # Saving data
                 with open(filename, 'w') as f:
                     f.write("# Phase, Flux, Err_Flux\n")
                     for t, y, ye, mask in zip(ratio.t, ratio.y, ratio.ye, ratio.mask):
@@ -355,18 +416,23 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
                     # Otherwise, create a new entry
                     master[CCD] = ratio
 
+
                 printer("  Finished CCD {}\n".format(CCD))
-                del reference
+                del comparison
                 del target
                 del ratio
 
-            ax[0].set_title(fname.split('/')[-1])
-            ax[2].set_xlabel('Phase, days')
-
+            ax[-1].set_xlabel('Phase, days')
+            ax[0].relim()
+            ax[0].autoscale_view()
             plt.tight_layout()
-            pdf.savefig()
-            plt.close()
+            fig.canvas.draw_idle()
+
+            input("\n  Hit enter for next file\r")
+            print()
+            pdf.savefig(fig)
     printer("  ")
     plt.close('all')
+    plt.ioff()
 
     return written_files
