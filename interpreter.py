@@ -13,6 +13,9 @@ from logger import printer, header
 
 class Interpreter:
     def __init__(self, inFile=None, prompt=False):
+        # Resize the terminal
+        sys.stdout.write("\x1b[8;{rows};{cols}t".format(rows=110, cols=80))
+
         # Initialise variables. Store args in a dict.
         self.params = {
             'T0': None,

@@ -318,7 +318,7 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
 
         # If we have more than one star, handle that
         if len(ap) > 1:
-            for comp in ap:
+            for comp in ap[1:]:
                 star = data.tseries(CCD, comp)
 
                 # star counts/s
@@ -326,7 +326,7 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
 
                 # Calculate the mean apparent magnitude of the star above the atmosphere
                 mag = robust_mag(fl)
-                printer("  Pre-ext correct: CCD {}, Ap {}, mag: {:.3f}".format(CCD, comp, mag))
+                # printer("  Pre-ext correct: CCD {}, Ap {}, mag: {:.3f}".format(CCD, comp, mag))
                 mags.append(mag)
 
 
@@ -382,11 +382,7 @@ def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords,
     instrumental_std_mags = get_instrumental_mags(standard_data, std_coords, obsname, ext)
 
     # Convert the dict recieved into an array, so that we have the zero points [r, g, b, ..] in CCD order
-    # instrumental_std_mags = [instrumental_std_mags[str(i+1)][0] for i, _ in enumerate(instrumental_std_mags)]
-    temp = []
-    for i, CCD in enumerate(instrumental_std_mags):
-        temp.append( instrumental_std_mags[str(i+1)][0] )
-    instrumental_std_mags = np.array(temp)
+    instrumental_std_mags = [instrumental_std_mags[str(i+1)][0] for i, _ in enumerate(instrumental_std_mags)]
 
     # The zero points are the difference between observed and expected.
     zero_points = instrumental_std_mags - std_mags
@@ -395,16 +391,12 @@ def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords,
     # Get the comparison instrumental mags, in the taget frame
     instrumental_comp_mags = get_instrumental_mags(comp_data, comp_coords, obsname, ext)
 
-    # Discard the variable star magnitude
+    # Discard the variable star magnitude, and do the zero point correction
+    apparent_comp_mags = {}
     for i, CCD in enumerate(instrumental_comp_mags):
-        instrumental_comp_mags[str(i+1)] = instrumental_comp_mags[str(i+1)][1:]
-
-    # Get a copy of the dict
-    apparent_comp_mags = deepcopy(instrumental_comp_mags)
-    # For each CCD, subtract the zero points to convert to an apparent magnitude
-    for i, CCD in enumerate(apparent_comp_mags):
-        apparent_comp_mags[str(i+1)] -= zero_points[i]
-
+        ccd = str(i+1)
+        instrumental_comp_mags[ccd] = instrumental_comp_mags[ccd][1:]
+        apparent_comp_mags[ccd] = instrumental_comp_mags[ccd] - zero_points[i]
 
 
 
