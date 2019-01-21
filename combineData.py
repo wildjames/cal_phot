@@ -217,8 +217,14 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
     print("Making plotting area...")
     plt.ion()
     fig, ax = plt.subplots(nCCD, figsize=[12, 8], sharex=True)
-    for a in ax:
+    twinAx = []
+    for i, a in enumerate(ax):
         a.set_ylabel('Flux, mJy')
+
+        twinAx.append(a.twinx())
+        twinAx[i].set_ylabel('Count Ratio')
+        twinAx[i].yaxis.tick_right()
+
     ax[-1].set_xlabel('Phase, days')
     ax[0].set_title('Waiting for data...')
     fig.tight_layout()
@@ -283,30 +289,20 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
                 compAx[-1].set_xlabel("Time, days")
                 compAx[CCD_int-1].set_ylabel("Counts per frame")
 
-                # First comparison plot
-                compAx[CCD_int-1].scatter(comparison.t, comparison.y,
-                    label='Aperture 2', alpha=0.3, s=10
-                )
+                # # First comparison plot
+                # compAx[CCD_int-1].scatter(comparison.t, comparison.y,
+                #     label='Aperture 2', alpha=0.3, s=10
+                # )
 
                 # Add up the reference star fluxes
                 N = 1
                 for a in ap[2:]:
                     N += 1
                     comparison = comparison + data.tseries(CCD, a)
-
-                    compAx[CCD_int-1].scatter(data.tseries(CCD, a).t, data.tseries(CCD, a).y,
-                        s=10,
-                        label="Aperture {}".format(a),
-                        alpha=0.3
-                    )
+                    print("added ap {}".format(a))
 
                 # Take the mean
                 comparison = comparison / N
-
-                # Plot the mean count flux on the figure
-                compAx[CCD_int-1].scatter(comparison.t, comparison.y, s=5, label='Mean', color='black')
-                compAx[CCD_int-1].axhline(np.mean(comparison.y), linestyle='--', color='black')
-
 
                 ### <comparison> is now a mean COUNT of the comparison stars for each exposure ###
                 ## Calculate their actual mean flux from their apparent magnitudes
@@ -323,9 +319,11 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
                     printer("!!!!!---- len(mags): {} --- len(comparison): {}".format(len(mags), len(ap[1:])))
 
                 fluxs = sdss_mag2flux(mags)
-                # meanFlux, medianFlux, sigmaFlux = sigma_clipped_stats(fluxs, iters=2, sigma=3)
+                # Don't take the clipped mean here, as the meanFlux is the mean, mean flux of our comparison stars,
+                #
                 meanFlux  = np.mean(fluxs) # Actual FLUX of constructed comparison star
 
+                ## Reporting
                 printer("  Comparison star apparent SDSS magnitudes:".format())
                 for m, mag in enumerate(mags):
                     printer("    Star {} -> {:.3f} mag".format(m, mag))
@@ -340,10 +338,9 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
                 printer("  mJy per count: {:.3e}".format(meanFlux/np.mean(comparison.y)))
 
 
-
                 # Conversion of target lightcurve
-                comparison = comparison / meanFlux # Counts/mJy
-                ratio = target / comparison # mJy
+                cnt_per_flx = comparison / meanFlux # Counts/mJy
+                ratio = target / cnt_per_flx # mJy
 
                 printer("  Correcting data to BMJD time...")
                 ratio = tcorrect(ratio, star_loc, obsname)
@@ -383,12 +380,38 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
 
                 printer("  I sliced out {} data from the lightcurve about the eclipse.".format(len(ratio.t)))
 
-                # Plotting
+                # Plotting management
                 ax[CCD_int-1].clear()
                 if CCD_int == 1:
                     ax[0].set_title(fname.split('/')[-1])
-                ratio.mplot(ax[CCD_int-1], colour=c[CCD_int])
                 ax[CCD_int-1].set_ylabel('Flux, mJy')
+
+                # Scale the right labels
+                twinAx[CCD_int-1].set_ylim(ax[CCD_int-1].get_ylim() / meanFlux)
+
+                # Plot the ratio
+                ratio.mplot(ax[CCD_int-1], colour=c[CCD_int])
+
+                # # Plot the mean count flux on the figure -- only used when single aperture, as not as useful as ratios
+                if len(ap) == 2:
+                    compAx[CCD_int-1].scatter(comparison.t, comparison.y, s=5, label='Mean', color='black')
+                    compAx[CCD_int-1].axhline(np.mean(comparison.y), linestyle='--', color='black')
+
+                # Plot each combination of comparison star ratios, i.e. for 3 comparisons: 2/3, 2/4, 3/4
+                for i, a in enumerate(ap[1:-1]):
+                    first = data.tseries(CCD, a)
+                    for b in ap[i+2:]:
+                        print("Plotting ap {}/{}".format(a, b))
+                        toPlot = first / data.tseries(CCD, b)
+
+                        mean, _, _ = sigma_clipped_stats(toPlot.y, iters=2, sigma=3)
+                        compAx[CCD_int-1].axhline(mean, linestyle='--', color='black')
+                        compAx[CCD_int-1].scatter(toPlot.t, toPlot.y,
+                            s=10,
+                            label="Aperture {}/{}".format(a, b),
+                            alpha=0.5
+                        )
+
 
                 compAx[CCD_int-1].legend()
                 plt.tight_layout()
