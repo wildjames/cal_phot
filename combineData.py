@@ -207,8 +207,8 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
         unit=(u.hourangle, u.deg), frame='icrs'
     )
 
-    band = ['', 'r',   'g',     'u'   ]
-    c    = ['', 'red', 'green', 'blue']
+    band = ['r',   'g',     'u'   ]
+    c    = ['red', 'green', 'blue']
     master = {}
     written_files = []
 
@@ -265,7 +265,7 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
             # Loop through the CCDs.
             ### For each CCD, grab the target lightcurve, and the comparisons
             for CCD in CCDs:
-                CCD_int = int(CCD)
+                CCD_int = int(CCD) - 1
 
                 printer("  CCD {}".format(CCD))
 
@@ -284,13 +284,12 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
                 comparison = data.tseries(CCD, '2')
 
                 # Plot the comparison we construct
-                compAx[CCD_int-1].clear()
-                compAx[CCD_int-1].set_title("CCD {}, comparison star".format(CCD))
-                compAx[-1].set_xlabel("Time, days")
-                compAx[CCD_int-1].set_ylabel("Counts per frame")
+                compAx[CCD_int].clear()
+                compAx[CCD_int].set_title("CCD {}, comparison star".format(CCD))
+                compAx[CCD_int].set_ylabel("Counts per frame")
 
                 # # First comparison plot
-                # compAx[CCD_int-1].scatter(comparison.t, comparison.y,
+                # compAx[CCD_int].scatter(comparison.t, comparison.y,
                 #     label='Aperture 2', alpha=0.3, s=10
                 # )
 
@@ -313,10 +312,11 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
 
 
                 if len(mags) != N:
-                    print(N)
-                    print(ap)
-                    print(mags)
-                    printer("!!!!!---- len(mags): {} --- len(comparison): {}".format(len(mags), len(ap[1:])))
+                    printer("  Target reduction filename:    {}".format(fname))
+                    printer("  Standard reduction filename:  {}".format(refname))
+                    printer("!!!!! Number of comparison magnitudes in standard star reduction: {}".format(len(mags)))
+                    printer("!!!!! Number of comparison stars in target reduction: {}".format(len(ap[1:])))
+                    input("Hit <Enter> to continue")
 
                 fluxs = sdss_mag2flux(mags)
                 # Don't take the clipped mean here, as the meanFlux is the mean, mean flux of our comparison stars,
@@ -381,42 +381,39 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
                 printer("  I sliced out {} data from the lightcurve about the eclipse.".format(len(ratio.t)))
 
                 # Plotting management
-                ax[CCD_int-1].clear()
-                if CCD_int == 1:
+                ax[CCD_int].clear()
+                if CCD_int == 0:
                     ax[0].set_title(fname.split('/')[-1])
-                ax[CCD_int-1].set_ylabel('Flux, mJy')
+                ax[CCD_int].set_ylabel('Flux, mJy')
 
                 # Scale the right labels
-                twinAx[CCD_int-1].set_ylim(ax[CCD_int-1].get_ylim() / meanFlux)
+                twinAx[CCD_int].set_ylim( ax[CCD_int].get_ylim() / meanFlux )
 
                 # Plot the ratio
-                ratio.mplot(ax[CCD_int-1], colour=c[CCD_int])
+                ratio.mplot(ax[CCD_int], colour=c[CCD_int])
 
                 # # Plot the mean count flux on the figure -- only used when single aperture, as not as useful as ratios
                 if len(ap) == 2:
-                    compAx[CCD_int-1].scatter(comparison.t, comparison.y, s=5, label='Mean', color='black')
-                    compAx[CCD_int-1].axhline(np.mean(comparison.y), linestyle='--', color='black')
+                    compAx[CCD_int].scatter(comparison.t, comparison.y, s=5, label='Mean', color='black')
+                    compAx[CCD_int].axhline(np.mean(comparison.y), linestyle='--', color='black')
+                else:
+                    # Plot each combination of comparison star ratios, i.e. for 3 comparisons: 2/3, 2/4, 3/4
+                    for i, a in enumerate(ap[1:-1]):
+                        first = data.tseries(CCD, a)
+                        for b in ap[i+2:]:
+                            print("Plotting ap {}/{}".format(a, b))
+                            toPlot = first / data.tseries(CCD, b)
 
-                # Plot each combination of comparison star ratios, i.e. for 3 comparisons: 2/3, 2/4, 3/4
-                for i, a in enumerate(ap[1:-1]):
-                    first = data.tseries(CCD, a)
-                    for b in ap[i+2:]:
-                        print("Plotting ap {}/{}".format(a, b))
-                        toPlot = first / data.tseries(CCD, b)
+                            mean, _, _ = sigma_clipped_stats(toPlot.y, iters=2, sigma=3)
+                            compAx[CCD_int].axhline(mean, linestyle='--', color='black')
+                            compAx[CCD_int].scatter(toPlot.t, toPlot.y,
+                                s=10,
+                                label="Aperture {}/{}".format(a, b),
+                                alpha=0.3
+                            )
 
-                        mean, _, _ = sigma_clipped_stats(toPlot.y, iters=2, sigma=3)
-                        compAx[CCD_int-1].axhline(mean, linestyle='--', color='black')
-                        compAx[CCD_int-1].scatter(toPlot.t, toPlot.y,
-                            s=10,
-                            label="Aperture {}/{}".format(a, b),
-                            alpha=0.5
-                        )
-
-
-                compAx[CCD_int-1].legend()
-                plt.tight_layout()
-                compFig.canvas.draw_idle()
-
+                # Add in legend artist
+                compAx[CCD_int].legend()
 
                 # File handling stuff
                 filename = oname
@@ -439,17 +436,20 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
                     # Otherwise, create a new entry
                     master[CCD] = ratio
 
-
                 printer("  Finished CCD {}\n".format(CCD))
-                del comparison
-                del target
-                del ratio
 
             ax[-1].set_xlabel('Phase, days')
-            ax[0].relim()
-            ax[0].autoscale_view()
+
+            x_range = [min(ratio.t), max(ratio.t)]
+            ax[0].set_xlim(x_range)
+
+            x_range = [min(comparison.t), max(comparison.t)]
+            compAx[0].set_xlim(x_range)
+
             plt.tight_layout()
+
             fig.canvas.draw_idle()
+            compFig.canvas.draw_idle()
 
             input("\n  Hit enter for next file\r")
             print()
