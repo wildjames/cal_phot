@@ -235,14 +235,17 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
 
     Arguments:
     ----------
-    data: hipercam.Tseries
-        The data to analyse
+    data: hipercam.Hlog
+        The data to analyse. tseries will be extracted from here.
 
     coords: str
         Optional. Ra, Dec of the data. Must be readable by Astropy.
 
     obsname: str
         Optional. Observing location name of the data.
+
+    ext: list-like
+        Optional. Extinction corrections to apply, given in CCD order. i.e. [<CCD1 ext>, <CCD2 ext>, ...]
 
 
     Returns:
@@ -270,8 +273,8 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
         obs_T = float(data['1'][0][1])
         obs_T = time.Time(obs_T, format='mjd')
         star_loc_AltAz = star_loc.transform_to(AltAz(obstime=obs_T, location=observatory))
-        zenith_angle = 90. - star_loc_AltAz.alt.value
-        airmass = 1. / np.cos(np.radians(zenith_angle))
+        zenith_angle = (np.pi/2)*u.rad - (star_loc_AltAz.alt.rad * u.rad)
+        airmass = 1. / np.cos(zenith_angle)
         printer("  For the observations at {}, calculated altitude of {:.3f}, and airmass of {:.3f}\n".format(
             obs_T.iso, star_loc_AltAz.alt.value, airmass))
     else:
@@ -282,6 +285,9 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
     all_mags = {}
     aps = data.apnames
     CCDs = [str(i+1) for i, key in enumerate(aps)]
+
+    if ext == None:
+        ext = [0.0 for i in CCDs]
 
     for CCD in CCDs:
         # Get this frame's apertures
