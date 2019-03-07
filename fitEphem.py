@@ -162,12 +162,12 @@ def fitEphem(myLoc, T0, period, simple=False):
         sampler = emcee.EnsembleSampler(nwalkers,npars,ln_prob,args=[x,y,ey,obsCodes],threads=1)
 
         #burn in
-        nburn=1000
+        nburn=10000
         pos, prob, state = mu.run_burnin(sampler, p0,nburn)
 
         #production
         sampler.reset()
-        nprod = 9000
+        nprod = 20000
         sampler = mu.run_mcmc_save(sampler,pos,nprod,state,"{}/ephemerisChain.txt".format(myLoc))
         chain = mu.flatchain(sampler.chain,npars,thin=1)
 
