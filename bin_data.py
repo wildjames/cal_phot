@@ -2,10 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 files = [
-  'ASASSN-16kr_2018-10-12_r.calib',
-  'ASASSN-16kr_2018-10-15_r.calib',
-'ASASSN-16kr_2018-10-16_A_r.calib',
-'ASASSN-16kr_2018-10-16_B_r.calib',
+    'ASASSN-16kr_2018-10-12_r.calib',
+    'ASASSN-16kr_2018-10-15_r.calib',
+    'ASASSN-16kr_2018-10-16_A_r.calib',
+    'ASASSN-16kr_2018-10-16_B_r.calib',
 ]
 binsize = len(files)
 
@@ -21,6 +21,8 @@ for file in files:
     ts = data[:,0]
     fl = data[:,1]
     fe = data[:,2]
+
+    print("The file {} has {} data".format(file, ts.shape))
 
     ax[1].step(ts, fl, label=file)
 

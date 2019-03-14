@@ -73,7 +73,7 @@ def calc_E_Err(T, T0, P, T_err, T0_err, P_err):
 
 
 def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, comp_fnames=None,
-                binsize=1, myLoc='.', ext=None, fnames=None, std_coords=None, std_mags=None):
+                myLoc='.', ext=None, fnames=None, std_coords=None, std_mags=None):
     '''
     Takes a set of *CAM observations (and data on the system), and produces a set of phase folded lightcurves.
 
@@ -117,9 +117,6 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
 
     comp_fnames: list, optional
         list of comparison reductions that match the standard star reduction.
-
-    binsize: int, optional
-        Binning of the data.
 
     myLoc: str, optional
         Working directory. If not supplied, default to current working directory
@@ -414,6 +411,11 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
 
                 # Add in legend artist
                 compAx[CCD_int].legend()
+
+                # recompute the ax.dataLim
+                compAx[CCD_int].relim()
+                # update ax.viewLim using the new dataLim
+                compAx[CCD_int].autoscale_view()
 
                 # File handling stuff
                 filename = oname
