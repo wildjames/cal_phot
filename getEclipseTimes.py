@@ -362,8 +362,6 @@ def getEclipseTimes(coords, obsname, myLoc=None):
     for lf in fnames:
         # lets make the file reading more robust
 
-        print('I got here')
-
         try:
             log = Hlog.from_ascii(lf)
             if log == {}:
