@@ -72,7 +72,7 @@ def calc_E_Err(T, T0, P, T_err, T0_err, P_err):
     return E_err
 
 
-def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, comp_fnames=None,
+def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_fname=None, comp_fnames=None,
                 myLoc='.', ext=None, fnames=None, std_coords=None, std_mags=None):
     '''
     Takes a set of *CAM observations (and data on the system), and produces a set of phase folded lightcurves.
@@ -138,7 +138,6 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
     written_files: list
         List of created .calib files.
     '''
-    nCCD = 3
 
     ## First, find the logfiles we want to use
     if fnames==None:
@@ -204,8 +203,18 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
         unit=(u.hourangle, u.deg), frame='icrs'
     )
 
-    band = ['r',   'g',     'u'   ]
-    c    = ['red', 'green', 'blue']
+    if inst == 'uspec':
+        nCCD = 1
+        band = ['Unknown-filter']
+        c    = ['Unknown-filter']
+    elif inst == 'ucam':
+        nCCD = 3
+        band = ['r', 'g', 'u']
+        c = ['red', 'green', 'blue']
+    elif inst == 'hcam':
+        nCCD = 5
+        band = ['r', 'g', 'u']
+        c = ['red', 'green', 'blue']
     master = {}
     written_files = []
 
@@ -237,7 +246,10 @@ def combineData(oname, coords, obsname, T0, period, SDSS=True, std_fname=None, c
             printer("\n----------------------------------------------------------------\n----------------------------------------------------------------\n")
             printer("Calibrating lightcurves for {}".format(fname))
             printer("\n----------------------------------------------------------------\n----------------------------------------------------------------\n")
-            data = hcam.hlog.Hlog.from_ascii(fname)
+            try:
+                data = hcam.hlog.Hlog.from_ascii(fname)
+            except:
+                data = hcam.hlog.Hlog.from_ulog(fname)
 
             # Get the apertures of this data set
             aps = data.apnames

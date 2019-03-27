@@ -344,7 +344,10 @@ def getEclipseTimes(coords, obsname, myLoc=None):
 
     for lf in fnames:
         # lets make the file reading more robust
-        log = Hlog.from_ascii(lf)
+        try:
+            log = Hlog.from_ascii(lf)
+        except:
+            log = Hlog.from_ulog(lf)
         aps = log.apnames
 
         printer("File: {}".format(lf))

@@ -12,7 +12,7 @@ def getKappa(lf, coords, obsname, mags, ext=0.161):
     Get zero point corrections from a standard star reduction.
 
     Takes a logfile containing the reduced lightcurve of a standard star, and a list of its magnitudes.
-    Uses the observatory and coordinates of the star to get its airmass at the start of the run, and 
+    Uses the observatory and coordinates of the star to get its airmass at the start of the run, and
     assumes it's rouchly constant over the observations.
 
     From these, calculate the instrumental magnitude of the standard, and get the zero points, kappa,
@@ -22,16 +22,16 @@ def getKappa(lf, coords, obsname, mags, ext=0.161):
     ----------
     lf: string
         Standard star reduced data in a logfile from the hipercam pipeline
-    
+
     coords: string
         RA and DEC of standard star, in hours and degrees, respectively.
-    
+
     obsname: string
         name of observatory
-    
+
     mags: list
         [<r' magnitude>, <g' band magnitude>, <u' band magnitude>] of standard
-    
+
     [ext]: float
         optional parameter, if you want to use a different extinction coeff.
 
@@ -59,11 +59,14 @@ def getKappa(lf, coords, obsname, mags, ext=0.161):
         unit=(u.hour, u.deg), frame='icrs'
     )
 
-    # Storage list. 
+    # Storage list.
     mags = [np.nan] + mags
 
     # grab the data
-    data = hcam.hlog.Hlog.from_ascii(lf)
+    try:
+        data = hcam.hlog.Hlog.from_ascii(lf)
+    except:
+        data = hcam.hlog.Hlog.from_ulog(lf)
 
     ### Airmass ###
     # Get the time of the observations.
@@ -85,7 +88,7 @@ def getKappa(lf, coords, obsname, mags, ext=0.161):
         raise ValueError
     elif zenith_angle > 60:
         printer("!!! Zenith angle is low !!!")
-    
+
     # Calculate the airmass
     airmass = 1. / np.cos(np.radians(zenith_angle))
     printer("For the observations on {}, calculated z of {:.3f}, and airmass of {:.3f}.".format(
@@ -93,8 +96,12 @@ def getKappa(lf, coords, obsname, mags, ext=0.161):
     )
 
     kappas = [np.nan]
+    aps = data.apnames
+    CCDs = [str(i) for i in aps]
+    CCDs = sorted(CCDs)
+    print("The data has the following apertures: {}".format(CCDs))
     # Get the fluxes from each CCD
-    for CCD in ['1', '2', '3']:
+    for CCD in CCDs:
         star = data.tseries(CCD, '1')
         fluxs = []
         for counts, line in zip(star.y, data[CCD]):

@@ -19,7 +19,10 @@ try:
 except IndexError:
     print("Not enough arguments! Please give a logfile to split.")
 
-data = hcam.hlog.Hlog.from_ascii(lf)
+try:
+    data = hcam.hlog.Hlog.from_ascii(lf)
+except:
+    data = hcam.hlog.Hlog.from_ulog(lf)
 print("Read in {}".format(lf))
 
 # Grab the header of that logfile too. Read lines until we run out of hashes, then skip the rest.

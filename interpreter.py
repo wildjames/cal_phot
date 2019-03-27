@@ -28,6 +28,8 @@ class Interpreter:
         }
         self.written_files = []
 
+        self.instruments = ['hcam', 'ucam', 'uspec']
+
         # parse file commands
         if inFile != None:
             header(inFile)
@@ -146,9 +148,9 @@ class Interpreter:
         oname     = self.get_param('oname')
         coords    = self.get_param('coords')
         obsname   = self.get_param('obsname')
+        inst      = self.get_param('inst')
         T0        = self.get_param('T0')
         period    = self.get_param('period')
-        binsize   = 1
         myLoc     = self.get_param('directory')
         fnames    = self.get_param('fnames')
         SDSS      = self.get_param('SDSS')
@@ -156,7 +158,7 @@ class Interpreter:
 
         printer("Combining, calibrating, and plotting data...")
         if SDSS:
-            written_files = combineData(oname, coords, obsname, T0, period, SDSS=True, binsize=binsize,
+            written_files = combineData(oname, coords, obsname, T0, period, SDSS=True, inst=inst,
             myLoc=myLoc, fnames=fnames, ext=ext)
         else:
             # Retrieve the SDSS-matching reductions for each night
@@ -167,7 +169,7 @@ class Interpreter:
 
             # ref_kappa = self.get_param('kappas')
             written_files = combineData(oname, coords, obsname, T0, period, SDSS=False,
-                binsize=binsize, myLoc=myLoc, fnames=fnames, comp_fnames=comparisons,
+                myLoc=myLoc, fnames=fnames, comp_fnames=comparisons, inst=inst,
                 std_fname=stdLogfile, std_coords=stdCoords, std_mags=stdMags, ext=ext)
 
         self.written_files += written_files
@@ -262,6 +264,12 @@ class Interpreter:
                     f.write("{} {}\n".format(item, self.params[item]))
             printer("Wrote parameters to 'reduction_params.txt'!")
 
+        elif command == 'inst':
+            if args == None:
+                print("You need to define an instrument!")
+                exit()
+            elif args[0] in self.instruments:
+                self.inst = args[0]
 
         # SDSS field observations calibration
         elif command == 'sdss':
@@ -368,7 +376,7 @@ class Interpreter:
         elif command == 'binsize':
             binsize = int(args[0])
             self.params['binsize'] = binsize
-            printer("Binning data by {}".format(binsize))
+            printer("Binning is NOT supported in this interpreter - it's not good practice!".format(binsize))
 
         elif command == 'logfiles':
             # Read in logfilenames, terminated by an empty line, i.e. in the format:
