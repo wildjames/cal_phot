@@ -153,11 +153,7 @@ def construct_reference(fetchFname):
             else:
                 fetchme[str(x)].append(line.split())
 
-    toWrite = {
-        '1':[],
-        '2':[],
-        '3':[]
-    }
+    toWrite = {}
 
     bands = ['', 'r', 'g', 'u']
 
@@ -217,9 +213,12 @@ def construct_reference(fetchFname):
                 raise LookupError
 
             # pprint(target)
-            toWrite[CCD].append(
-                target[ bands[int(CCD)] ]
-            )
+            try:
+                toWrite[CCD].append(
+                    target[ bands[int(CCD)] ]
+                )
+            except IndexError:
+                toWrite[CCD] = [ target[ bands[int(CCD)] ] ]
 
         toWrite[CCD] = np.array(toWrite[CCD])
 
@@ -304,23 +303,6 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
         mag = robust_mag(fl)
         # star magnitudes
         mags = [mag]
-
-        # mean, median, sigma = sigma_clipped_stats(fl, iters=2, sigma=3)
-        # regMean = np.mean(fl)
-        # printer("CCD {}, Aperture {} clipped mean count flux: {:.3f}".format(CCD, '1', mean))
-
-        # fig, ax = plt.subplots(figsize=[8,6])
-        # ax.scatter([i for i, val in enumerate(fl)], fl, color='black')
-        # # Poissonian error only
-        # ax.errorbar([i for i, val in enumerate(fl)], fl, np.sqrt(fl), linestyle='', color='black')
-        # ax.axhline(mean, color='black', linestyle='--')
-        # ax.axhline(regMean, color='red', linestyle='--')
-
-        # ax.set_title('{}\nCCD {}, Ap {} - Poissonian errors - mean flux = {:.3f} counts/s'.format(
-        #     obs_T.iso, CCD, '1', mean))
-        # ax.set_xlabel('Frame')
-        # ax.set_ylabel('Flux, counts/s')
-        # plt.show()
 
         # If we have more than one star, handle that
         if len(ap) > 1:
