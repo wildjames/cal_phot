@@ -25,7 +25,11 @@ from matplotlib import pyplot as plt
 import glob
 
 import mcmc_utils
-from logger import printer
+try:
+    from logger import printer
+except:
+    def printer(string, end='\n'):
+        print(string, end='\n')
 
 class PlotPoints:
     def __init__(self, fig):
@@ -121,7 +125,8 @@ def tcorrect(tseries, star, observatory, type='B'):
         Location of star on Sky
 
     observatory: string
-        Observatory name. See coord.EarthLocation.get_site_names() for list
+        Observatory name. See coord.EarthLocation.get_site_names() for list. If not in the list, assumed
+        to be "lat, lon", comma separated.
 
     type: string (default=B)
         Heliocentric (H) or Barcentric (B)
@@ -132,8 +137,15 @@ def tcorrect(tseries, star, observatory, type='B'):
         Time series object with corrected time axis
     """
     ts = copy.deepcopy(tseries)
-    times = Time(tseries.t, format='mjd', scale='utc',
-                 location=coord.EarthLocation.of_site(observatory))
+    try:
+        location = coord.EarthLocation.of_site(observatory)
+    except:
+        lat, lon = observatory.split(',')
+        print("Attempting to get the earth location from latitude and longitude")
+        location = coord.EarthLocation.from_geodetic(lat=lat, lon=lon)
+
+    times = Time(tseries.t, format='mjd', scale='utc', location=location)
+
     if type == 'B':
         corr = times.light_travel_time(star)
         corr = times.tdb + corr
@@ -291,8 +303,8 @@ def getEclipseTimes(coords, obsname, myLoc=None):
 
     A double gaussian is fitted to it using a gaussian process, and the midpoint between their peaks is taken to be the
     eclipse time. To characterise the error of the eclipse time, an MCMC is used to sample the found fit. This is beefy,
-    and takes a while, but the Hessian we were getting out of scipy.optimize was heavily dependant on initial conditions,
-    so was untrustworthy.
+    and takes a while, but the Hessian error matrix we were getting out of scipy.optimize was heavily dependant on initial
+    conditions, so was untrustworthy.
 
 
     Arguments:
@@ -304,10 +316,15 @@ def getEclipseTimes(coords, obsname, myLoc=None):
         Note: must be readable by astropy!
 
     obsname: str
-        The observatory name. See coord.EarthLocation.get_site_names() for a list.
+        The observatory name. See coord.EarthLocation.get_site_names() for a list. If a site is not in the registry,
+        this string is assumed to be longitude and latitude, and will be attempted again.
 
     myLoc: str, default None
         The directory to search for eclipses. If None, searches the current working directory.
+
+    Returns:
+    --------
+    None, but creates a file with eclipse times in it.
     '''
     printer("\n\n--- Getting eclipse times from the data ---")
 
@@ -344,24 +361,30 @@ def getEclipseTimes(coords, obsname, myLoc=None):
 
     for lf in fnames:
         # lets make the file reading more robust
+
+        print('I got here')
+
         try:
             log = Hlog.from_ascii(lf)
-        except:
+            if log == {}:
+                raise Exception
+        except Exception:
+            printer("Using the ulog funtion to read data...")
             log = Hlog.from_ulog(lf)
         aps = log.apnames
 
         printer("File: {}".format(lf))
-        if len(aps['2']) < 2:
+        if len(aps['1']) < 2:
             printer("-> Not looking for eclipses in {}, as only one aperture in the file.".format(lf))
             continue
 
-        # Get the g band lightcurve, and correct it to the barycentric time
-        gband = log.tseries('2', '1') / log.tseries('2', '2')
-        gband_corr = tcorrect(gband, star, obsname)
+        # Get the first CCD lightcurve, and correct it to the barycentric time
+        inspect = log.tseries('1', '1') / log.tseries('1', '2')
+        inspect_corr = tcorrect(inspect, star, obsname)
         # Discard the first 10 observations, as they're often junk
-        gband_corr = gband_corr[10:]
+        inspect_corr = inspect_corr[10:]
 
-        x, y = smooth_derivative(gband_corr, 9, 5)
+        x, y = smooth_derivative(inspect_corr, 9, 5)
         yerr = 0.001*np.ones_like(x)
 
         fig, ax = plt.subplots()
@@ -482,7 +505,7 @@ def getEclipseTimes(coords, obsname, myLoc=None):
         ax[0].axvline(t_ecl, color='magenta')
         ax[0].set_xlim(left=t_ecl-(1*sep), right=t_ecl+(1*sep))
 
-        gband_corr.mplot(ax[1])
+        inspect_corr.mplot(ax[1])
 
         ax[0].set_title("maximum likelihood prediction - {}".format(lf.split('/')[-1]))
         plt.tight_layout()
