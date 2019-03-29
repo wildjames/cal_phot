@@ -74,6 +74,19 @@ def deg2arcsec(inp, ra):
 
     return output
 
+def convert_kg5(sdss_result):
+    from pprint import pprint
+    r = sdss_result['r']
+    g = sdss_result['g']
+
+    KG5 = g  - 0.2240*(g-r)**2 - 0.3590*(g-r) + 0.0460
+    printer("  Got the g and r mags:")
+    printer("    g: {:.3f}".format(g))
+    printer("    r: {:.3f}".format(r))
+    printer("  Computed the KG5 magnitude: {:.3f}".format(KG5))
+
+    return KG5
+
 
 def construct_reference(fetchFname):
     '''
@@ -111,14 +124,8 @@ def construct_reference(fetchFname):
 
     printer("\n\n--- Getting reference SDSS magnitudes from '{:s}' ---".format(fetchFname.split('/')[-1]))
 
-    CCDs = ['1', '2', '3']
     radius = '0.1' # search radius, arcseconds
 
-    fetchme = {
-        "1": [],
-        "2": [],
-        "3": []
-    }
 
     if not os.path.isfile(fetchFname):
         printer("The file I was passed, {}, does not exist!".format(fetchFname))
@@ -132,6 +139,9 @@ def construct_reference(fetchFname):
         # If not, then we have no file. Create a template.
         else:
             with open(fetchFname, 'w') as f:
+                f.write("#For the example of a 3-band instrument, use the following format. Similar for N bands")
+                f.write("<CCD1 SDSS band> <CCD2 SDSS band> <CCD3 SDSS band>\n")
+                f.write("\n")
                 f.write('<CCD 1 reference 1 RA> <CCD 1 reference 1 Dec>\n')
                 f.write("<CCD 1 reference 2 RA> <CCD 1 reference 2 Dec>\n")
                 f.write("\n")
@@ -147,11 +157,26 @@ def construct_reference(fetchFname):
     printer("Getting SDSS magnitudes for the coordinates found in {}".format(fetchFname))
 
     with open(fetchFname) as f:
+        line = f.readline()
+        while line[0] == '#':
+            line = f.readline()
+        line = line.strip().split()
+        bands = ['']
+        for b in line:
+            bands.append(b)
+        printer('Querying SDSS for the following bands: {}'.format(', '.join(bands[1:])))
+
+        # Construct a dict to read the desired coordinates to
+        fetchme = {str(i+1):[] for i, b in enumerate(bands[1:])}
+        # Make a list of the CCDs, starting from 1
+        CCDs    = [str(i+1)    for i, b in enumerate(bands[1:])]
+
         x = 1
         for line in f:
             if line[0] == '#':
                 # print(line.strip())
                 pass
+            # If the line doesn't have exactly two things, it's not something I care about.
             elif len(line.split()) != 2:
                 x += 1
             else:
@@ -159,12 +184,11 @@ def construct_reference(fetchFname):
 
     toWrite = {}
 
-    bands = ['', 'r', 'g', 'u']
-
     for CCD in CCDs:
         printer('-> CCD {}'.format(CCD))
         # Grab the list of coordinates we want to query
         coords = fetchme[CCD]
+        band = bands[int(CCD)]
 
         for i, coord in enumerate(coords):
             ra, dec = coord
@@ -216,13 +240,16 @@ def construct_reference(fetchFname):
                 printer('and make sure that your targets are definitely in the SDSS field!')
                 raise LookupError
 
-            # pprint(target)
+            # append the magnitudes found in [bands] to the output dict.
+            if band.lower() == 'kg5':
+                target[band] = convert_kg5(target)
+
             try:
                 toWrite[CCD].append(
-                    target[ bands[int(CCD)] ]
+                    target[band]
                 )
-            except IndexError:
-                toWrite[CCD] = [ target[ bands[int(CCD)] ] ]
+            except KeyError:
+                toWrite[CCD] = [ target[band] ]
 
         toWrite[CCD] = np.array(toWrite[CCD])
 

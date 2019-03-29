@@ -175,24 +175,28 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
 
     if inst == 'uspec':
         nCCD = 1
-        band = ['Unknown-filter']
-        c    = ['Unknown-filter']
+        band = ['???']
+        c    = ['black']
     elif inst == 'ucam':
         nCCD = 3
         band = ['r', 'g', 'u']
         c = ['red', 'green', 'blue']
     elif inst == 'hcam':
         nCCD = 5
-        band = ['r', 'g', 'u']
+        band = ['i', 'z', 'r', 'g', 'u'] #TODO: verify this
         c = ['red', 'green', 'blue']
+
     master = {}
     written_files = []
 
 
     # Plotting area
-    print("Making plotting area...")
+    print("Making plotting area...", end='')
     plt.ion()
     fig, ax = plt.subplots(nCCD, figsize=[12, 8], sharex=True)
+    # If we only have one CCD, ax still needs to be a list
+    if nCCD == 1:
+        ax = [ax]
     twinAx = []
     for i, a in enumerate(ax):
         a.set_ylabel('Flux, mJy')
@@ -205,10 +209,13 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
     ax[0].set_title('Waiting for data...')
     fig.tight_layout()
 
-    compFig, compAx = plt.subplots(3, figsize=[12, 8], sharex=True,)
+    compFig, compAx = plt.subplots(nCCD, figsize=[12, 8], sharex=True)
+    if nCCD == 1:
+        compAx = [compAx]
+
     compFig.tight_layout()
     plt.show()
-    print("Done!")
+    print(" Done!")
 
     # I want a master pdf file with all the nights' lightcurves plotted
     with PdfPages(oname+'_all-nights.pdf') as pdf:
@@ -218,6 +225,8 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
             printer("\n----------------------------------------------------------------\n----------------------------------------------------------------\n")
             try:
                 data = hcam.hlog.Hlog.from_ascii(fname)
+                if data == {}:
+                    raise Exception
             except:
                 data = hcam.hlog.Hlog.from_ulog(fname)
 
@@ -225,6 +234,9 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
             aps = data.apnames
             CCDs = [str(i) for i in aps]
             CCDs = sorted(CCDs)
+            if CCDs == []:
+                printer("ERROR! No data in the file!")
+            printer("  The observations have the following CCDs: {}".format(CCDs))
 
             # If we're in the SDSS field, grab the reference stars' magnitudes from their coords.
             if SDSS:
@@ -400,9 +412,17 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                 compAx[CCD_int].autoscale_view()
 
                 # File handling stuff
+                b = band[CCD_int]
+                if b == '???':
+                    print("I need to know the oberving band for the file '{}'".format(fname))
+                    b = input("Please enter band: ")
+
                 filename = oname
-                filename = filename.replace('Reduced_Data', 'Reduced_Data/lightcurves')
-                filename = "{}_{}_{}.calib".format(filename, fname.split('/')[-1][:-4], band[CCD_int])
+                filename = filename.split('/')
+                filename.insert(-1, 'lightcurves')
+                filename = '/'.join(filename)
+                filename = "{}_{}_{}.calib".format(filename, fname.split('/')[-1][:-4], b)
+
                 written_files.append(filename)
 
                 # Saving data

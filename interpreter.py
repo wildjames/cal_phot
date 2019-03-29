@@ -269,7 +269,8 @@ class Interpreter:
                 print("You need to define an instrument!")
                 exit()
             elif args[0] in self.instruments:
-                self.inst = args[0]
+                self.params['inst'] = args[0]
+                print("Observations were taken with {}".format(self.params['inst']))
 
         # SDSS field observations calibration
         elif command == 'sdss':
