@@ -526,9 +526,6 @@ def getEclipseTimes(coords, obsname, myLoc=None):
         sep = np.mean(sampler.flatchain[:,3])
 
         printer("Got a solution: {:.7f}+/-{:.7f}\n".format(t_ecl, err))
-        # print("  Got a Jacobian,\n {}".format(soln['jac']))
-        # print("  Got a Hessian,\n {}".format(soln['hess_inv'].todense()))
-        # print("  Final log-liklihood: {}".format(soln.fun))
 
         # Make the maximum likelihood prediction
         mu, var = gp.predict(y, x, return_var=True)
