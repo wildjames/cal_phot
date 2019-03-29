@@ -220,6 +220,7 @@ def fitEphem(myLoc, T0, period, simple=False):
     plt.axhline(ls='--',color='k')
     plt.xlabel('Cycle No.')
     plt.ylabel('O-C (s)')
+    plt.savefig('ephemeris_scatter.pdf')
     plt.show()
 
     printer("")

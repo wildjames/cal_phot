@@ -38,7 +38,7 @@ def plot_all(files, oname, band):
     plt.title("{} band eclispes".format(band))
     plt.legend()
     plt.tight_layout()
-    plt.savefig('Reduced_Data/'+oname+'.pdf')
+    plt.savefig(oname+'.pdf')
     plt.show()
 
     return None
