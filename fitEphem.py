@@ -219,16 +219,17 @@ def fitEphem(myLoc, T0, period, simple=False):
     # Each error code wants to be a different color
     codes = set(obsCodes) # set() strips duplicates
     codes = list(codes)   # list() allows indexing
-    CB_color_cycle = ['#377eb8', '#ff7f00', '#4daf4a',
-                      '#f781bf', '#a65628', '#984ea3',
+    CB_color_cycle = ['black', '#ff7f00', '#4daf4a',
+                      '#377eb8', '#a65628', '#984ea3',
                       '#999999', '#e41a1c', '#dede00']
     colors = []
     for code in obsCodes:
         i = codes.index(code)
         colors.append(CB_color_cycle[i])
 
-    plt.errorbar(x,resy,yerr=ey,fmt='o',c=colors,ecolor='k')
-    plt.axhline(ls='--',color='k')
+    plt.errorbar(x,resy,yerr=ey,marker='',ecolor='k', linestyle='', zorder=1)
+    plt.scatter(x, resy, c=colors, marker='o', zorder=2)
+    plt.axhline(ls='--',color='k', zorder=1)
     plt.xlabel('Cycle No.')
     plt.ylabel('O-C (s)')
     plt.savefig('ephemeris_scatter.pdf')
