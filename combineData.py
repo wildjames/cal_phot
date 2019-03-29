@@ -161,7 +161,13 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
     printer("  Phase folding data for a T0: {:}, period: {:}".format(T0, period))
 
     # Where are we?
-    observatory = coord.EarthLocation.of_site(obsname)
+    try:
+        observatory = coord.EarthLocation.of_site(obsname)
+    except:
+        lat, lon = obsname.split(',')
+        print("Attempting to get the earth observatory from latitude and longitude")
+        observatory = coord.EarthLocation.from_geodetic(lat=lat, lon=lon)
+
     star_loc = coord.SkyCoord(
         coords,
         unit=(u.hourangle, u.deg), frame='icrs'

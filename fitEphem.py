@@ -25,7 +25,11 @@ import pylab
 import mcmc_utils as mu
 
 from getEclipseTimes import read_ecl_file
-from logger import printer
+try:
+    from logger import printer
+except ImportError:
+    def printer(string, end='\n'):
+        print(string, end='\n')
 
 #import corner
 import time

@@ -233,9 +233,9 @@ class Interpreter:
 
         elif command == 'observatory':
             # Changes the observing location
-            obsname = args[0]
+            obsname = ' '.join(args)
             self.params['obsname'] = obsname
-            printer("Observing location: {}".format(obsname))
+            printer("Observing location: '{}'".format(obsname))
 
         elif command == 'coords':
             # Changes the coordinates of the object you're about to talk about.

@@ -377,7 +377,7 @@ def getEclipseTimes(coords, obsname, myLoc=None):
             continue
 
         # Get the first CCD lightcurve, and correct it to the barycentric time
-        inspect = log.tseries('1', '1') / log.tseries('1', '2')
+        inspect = log.tseries('1', '1') / log.tseries('1', aps['1'][1])
         inspect_corr = tcorrect(inspect, star, obsname)
         # Discard the first 10 observations, as they're often junk
         inspect_corr = inspect_corr[10:]

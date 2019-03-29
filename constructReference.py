@@ -11,7 +11,11 @@ from astropy.stats import sigma_clipped_stats
 from astropy.coordinates import AltAz
 
 import hipercam as hcam
-from logger import printer
+try:
+    from logger import printer
+except ImportError:
+    def printer(string, end='\n'):
+        print(string, end=end)
 
 '''
 
@@ -172,7 +176,7 @@ def construct_reference(fetchFname):
             url += 'ra={}&dec={}&'.format(ra, dec)
             # I'm using a radial search, this is the readius of that search
             url += 'radius={}&'.format(radius)
-            # Which coord system are we using. Can't imagine I'll want galactic...
+            # Which coord system are we using. Can't imagine that I'll want galactic
             url += 'whichway=equitorial&'
             # If I'm getting more than 5 results, I've probably picked a crappy reference anyway...
             url += 'limit=5&'
@@ -262,7 +266,13 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
         printer("    Observatory: {}".format(obsname))
 
         # Where are we?
-        observatory = coord.EarthLocation.of_site(obsname)
+        try:
+            observatory = coord.EarthLocation.of_site(obsname)
+        except:
+            lat, lon = obsname.split(',')
+            print("Attempting to get the earth location from latitude and longitude")
+            observatory = coord.EarthLocation.from_geodetic(lat=lat, lon=lon)
+
         star_loc = coord.SkyCoord(
             coords,
             unit=(u.hourangle, u.deg), frame='icrs')
