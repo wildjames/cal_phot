@@ -139,12 +139,12 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
 
     # Writing out
     try:
-        os.mkdir('/'.join([myLoc, 'Reduced_Data', 'lightcurves']))
+        os.mkdir('/'.join([myLoc, 'lightcurves']))
     except: pass
 
     oname = oname.split('/')
-    if oname[0] != 'Reduced_Data':
-        oname = ['Reduced_Data'] + oname
+    if oname[0] != myLoc:
+        oname = [myLoc] + oname
     oname = '/'.join(oname)
 
 
