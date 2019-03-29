@@ -12,7 +12,7 @@ from astropy.stats import sigma_clipped_stats
 
 import hipercam as hcam
 from constructReference import construct_reference, get_comparison_magnitudes
-from getEclipseTimes import read_ecl_file
+from getEclipseTimes import read_ecl_file, tcorrect
 from logger import printer
 
 def sdss_mag2flux(mag):
@@ -23,41 +23,6 @@ def sdss_mag2flux(mag):
     flux*= alpha
 
     return flux
-
-def tcorrect(tseries, star, observatory, type='B'):
-    """
-    Correct for light travel time.
-
-    Arguments:
-    ----------
-    tseries: hipercam.hlog.Tseries
-        Time series object
-
-    star: astropy.coordinate.SkyCoord
-        Location of star on Sky
-
-    observatory: string
-        Observatory name. See coord.EarthLocation.get_site_names() for list
-
-    type: string (default=B)
-        Heliocentric (H) or Barcentric (B)
-
-    Returns
-    -------
-    tseries_corr : hipercam.hlog.Tseries
-        Time series object with corrected time axis
-    """
-    ts = copy.deepcopy(tseries)
-    times = time.Time(tseries.t, format='mjd', scale='utc',
-                 location=coord.EarthLocation.of_site(observatory))
-    if type == 'B':
-        corr = times.light_travel_time(star)
-        corr = times.tdb + corr
-    else:
-        corr = times.light_travel_time(star, 'heliocentric')
-        corr = times.utc + corr
-    ts.t = corr.mjd
-    return ts
 
 def calc_E(T, T0, P):
     E = (T-T0) / P
