@@ -73,6 +73,7 @@ class PlotPoints:
             self.xcoords = np.append(self.xcoords, event.xdata)
             self.ycoords = np.append(self.ycoords, event.ydata)
             self.grad.scatter(event.xdata, event.ydata, marker='x', color='black')
+            self.data.axvline(event.xdata, linestyle='--', color='black')
 
         if 'r' in event.key:
             self.xcoords = np.array([])
@@ -159,7 +160,7 @@ def tcorrect(tseries, star, observatory, type='B'):
         location = coord.EarthLocation.of_site(observatory)
     except:
         lat, lon = observatory.split(',')
-        print("Attempting to get the earth location from latitude and longitude")
+        print("  Attempting to get the earth location from latitude and longitude")
         location = coord.EarthLocation.from_geodetic(lat=lat, lon=lon)
 
     times = Time(tseries.t, format='mjd', scale='utc', location=location)
@@ -380,16 +381,21 @@ def getEclipseTimes(coords, obsname, myLoc=None):
         printer("  {:>2d} - {}".format(i, fname))
     printer('  ')
 
-    for lf in fnames:
-        # lets make the file reading more robust
+    temp_file = open('eclipse_times.tmp', 'w')
 
+    for lf in fnames:
+        printer("  Looking at the file {}".format(lf))
+        # lets make the file reading more robust
         try:
             log = Hlog.from_ascii(lf)
             if log == {}:
                 raise Exception
         except Exception:
-            printer("Using the ulog funtion to read data...")
+            printer("  Using the ulog funtion to read data...")
             log = Hlog.from_ulog(lf)
+            if log == {}:
+                printer("  Failed to get data from ulog function, skipping this file.")
+                continue
         aps = log.apnames
 
         printer("File: {}".format(lf))
@@ -406,7 +412,7 @@ def getEclipseTimes(coords, obsname, myLoc=None):
         x, y = smooth_derivative(inspect_corr, 9, 5)
         yerr = 0.001*np.ones_like(x)
 
-        fig, ax = plt.subplots(2, figsize=[16,8])
+        fig, ax = plt.subplots(2, figsize=[16,8], sharex=True)
         ax[0].set_title("{}".format(lf))
         ax[0].plot(x, y)
 
@@ -570,6 +576,7 @@ def getEclipseTimes(coords, obsname, myLoc=None):
                     locflag = key
                 tl.append(['0', float(t_ecl), float(err), locflag])
                 printer("Saved the data: {}".format(['0', float(t_ecl), float(err), locflag]))
+                temp_file.write("{},{},{},{}".format('0', float(t_ecl), float(err), locflag))
             else:
                 printer("  Did not store eclipse time from {}.".format(lf))
             plt.close()
@@ -582,6 +589,8 @@ def getEclipseTimes(coords, obsname, myLoc=None):
 
     write_ecl_file(source_key, tl, oname)
     plt.ioff()
+    import os
+    os.remove('eclipse_times.tmp')
 
     #TODO:
     # Temporary placeholder. Think about this.
