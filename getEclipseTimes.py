@@ -34,13 +34,16 @@ except:
 class PlotPoints:
     def __init__(self, fig):
         self.fig = fig
+        ax = self.fig.get_axes()
+        self.grad = ax[0]
+        self.data = ax[1]
         self.xcoords = np.array([])
         self.ycoords = np.array([])
         self.flag = False
 
     def connect(self):
         self.cidpress = self.fig.canvas.mpl_connect('key_press_event', self.on_press)
-        print("\n\n  Hit 'q' to skip these data.\n  Hit 'a' on initial guesses for ingress and egress:")
+        print("\n\n  Hit 'q' to skip these data.\n  Hit 'a' on initial guesses for ingress and egress\n  +/- set upper and lower limits for the fit\n")
 
     def disconnect(self):
         self.fig.canvas.mpl_disconnect(self.cidpress)
@@ -52,10 +55,25 @@ class PlotPoints:
             closeplot()
             print("  ")
             return
+
+        if '-' in event.key:
+            print("  lower limit of data is {:.6f}".format(event.xdata))
+            self.lowerlim = event.xdata
+            self.grad.axvline(self.lowerlim, color='red', linestyle='--')
+            self.data.axvline(self.lowerlim, color='red', linestyle='--')
+
+        if '+' in event.key:
+            print("  upper limit of data is {:.6f}".format(event.xdata))
+            self.upperlim = event.xdata
+            self.grad.axvline(self.upperlim, color='green', linestyle='--')
+            self.data.axvline(self.upperlim, color='green', linestyle='--')
+
         if 'a' in event.key:
             print('  added point at {:.1f}, {:.1f}'.format(event.xdata, event.ydata))
             self.xcoords = np.append(self.xcoords, event.xdata)
             self.ycoords = np.append(self.ycoords, event.ydata)
+            self.grad.scatter(event.xdata, event.ydata, marker='x', color='black')
+
         if 'r' in event.key:
             self.xcoords = np.array([])
             self.ycoords = np.array([])
@@ -326,6 +344,7 @@ def getEclipseTimes(coords, obsname, myLoc=None):
     --------
     None, but creates a file with eclipse times in it.
     '''
+    plt.ion()
     printer("\n\n--- Getting eclipse times from the data ---")
 
     star = coord.SkyCoord(
@@ -385,13 +404,35 @@ def getEclipseTimes(coords, obsname, myLoc=None):
         x, y = smooth_derivative(inspect_corr, 9, 5)
         yerr = 0.001*np.ones_like(x)
 
-        fig, ax = plt.subplots()
-        ax.set_title("{}".format(lf))
-        plt.plot(x, y)
+        fig, ax = plt.subplots(2, figsize=[16,8])
+        ax[0].set_title("{}".format(lf))
+        ax[0].plot(x, y)
+
+        ax[1].set_title('Lightcurve:')
+        inspect_corr.mplot(ax[1])
+
         gauss = PlotPoints(fig)
         gauss.connect()
         plt.tight_layout()
-        plt.show()
+        plt.show(block=True)
+
+        try:
+            lowerlim = gauss.lowerlim
+        except:
+            lowerlim = x.min()
+
+        try:
+            upperlim = gauss.upperlim
+        except:
+            upperlim = x.max()
+
+        # Apply upper/lower limits
+        mask = (x < upperlim) * (x > lowerlim)
+        mask = np.where(mask==1)
+
+        y    = y[mask]
+        yerr = yerr[mask]
+        x    = x[mask]
 
         if gauss.flag:
             printer("-> No eclipse taken from {}".format(lf))
@@ -462,6 +503,7 @@ def getEclipseTimes(coords, obsname, myLoc=None):
         nsteps = 1000
         for i, result in enumerate(sampler.sample(p0, iterations=nsteps)):
             n = int((width+1) * float(i) / nsteps)
+            # print(result[0])
             sys.stdout.write("\r  Burning in...    [{}{}]".format('#'*n, ' '*(width - n)))
         pos, prob, state = result
 
@@ -501,9 +543,12 @@ def getEclipseTimes(coords, obsname, myLoc=None):
         ax[0].fill_between(x, mu+std, mu-std, color=color, alpha=0.3, edgecolor="none")
         ax[0].plot(x, mean_model.get_value(x), 'k-')
         ax[0].axvline(t_ecl, color='magenta')
-        ax[0].set_xlim(left=t_ecl-(1*sep), right=t_ecl+(1*sep))
 
         inspect_corr.mplot(ax[1])
+        ax[1].set_title('Lightcurve')
+        ax[1].axvline(t_ecl, color='magenta')
+        ax[1].axvline(t_ecl+(sep/2.), color='red')
+        ax[1].axvline(t_ecl-(sep/2.), color='red')
 
         ax[0].set_title("maximum likelihood prediction - {}".format(lf.split('/')[-1]))
         plt.tight_layout()
@@ -533,6 +578,7 @@ def getEclipseTimes(coords, obsname, myLoc=None):
     printer("\nDone all the files!")
 
     write_ecl_file(source_key, tl, oname)
+    plt.ioff()
 
     #TODO:
     # Temporary placeholder. Think about this.
