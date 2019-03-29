@@ -414,14 +414,15 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                 # File handling stuff
                 b = band[CCD_int]
                 if b == '???':
-                    print("I need to know the oberving band for the file '{}'".format(fname))
-                    b = input("Please enter band: ")
+                    b = ''
+                else:
+                    b = '_'+b
 
                 filename = oname
                 filename = filename.split('/')
                 filename.insert(-1, 'lightcurves')
                 filename = '/'.join(filename)
-                filename = "{}_{}_{}.calib".format(filename, fname.split('/')[-1][:-4], b)
+                filename = "{}_{}{}.calib".format(filename, fname.split('/')[-1][:-4], b)
 
                 written_files.append(filename)
 
