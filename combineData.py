@@ -395,7 +395,7 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                             print("Plotting ap {}/{}".format(a, b))
                             toPlot = first / data.tseries(CCD, b)
 
-                            mean, _, _ = sigma_clipped_stats(toPlot.y, iters=2, sigma=3)
+                            mean, _, _ = sigma_clipped_stats(toPlot.y, maxiters=2, sigma=3)
                             compAx[CCD_int].axhline(mean, linestyle='--', color='black')
                             compAx[CCD_int].scatter(toPlot.t, toPlot.y,
                                 s=10,
