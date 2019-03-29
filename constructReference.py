@@ -80,10 +80,8 @@ def convert_kg5(sdss_result):
     g = sdss_result['g']
 
     KG5 = g  - 0.2240*(g-r)**2 - 0.3590*(g-r) + 0.0460
-    printer("  Got the g and r mags:")
-    printer("    g: {:.3f}".format(g))
-    printer("    r: {:.3f}".format(r))
-    printer("  Computed the KG5 magnitude: {:.3f}".format(KG5))
+    printer("  ** Using the recipe: KG5 = g - 0.2240*(g-r)**2 - 0.3590*(g-r) + 0.0460")
+    printer("  ** Computed the KG5 magnitude: {:.3f}\n".format(KG5))
 
     return KG5
 
@@ -253,7 +251,7 @@ def construct_reference(fetchFname):
 
         toWrite[CCD] = np.array(toWrite[CCD])
 
-    printer("Done!\n")
+    printer("Got all reference stars for this file!\n")
     return toWrite
 
 def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
@@ -297,7 +295,7 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
             observatory = coord.EarthLocation.of_site(obsname)
         except:
             lat, lon = obsname.split(',')
-            print("Attempting to get the earth location from latitude and longitude")
+            print("  Earth location from latitude, longitude: {}, {}".format(lat, lon))
             observatory = coord.EarthLocation.from_geodetic(lat=lat, lon=lon)
 
         star_loc = coord.SkyCoord(
