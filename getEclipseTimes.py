@@ -262,7 +262,7 @@ def read_ecl_file(fname):
                     line[0] = int(line[0])
                     line[3]  = int(line[3])
                     tl.append(line)
-        printer("Found these prior eclipse times:")
+        printer("Found {} prior eclipse times:".format(len(t)))
         for e, t, t_err, source in tl:
             printer("-> Cycle: {:5d} -- {:.7f}+/-{:.7f} from {}".format(e, t, t_err, source_key[str(source)]))
     else:
