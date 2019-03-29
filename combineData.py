@@ -153,7 +153,6 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
     for i, fname in enumerate(fnames):
         printer("    {:2d} - {}".format(i, fname))
     printer('  ')
-    printer("  Binning folded data by {}".format(binsize))
     printer("  I'll write out to {}*\n".format(oname))
 
     #Correct to BMJD
