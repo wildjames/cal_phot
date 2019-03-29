@@ -144,7 +144,7 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
 
     oname = oname.split('/')
     if oname[0] != myLoc:
-        oname = [myLoc] + oname
+        oname = [myLoc, 'lightcurves'] + oname
     oname = '/'.join(oname)
 
 
@@ -236,7 +236,7 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
             CCDs = sorted(CCDs)
             if CCDs == []:
                 printer("ERROR! No data in the file!")
-            printer("  The observations have the following CCDs: {}".format(CCDs))
+            printer("  The observations have the following CCDs: {}".format([int(ccd) for ccd in CCDs]))
 
             # If we're in the SDSS field, grab the reference stars' magnitudes from their coords.
             if SDSS:
@@ -289,7 +289,7 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                 for a in ap[2:]:
                     N += 1
                     comparison = comparison + data.tseries(CCD, a)
-                    print("added ap {}".format(a))
+                    print("  The reference star now includes data from aperture {}".format(a))
 
                 # Take the mean
                 comparison = comparison / N
@@ -400,7 +400,7 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                             compAx[CCD_int].scatter(toPlot.t, toPlot.y,
                                 s=10,
                                 label="Aperture {}/{}".format(a, b),
-                                alpha=0.3
+                                alpha=0.6
                             )
 
                 # Add in legend artist
@@ -419,9 +419,6 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                     b = '_'+b
 
                 filename = oname
-                filename = filename.split('/')
-                filename.insert(-1, 'lightcurves')
-                filename = '/'.join(filename)
                 filename = "{}_{}{}.calib".format(filename, fname.split('/')[-1][:-4], b)
 
                 written_files.append(filename)
