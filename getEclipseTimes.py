@@ -248,6 +248,7 @@ def read_ecl_file(fname):
         # Read in the eclipsetimes.txt file
         source_key = {}
         tl = []
+        nObs = 0
         with open(fname, 'r') as f:
             for line in f:
                 line = line.strip()
@@ -262,7 +263,8 @@ def read_ecl_file(fname):
                     line[0] = int(line[0])
                     line[3]  = int(line[3])
                     tl.append(line)
-        printer("Found {} prior eclipse times:".format(len(t)))
+                    nObs += 1
+        printer("Found {} prior eclipse times:".format(nObs))
         for e, t, t_err, source in tl:
             printer("-> Cycle: {:5d} -- {:.7f}+/-{:.7f} from {}".format(e, t, t_err, source_key[str(source)]))
     else:
