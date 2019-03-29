@@ -69,7 +69,7 @@ class PlotPoints:
             self.data.axvline(self.upperlim, color='green', linestyle='--')
 
         if 'a' in event.key:
-            print('  added point at {:.1f}, {:.1f}'.format(event.xdata, event.ydata))
+            print('  added point at {:.6f}, {:.6f}'.format(event.xdata, event.ydata))
             self.xcoords = np.append(self.xcoords, event.xdata)
             self.ycoords = np.append(self.ycoords, event.ydata)
             self.grad.scatter(event.xdata, event.ydata, marker='x', color='black')
