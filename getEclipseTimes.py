@@ -503,76 +503,80 @@ def getEclipseTimes(coords, obsname, myLoc=None):
         # Burn in
         print("")
         nsteps = 1000
-        for i, result in enumerate(sampler.sample(p0, iterations=nsteps)):
-            n = int((width+1) * float(i) / nsteps)
-            # print(result[0])
-            sys.stdout.write("\r  Burning in...    [{}{}]".format('#'*n, ' '*(width - n)))
-        pos, prob, state = result
+        try:
+            for i, result in enumerate(sampler.sample(p0, iterations=nsteps)):
+                n = int((width+1) * float(i) / nsteps)
+                # print(result[0])
+                sys.stdout.write("\r  Burning in...    [{}{}]".format('#'*n, ' '*(width - n)))
+            pos, prob, state = result
 
-        # Data
-        sampler.reset()
-        nsteps = 2000
+            # Data
+            sampler.reset()
+            nsteps = 2000
 
-        for i, result in enumerate(sampler.sample(pos, iterations=nsteps)):
-            n = int((width+1) * float(i) / nsteps)
-            sys.stdout.write("\r  Sampling data... [{}{}]".format('#'*n, ' '*(width - n)))
-        print("")
+            for i, result in enumerate(sampler.sample(pos, iterations=nsteps)):
+                n = int((width+1) * float(i) / nsteps)
+                sys.stdout.write("\r  Sampling data... [{}{}]".format('#'*n, ' '*(width - n)))
+            print("")
 
-        # chain = sampler.flatchain
-        # fig = mcmc_utils.thumbPlot(chain,['g1', 'g2', 'T0', 'sep', 'peak', 'log_sigma2'])
-        # fig.savefig('/'.join([myLoc, 'eclipse_{}_cornerPlot.pdf'.format(lf.split('/')[-1])]))
-        # plt.show(block=False)
+            # chain = sampler.flatchain
+            # fig = mcmc_utils.thumbPlot(chain,['g1', 'g2', 'T0', 'sep', 'peak', 'log_sigma2'])
+            # fig.savefig('/'.join([myLoc, 'eclipse_{}_cornerPlot.pdf'.format(lf.split('/')[-1])]))
+            # plt.show(block=False)
 
-        t_ecl = np.mean(sampler.flatchain[:,2])
-        err = np.std(sampler.flatchain[:,2])
-        sep = np.mean(sampler.flatchain[:,3])
+            t_ecl = np.mean(sampler.flatchain[:,2])
+            err = np.std(sampler.flatchain[:,2])
+            sep = np.mean(sampler.flatchain[:,3])
 
-        printer("Got a solution: {:.7f}+/-{:.7f}\n".format(t_ecl, err))
+            printer("Got a solution: {:.7f}+/-{:.7f}\n".format(t_ecl, err))
 
-        # Make the maximum likelihood prediction
-        mu, var = gp.predict(y, x, return_var=True)
-        std = np.sqrt(var)
+            # Make the maximum likelihood prediction
+            mu, var = gp.predict(y, x, return_var=True)
+            std = np.sqrt(var)
 
-        # Plot the data
-        color = "#ff7f0e"
-        plt.close('all')
-        fig, ax = plt.subplots(2, 1, sharex=True)
-        ax[0].plot(x, y, '.')
-        ax[0].plot(x, mu, color=color)
-        ax[0].fill_between(x, mu+std, mu-std, color=color, alpha=0.3, edgecolor="none")
-        ax[0].plot(x, mean_model.get_value(x), 'k-')
-        ax[0].axvline(t_ecl, color='magenta')
+            # Plot the data
+            color = "#ff7f0e"
+            plt.close('all')
+            fig, ax = plt.subplots(2, 1, sharex=True)
+            ax[0].plot(x, y, '.')
+            ax[0].plot(x, mu, color=color)
+            ax[0].fill_between(x, mu+std, mu-std, color=color, alpha=0.3, edgecolor="none")
+            ax[0].plot(x, mean_model.get_value(x), 'k-')
+            ax[0].axvline(t_ecl, color='magenta')
 
-        inspect_corr.mplot(ax[1])
-        ax[1].set_title('Lightcurve')
-        ax[1].axvline(t_ecl, color='magenta')
-        ax[1].axvline(t_ecl+(sep/2.), color='red')
-        ax[1].axvline(t_ecl-(sep/2.), color='red')
+            inspect_corr.mplot(ax[1])
+            ax[1].set_title('Lightcurve')
+            ax[1].axvline(t_ecl, color='magenta')
+            ax[1].axvline(t_ecl+(sep/2.), color='red')
+            ax[1].axvline(t_ecl-(sep/2.), color='red')
 
-        ax[0].set_title("maximum likelihood prediction - {}".format(lf.split('/')[-1]))
-        plt.tight_layout()
-        print("  Plotting fit...")
-        plt.show(block=False)
+            ax[0].set_title("maximum likelihood prediction - {}".format(lf.split('/')[-1]))
+            plt.tight_layout()
+            print("  Plotting fit...")
+            plt.show(block=False)
 
-        cont = input("  Save these data? y/n: ")
-        if cont.lower() == 'y':
-            locflag = input("    What is the source of these data: ")
+            cont = input("  Save these data? y/n: ")
+            if cont.lower() == 'y':
+                locflag = input("    What is the source of these data: ")
 
-            key = '-1' # This ensures that if source_key is empty, the new data are pushed to index '0'
-            for key in source_key:
-                if locflag == source_key[key]:
+                key = '-1' # This ensures that if source_key is empty, the new data are pushed to index '0'
+                for key in source_key:
+                    if locflag == source_key[key]:
+                        locflag = key
+                        break
+                if locflag != key:
+                    key = str(int(key)+1)
+                    source_key[key] = locflag
                     locflag = key
-                    break
-            if locflag != key:
-                key = str(int(key)+1)
-                source_key[key] = locflag
-                locflag = key
-            tl.append(['0', float(t_ecl), float(err), locflag])
-            printer("Saved the data: {}".format(['0', float(t_ecl), float(err), locflag]))
-        else:
-            printer("  Did not store eclipse time from {}.".format(lf))
-        plt.close()
-        printer("")
+                tl.append(['0', float(t_ecl), float(err), locflag])
+                printer("Saved the data: {}".format(['0', float(t_ecl), float(err), locflag]))
+            else:
+                printer("  Did not store eclipse time from {}.".format(lf))
+            plt.close()
+            printer("")
+        except celerite.solver.LinAlgError:
+            printer('  Celerite failed to factorize or solve matrix. This can happen when the data are poorly fitted by the double gaussian!')
+            printer("  Skipping this file.")
 
     printer("\nDone all the files!")
 
