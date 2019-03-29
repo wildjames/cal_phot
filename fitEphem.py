@@ -166,7 +166,7 @@ def fitEphem(myLoc, T0, period, simple=False):
         sampler = emcee.EnsembleSampler(nwalkers,npars,ln_prob,args=[x,y,ey,obsCodes],threads=1)
 
         #burn in
-        nburn=10000
+        nburn=20000
         pos, prob, state = mu.run_burnin(sampler, p0,nburn)
 
         #production
@@ -216,7 +216,18 @@ def fitEphem(myLoc, T0, period, simple=False):
         dT *= 24*60*60
         printer(" {:<14s} | {:>20.4f} | {:d}".format(source_key[str(int(t[3]))], dT , int(t[0]) ))
 
-    plt.errorbar(x,resy,yerr=ey,fmt='o',color='k',ecolor='k')
+    # Each error code wants to be a different color
+    codes = set(obsCodes) # set() strips duplicates
+    codes = list(codes)   # list() allows indexing
+    CB_color_cycle = ['#377eb8', '#ff7f00', '#4daf4a',
+                      '#f781bf', '#a65628', '#984ea3',
+                      '#999999', '#e41a1c', '#dede00']
+    colors = []
+    for code in obsCodes:
+        i = codes.index(code)
+        colors.append(CB_color_cycle[i])
+
+    plt.errorbar(x,resy,yerr=ey,fmt='o',c=colors,ecolor='k')
     plt.axhline(ls='--',color='k')
     plt.xlabel('Cycle No.')
     plt.ylabel('O-C (s)')
