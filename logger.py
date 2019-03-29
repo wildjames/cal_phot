@@ -3,17 +3,17 @@ from io import TextIOWrapper
 
 class Logger(TextIOWrapper):
     '''
-    Usage: 
+    Usage:
         sys.stdout = Logger()
-    
+
     Takes all print outputs and mirrors them to a file.
     If the file, <inFile>, is supplied, this is copied into the head of the output.
     '''
     def __init__(self, logname, inFile=None):
         self.terminal = sys.stdout
         self.log = open(logname, "w")
-        
-        
+
+
         if inFile:
             self.log.write("#####################################    COPY OF INPUT FILE    #####################################\n")
             with open(inFile, 'r') as f:
@@ -28,7 +28,7 @@ class Logger(TextIOWrapper):
             self.log.write(message)
 
 def header(inFile):
-    file = 'Calibration.log'
+    file = 'Calibration.txt'
     with open(file, 'w') as o:
         o.write("#####################################    COPY OF INPUT FILE    #####################################\n")
         with open(inFile, 'r') as f:
@@ -39,7 +39,7 @@ def header(inFile):
 
 
 def printer(string, end='\n', terminal=True):
-    file = 'Calibration.log'
+    file = 'Calibration.txt'
 
     string = str(string)
 
