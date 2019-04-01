@@ -262,6 +262,7 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
 
                 # Get this frame's apertures
                 ap = aps[CCD]
+                printer("    This CCD has the apertures: {}".format(ap))
                 # Check that there is more than one aperture -- i.e. if a comparison star exists
                 if len(ap) == 1:
                     printer("I can't do relative photometry with only one aperture!")
@@ -330,8 +331,8 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
 
 
                 # Conversion of target lightcurve
-                cnt_per_flx = comparison / meanFlux # Counts/mJy
-                ratio = target / cnt_per_flx # mJy
+                flx_per_cnt = meanFlux / comparison # Counts/mJy
+                ratio = target * flx_per_cnt # mJy
 
                 printer("  Correcting data to BMJD time...")
                 ratio = tcorrect(ratio, star_loc, obsname)
