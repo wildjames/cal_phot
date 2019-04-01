@@ -331,8 +331,8 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
 
 
                 # Conversion of target lightcurve
-                flx_per_cnt = meanFlux / comparison # Counts/mJy
-                ratio = target * flx_per_cnt # mJy
+                cnt_per_flx = comparison / meanFlux # Counts/mJy
+                ratio = target / cnt_per_flx # mJy
 
                 printer("  Correcting data to BMJD time...")
                 ratio = tcorrect(ratio, star_loc, obsname)
