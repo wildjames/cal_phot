@@ -165,7 +165,7 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
         observatory = coord.EarthLocation.of_site(obsname)
     except:
         lat, lon = obsname.split(',')
-        print("Attempting to get the earth observatory from latitude and longitude")
+        printer("Attempting to get the earth observatory from latitude and longitude")
         observatory = coord.EarthLocation.from_geodetic(lat=lat, lon=lon)
 
     star_loc = coord.SkyCoord(
@@ -274,6 +274,7 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
 
                 # First comparison star
                 comparison = data.tseries(CCD, '2')
+                printer("    Got the reference star in aperture 2")
 
                 # Plot the comparison we construct
                 compAx[CCD_int].clear()
@@ -290,7 +291,7 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                 for a in ap[2:]:
                     N += 1
                     comparison = comparison + data.tseries(CCD, a)
-                    print("  The reference star now includes data from aperture {}".format(a))
+                    printer("  The reference star now includes data from aperture {}".format(a))
 
                 # Take the mean
                 comparison = comparison / N
