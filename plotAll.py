@@ -1,10 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from logger import printer
+from os import mkdir
 
-def plot_all(files, oname, band):
+def plot_all(files, oname, pattern):
     '''
     Takes a list of .calib files, and plots them all over each other as a step plot.
+    Plots only files containing str(pattern)
 
     Returns None
     '''
@@ -13,9 +15,14 @@ def plot_all(files, oname, band):
         printer("  Saving overplotted eclipses to 'overplotted_eclipses.pdf'")
         oname = 'overplotted_eclipses'
 
+    oname = 'figs/'+oname
+    try:
+        mkdir('figs')
+    except: pass
+
     # filter the files so we only have green lightcurves
-    printer("  Plotting the following {} lightcurves:".format(band))
-    files = [x for x in files if '_{}.calib'.format(band) in x]
+    printer("  Plotting the following {} lightcurves:".format(pattern))
+    files = [x for x in files if '{}'.format(pattern) in x]
     for f in files:
         printer("    - {}".format(f))
 
@@ -35,7 +42,7 @@ def plot_all(files, oname, band):
         # odata = np.append(odata, d, axis=1)
         i+= 1
 
-    plt.title("{} band eclispes".format(band))
+    plt.title("*{}* eclispes".format(pattern))
     plt.legend()
     plt.tight_layout()
     plt.savefig(oname+'.pdf')

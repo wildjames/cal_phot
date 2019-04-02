@@ -360,9 +360,17 @@ def getEclipseTimes(coords, obsname, myLoc=None):
         myLoc = path.curdir
         printer("Defaulting to current directory: {}".format(myLoc))
 
+    # Make the ephemeris directory, where I'll put my stuff
+    try:
+        os.mkdir('/'.join([myLoc, 'ephemeris']))
+    except: pass
+
     # Where am I looking for prior data, and saving my new data?
     oname = 'eclipse_times.txt'
-    oname = '/'.join([myLoc, oname])
+    oname = '/'.join([myLoc, 'ephemeris', oname])
+
+
+
     source_key, tl = read_ecl_file(oname)
 
     # What am I using to get new data from?
@@ -527,7 +535,7 @@ def getEclipseTimes(coords, obsname, myLoc=None):
 
             # chain = sampler.flatchain
             # fig = mcmc_utils.thumbPlot(chain,['g1', 'g2', 'T0', 'sep', 'peak', 'log_sigma2'])
-            # fig.savefig('/'.join([myLoc, 'eclipse_{}_cornerPlot.pdf'.format(lf.split('/')[-1])]))
+            # fig.savefig('/'.join([myLoc, 'ephemeris', 'eclipse_{}_cornerPlot.pdf'.format(lf.split('/')[-1])]))
             # plt.show(block=False)
 
             t_ecl = np.mean(sampler.flatchain[:,2])
@@ -589,7 +597,7 @@ def getEclipseTimes(coords, obsname, myLoc=None):
 
     write_ecl_file(source_key, tl, oname)
     plt.ioff()
-    import os
+
     os.remove('eclipse_times.tmp')
 
     #TODO:

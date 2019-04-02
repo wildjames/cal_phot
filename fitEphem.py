@@ -72,7 +72,7 @@ def fitEphem(myLoc, T0, period, simple=False):
     printer("\n\n--- Fitting ephemeris to data ---")
 
     # Read in the eclipsetimes.txt file
-    fname = '/'.join([myLoc, 'eclipse_times.txt'])
+    fname = '/'.join([myLoc, 'ephemeris', 'eclipse_times.txt'])
     source_key, tl = read_ecl_file(fname)
 
     ### Fitting
@@ -172,7 +172,7 @@ def fitEphem(myLoc, T0, period, simple=False):
         #production
         sampler.reset()
         nprod = 20000
-        sampler = mu.run_mcmc_save(sampler,pos,nprod,state,"{}/ephemerisChain.txt".format(myLoc))
+        sampler = mu.run_mcmc_save(sampler,pos,nprod,state,"{}/ephemeris/ephemerisChain.txt".format(myLoc))
         chain = mu.flatchain(sampler.chain,npars,thin=1)
 
         # Gather and report the best values
@@ -190,8 +190,8 @@ def fitEphem(myLoc, T0, period, simple=False):
                 P = best
                 P_err = uplim-lolim
         fig = mu.thumbPlot(chain,nameList)
-        fig.savefig('/'.join([myLoc, 'ephemeris_cornerPlot.pdf']))
-        printer("Saved a corner plot of the MCMC fit (including error scaling factors) to:\n-> {}".format('/'.join([myLoc, 'ephemeris_cornerPlot.pdf'])))
+        fig.savefig('/'.join([myLoc, 'ephemeris', 'ephemeris_cornerPlot.pdf']))
+        printer("Saved a corner plot of the MCMC fit (including error scaling factors) to:\n-> {}".format('/'.join([myLoc, 'ephemeris', 'ephemeris_cornerPlot.pdf'])))
         plt.close('all')
 
         resy = 86400.0*(y-model(bestPars,x))
@@ -232,7 +232,7 @@ def fitEphem(myLoc, T0, period, simple=False):
     plt.axhline(ls='--',color='k', zorder=1)
     plt.xlabel('Cycle No.')
     plt.ylabel('O-C (s)')
-    plt.savefig('ephemeris_scatter.pdf')
+    plt.savefig('ephemeris/ephemeris_scatter.pdf')
     plt.show()
 
     printer("")
