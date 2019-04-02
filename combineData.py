@@ -141,6 +141,9 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
     try:
         os.mkdir('/'.join([myLoc, 'lightcurves']))
     except: pass
+    try:
+        os.mkdir('/'.join([myLoc, 'figs']))
+    except: pass
 
     oname = oname.split('/')
     if oname[0] != myLoc:
@@ -165,7 +168,7 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
         observatory = coord.EarthLocation.of_site(obsname)
     except:
         lat, lon = obsname.split(',')
-        printer("Attempting to get the earth observatory from latitude and longitude")
+        printer("  Attempting to get the earth observatory from latitude and longitude")
         observatory = coord.EarthLocation.from_geodetic(lat=lat, lon=lon)
 
     star_loc = coord.SkyCoord(
@@ -173,6 +176,7 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
         unit=(u.hourangle, u.deg), frame='icrs'
     )
 
+    inst = inst.lower()
     if inst == 'uspec':
         nCCD = 1
         band = ['???']
@@ -183,8 +187,12 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
         c = ['red', 'green', 'blue']
     elif inst == 'hcam':
         nCCD = 5
-        band = ['i', 'z', 'r', 'g', 'u'] #TODO: verify this
-        c = ['red', 'green', 'blue']
+        band = ['u', 'g', 'r', 'i', 'z'] #TODO: verify this!!
+        c = ['blue', 'green', 'red', 'magenta', 'black']
+
+    printer("  I'm using the instrument {}, which has {} CCDS in the following order:".format(inst, nCCD))
+    for n, b, col in zip(range(nCCD), band, c):
+        printer("  -> CCD {}: {} band, plotted in {}".format(n+1, b, col))
 
     master = {}
     written_files = []
@@ -193,10 +201,8 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
     # Plotting area
     print("Making plotting area...", end='')
     plt.ion()
-    fig, ax = plt.subplots(nCCD, figsize=[12, 8], sharex=True)
-    # If we only have one CCD, ax still needs to be a list
-    if nCCD == 1:
-        ax = [ax]
+    fig, ax = plt.subplots(nCCD, figsize=[11.69,8.27], sharex=True)
+
     twinAx = []
     for i, a in enumerate(ax):
         a.set_ylabel('Flux, mJy')
@@ -209,16 +215,20 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
     ax[0].set_title('Waiting for data...')
     fig.tight_layout()
 
-    compFig, compAx = plt.subplots(nCCD, figsize=[12, 8], sharex=True)
+    compFig, compAx = plt.subplots(nCCD, figsize=[11.69,8.27], sharex=True)
+
+    # If we only have one CCD, axes still need to be a lists
     if nCCD == 1:
         compAx = [compAx]
+        ax = [ax]
 
     compFig.tight_layout()
     plt.show()
     print(" Done!")
 
     # I want a master pdf file with all the nights' lightcurves plotted
-    with PdfPages(oname+'_all-nights.pdf') as pdf:
+    pdfname = '/'.join([myLoc, 'figs', 'all_nights.pdf'])
+    with PdfPages(pdfname) as pdf:
         for fname, refname in zip(fnames, comp_fnames):
             printer("\n----------------------------------------------------------------\n----------------------------------------------------------------\n")
             printer("Calibrating lightcurves for {}".format(fname))
@@ -258,11 +268,11 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
             for CCD in CCDs:
                 CCD_int = int(CCD) - 1
 
-                printer("  CCD {}".format(CCD))
+                printer("-> CCD {}".format(CCD))
 
                 # Get this frame's apertures
                 ap = aps[CCD]
-                printer("    This CCD has the apertures: {}".format(ap))
+                printer("  This CCD has the apertures: {}".format(ap))
                 # Check that there is more than one aperture -- i.e. if a comparison star exists
                 if len(ap) == 1:
                     printer("I can't do relative photometry with only one aperture!")
@@ -274,17 +284,12 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
 
                 # First comparison star
                 comparison = data.tseries(CCD, '2')
-                printer("    Got the reference star in aperture 2")
+                printer("  Got the reference star in aperture 2")
 
                 # Plot the comparison we construct
                 compAx[CCD_int].clear()
                 compAx[CCD_int].set_title("CCD {}, comparison star".format(CCD))
                 compAx[CCD_int].set_ylabel("Counts per frame")
-
-                # # First comparison plot
-                # compAx[CCD_int].scatter(comparison.t, comparison.y,
-                #     label='Aperture 2', alpha=0.3, s=10
-                # )
 
                 # Add up the reference star fluxes
                 N = 1
@@ -377,6 +382,7 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                 ax[CCD_int].clear()
                 if CCD_int == 0:
                     ax[0].set_title(fname.split('/')[-1])
+                    compAx[0].set_title("{}\nCCD {}, comparison star".format(fname.split('/')[-1], CCD))
                 ax[CCD_int].set_ylabel('Flux, mJy')
 
                 # Scale the right labels
@@ -402,7 +408,8 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                             compAx[CCD_int].scatter(toPlot.t, toPlot.y,
                                 s=10,
                                 label="Aperture {}/{}".format(a, b),
-                                alpha=0.6
+                                alpha=0.6,
+                                color='red'
                             )
 
                 # Add in legend artist
@@ -423,8 +430,6 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                 filename = oname
                 filename = "{}_{}{}.calib".format(filename, fname.split('/')[-1][:-4], b)
 
-                written_files.append(filename)
-
                 # Saving data
                 with open(filename, 'w') as f:
                     f.write("# Phase, Flux, Err_Flux\n")
@@ -432,13 +437,18 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                         if not mask:
                             f.write("{} {} {}\n".format(t, y, ye))
 
+                written_files.append(filename)
+
                 # Store the lightcurve in the master dict
                 try:
                     # If we find <master> has an entry for this CCD, append it
                     master[CCD] = master[CCD].append(ratio)
+                    printer("  Appended CCD {} to the data dict.".format(CCD))
                 except KeyError:
                     # Otherwise, create a new entry
+                    printer("  Adding {} to the data dict...".format(CCD))
                     master[CCD] = ratio
+
 
                 printer("  Finished CCD {}\n".format(CCD))
 
@@ -458,6 +468,7 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
             input("\n  Hit enter for next file\r")
             print()
             pdf.savefig(fig)
+            pdf.savefig(compFig)
     printer("  ")
     plt.close('all')
     plt.ioff()

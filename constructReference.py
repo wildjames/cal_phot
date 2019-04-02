@@ -162,6 +162,7 @@ def construct_reference(fetchFname):
         bands = ['']
         for b in line:
             bands.append(b)
+        f.readline()
         printer('Querying SDSS for the following bands: {}'.format(', '.join(bands[1:])))
 
         # Construct a dict to read the desired coordinates to
@@ -191,7 +192,7 @@ def construct_reference(fetchFname):
         for i, coord in enumerate(coords):
             ra, dec = coord
 
-            printer('    Searching -> RA, Dec: {}, {}'.format(ra, dec))
+            printer('    Searching -> RA, Dec: {}, {} for {} band mag'.format(ra, dec, band))
 
             # Construct the URL we're gonna post. First define what DB we want to search
             url  = 'http://skyserver.sdss.org/dr14/SkyserverWS/SearchTools/RadialSearch?'
@@ -214,9 +215,9 @@ def construct_reference(fetchFname):
                 printer("--------------------------------------------\nMore than one object found at that location!")
                 # Get the user to pick one:
                 for m, line in enumerate(results):
-                    printer("{}\n  RA: {}, Dec: {}\n  u: {}\n  g: {}\n  r: {}".format(
+                    printer("{}\n  RA: {}, Dec: {}\n  u: {}\n  g: {}\n  r: {}\n  i: {}\n  z: {}".format(
                         m, line['ra'], line['dec'],
-                        line['u'], line['g'], line['r']
+                        line['u'], line['g'], line['r'], line['i'], line['z']
                         )
                     )
                 n = input("Which object to use?: ")
@@ -227,9 +228,9 @@ def construct_reference(fetchFname):
                 target = results[0]
                 ra = deg2arcsec(target['ra'], ra=True)
                 dec = deg2arcsec(target['dec'], ra=False)
-                printer("    Found one result:\n      ra: {}, dec: {}\n        u: {}\n        g: {}\n        r: {}".format(
+                printer("    Found one result:\n      ra: {}, dec: {}\n       u: {}\n       g: {}\n       r: {}\n       i: {}\n       z: {}".format(
                         ra, dec,
-                        target['u'], target['g'], target['r']
+                        target['u'], target['g'], target['r'], target['i'], target['z']
                         )
                     )
             else:
