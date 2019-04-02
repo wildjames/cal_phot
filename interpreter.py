@@ -151,6 +151,8 @@ class Interpreter:
         printer("Fitting eclipse times to refine period and T0 parameters")
 
         T0, period = fitEphem(directory, T0, period)
+        self.params['T0'] = T0
+        self.params['period'] = period
 
     def combineData(self):
         oname     = self.get_param('oname')
