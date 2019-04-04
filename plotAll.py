@@ -3,21 +3,22 @@ import matplotlib.pyplot as plt
 from logger import printer
 from os import mkdir
 
-def plot_all(files, oname, pattern):
+def plot_all(files, oname, pattern, myLoc='.'):
     '''
     Takes a list of .calib files, and plots them all over each other as a step plot.
     Plots only files containing str(pattern)
 
     Returns None
     '''
+    plt.ion()
     printer("")
     if oname == '':
         printer("  Saving overplotted eclipses to 'overplotted_eclipses.pdf'")
         oname = 'overplotted_eclipses'
 
-    oname = 'figs/'+oname
+    oname = '/'.join([myLoc, 'figs', oname])
     try:
-        mkdir('figs')
+        mkdir(myLoc+'figs')
     except: pass
 
     # filter the files so we only have green lightcurves
@@ -45,7 +46,12 @@ def plot_all(files, oname, pattern):
     plt.title("*{}* eclispes".format(pattern))
     plt.legend()
     plt.tight_layout()
-    plt.savefig(oname+'.pdf')
     plt.show()
+    print("This figure will be saved as {}".format(oname+'.pdf'))
+    input('Continue > ')
+    plt.savefig(oname+'.pdf')
+
+    plt.close()
+    plt.ioff()
 
     return None
