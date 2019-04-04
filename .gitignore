@@ -116,3 +116,6 @@ dmypy.json
 .pyre/
 __pycache__/combineData.cpython-35.pyc
 __pycache__/getEclipseTimes.cpython-35.pyc
+__pycache__/combineData.cpython-35.pyc
+__pycache__/constructReference.cpython-35.pyc
+__pycache__/getEclipseTimes.cpython-35.pyc
