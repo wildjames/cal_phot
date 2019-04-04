@@ -14,7 +14,8 @@ from logger import printer, header
 class Interpreter:
     def __init__(self, inFile=None, prompt=False):
         # Resize the terminal
-        sys.stdout.write("\x1b[8;{rows};{cols}t".format(rows=110, cols=80))
+        print("\x1b[8;{110};{80}t")
+        print("\033[2J")
 
         # Initialise variables. Store args in a dict.
         self.params = {
@@ -219,8 +220,8 @@ class Interpreter:
             self.help()
             exit()
         elif command in ['stop', 'exit', 'quit']:
-            printer("Stopping.")
-            print("\n\n\n\n")
+            printer("Bye!")
+            print("\n\n")
             try:
                 self.inFile.close()
             except AttributeError:
@@ -384,11 +385,6 @@ class Interpreter:
             self.params['oname'] = oname
             printer("Using the following filename: {}".format(oname))
 
-        elif command == 'binsize':
-            binsize = int(args[0])
-            self.params['binsize'] = binsize
-            printer("Binning is NOT supported in this interpreter - it's not good practice!".format(binsize))
-
         elif command == 'logfiles':
             # Read in logfilenames, terminated by an empty line, i.e. in the format:
             # logfiles
@@ -419,13 +415,14 @@ class Interpreter:
             printer("")
 
         # plotAll
-        elif command == 'overplot':
+        elif command == 'plot':
             if args != []:
                 oname = args[0]
                 band  = args[1]
             else:
                 oname = ''
-            plot_all(self.written_files, oname, band)
+            myLoc = self.get_param('directory')
+            plot_all(self.written_files, oname, band, myLoc)
 
 
         # Unknown command handler
