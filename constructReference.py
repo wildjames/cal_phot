@@ -213,9 +213,10 @@ def construct_reference(fetchFname):
                 printer('You got a lot of results from the SDSS query! Choose from the following VERY carefully.')
             if len(results) > 1:
                 printer("--------------------------------------------\nMore than one object found at that location!")
+                printer("If you want to look in more detail, here's my search URL:\n{}".format(url.replace('json', 'html')))
                 # Get the user to pick one:
                 for m, line in enumerate(results):
-                    printer("{}\n  RA: {}, Dec: {}\n  u: {}\n  g: {}\n  r: {}\n  i: {}\n  z: {}".format(
+                    printer("{}\n  RA, Dec: {} {}\n  u: {}\n  g: {}\n  r: {}\n  i: {}\n  z: {}".format(
                         m, line['ra'], line['dec'],
                         line['u'], line['g'], line['r'], line['i'], line['z']
                         )
