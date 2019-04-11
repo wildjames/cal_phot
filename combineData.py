@@ -246,6 +246,8 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
             except:
                 data = hcam.hlog.Hlog.from_ulog(fname)
 
+            printer("  Read the data file!")
+
             # Get the apertures of this data set
             aps = data.apnames
             CCDs = [str(i) for i in aps]
