@@ -181,6 +181,15 @@ def construct_reference(fetchFname):
             else:
                 fetchme[str(x)].append(line.split())
 
+    printer("  Looking for the following the coordinates:")
+    printer("  {:^15s} | {:^15s}".format('RA', 'DEC'))
+    for CCD in CCDs:
+        coords = fetchme[CCD]
+        printer("  {:^15s} | {:<15s}".format('CCD {}'.format(CCD), ''))
+        for coord in coords:
+            ra, dec = coord
+            printer("  {:>15s} | {:<15s}".format(ra, dec))
+
     toWrite = {}
 
     for CCD in CCDs:
@@ -222,6 +231,10 @@ def construct_reference(fetchFname):
                         )
                     )
                 n = input("Which object to use?: ")
+                while n == '':
+                    n = input("Which object to use?: ")
+                    if int(n) >= len(results):
+                        n = ''
                 printer("Chose object {}".format(n), terminal=False)
                 target = results[int(n)]
                 printer('--------------------------------------------')

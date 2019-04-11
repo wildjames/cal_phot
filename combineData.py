@@ -507,6 +507,7 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
             pdf.savefig(fig)
             pdf.savefig(compFig)
     printer("  ")
+    printer("  Saved the plots to {}".format(pdfname))
     plt.close('all')
     plt.ioff()
 

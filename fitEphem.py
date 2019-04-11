@@ -163,7 +163,7 @@ def fitEphem(myLoc, T0, period, simple=False):
 
         # Initialise the sampler
         p0 = emcee.utils.sample_ball(guessP,0.01*guessP,size=nwalkers)
-        sampler = emcee.EnsembleSampler(nwalkers,npars,ln_prob,args=[x,y,ey,obsCodes],threads=1)
+        sampler = emcee.EnsembleSampler(nwalkers,npars,ln_prob,args=[x,y,ey,obsCodes],threads=4)
 
         #burn in
         nburn=20000
