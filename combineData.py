@@ -453,7 +453,11 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                             fit_X = np.linspace(toPlot.t[0], toPlot.t[-1], 3)
                             fit_Y = straight_line(fit_X, A, B)
 
-                            mean, _, _ = sigma_clipped_stats(toPlot.y, maxiters=2, sigma=3)
+                            # iters is depreciated. Try the new version, if that fails do the old version. yay, flexibility!
+                            try:
+                                mean, _, _ = sigma_clipped_stats(toPlot.y, maxiters=2, sigma=3)
+                            except:
+                                mean, _, _ = sigma_clipped_stats(toPlot.y, iters=2, sigma=3)
                             compAx[CCD_int].axhline(mean, linestyle='--', color='black')
                             compAx[CCD_int].plot(fit_X, fit_Y, color='red', linestyle=':')
                             compAx[CCD_int].scatter(toPlot.t, toPlot.y,
