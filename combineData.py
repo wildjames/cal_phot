@@ -393,17 +393,15 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                     ratio.mask[slice_args]
                     )
 
-                printer("  Removing null data")
-                # If data is bad, i.e. 0, mask it
-                slice_args = np.where((ratio.y != 0) * (ratio.ye != 1) * (ratio.y > 0.0))
-                ratio = hcam.hlog.Tseries(
-                    ratio.t[slice_args],
-                    ratio.y[slice_args],
-                    ratio.ye[slice_args],
-                    ratio.mask[slice_args]
-                    )
-
-                ratio.mask[:] = 0
+                # printer("  Removing null data")
+                # # If data is bad, i.e. 0, mask it
+                # slice_args = np.where((ratio.y != 0) * (ratio.ye != 1) * (ratio.y > 0.0))
+                # ratio = hcam.hlog.Tseries(
+                #     ratio.t[slice_args],
+                #     ratio.y[slice_args],
+                #     ratio.ye[slice_args],
+                #     ratio.mask[slice_args]
+                #     )
 
                 printer("  I sliced out {} data from the lightcurve about the eclipse.".format(len(ratio.t)))
 
@@ -437,6 +435,14 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                         for b in ap[i+2:]:
                             print("  -> Plotting ap {}/{}".format(a, b))
                             toPlot = first / data.tseries(CCD, b)
+
+                            if np.sum(toPlot.mask):
+                                mask = np.where(toPlot.mask == 0)
+
+                                toPlot.t  = toPlot.t[mask]
+                                toPlot.y  = toPlot.y[mask]
+                                toPlot.ye = toPlot.ye[mask]
+                                toPlot.mask = toPlot.mask[mask]
 
                             toPlot.y = toPlot.y / np.mean(toPlot.y)
                             toPlot.y = toPlot.y + (float(j) / 5)
@@ -484,7 +490,7 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                 filename = "{}_{}{}.calib".format(filename, fname.split('/')[-1][:-4], b)
 
                 # Saving data
-                printer("  These data have {} masked points.".format(np.sum(ratio.mask > 0)))
+                printer("  These data have {} masked points.".format(np.sum(ratio.mask != 0)))
                 with open(filename, 'w') as f:
                     f.write("# Phase, Flux, Err_Flux\n")
                     for t, y, ye, mask in zip(ratio.t, ratio.y, ratio.ye, ratio.mask):
