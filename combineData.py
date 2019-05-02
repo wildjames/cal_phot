@@ -311,7 +311,7 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                 # Take the mean
                 if N > 1:
                     comparison.y  = comparison.y  / float(N)
-                    comparison.ye = comparison.ye / float(N)
+                    comparison.ye = np.sqrt((comparison.ye**2) / float(N))
 
                 ### <comparison> is now a mean COUNT of the comparison stars for each exposure ###
                 ## Calculate their actual mean flux from their apparent magnitudes
@@ -356,12 +356,12 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                 ratio = tcorrect(ratio, star_loc, obsname)
 
                 if CCD == '1':
-                    mintime = np.mean(ratio.t)
-                    E = calc_E(mintime, T0, period)
+                    meantime = np.mean(ratio.t)
+                    E = calc_E(meantime, T0, period)
                     E = np.rint(E)
-                    printer("  The mean time of this eclipse is {:.3f}.".format(mintime))
+                    printer("  The mean time of this eclipse is {:.3f}.".format(meantime))
                     printer("  From ephemeris data, I get an eclipse Number,")
-                    printer("    E = ({:.3f} - {:.3f}) / {:.5f}".format(mintime, T0, period))
+                    printer("    E = ({:.3f} - [T0={:.3f}]) / [P={:.5f}]".format(meantime, T0, period))
                     printer("    E = {}".format(E))
 
                     # The above can be off, if the eclipse isnt the minimum. in/decriment until it's within bounds

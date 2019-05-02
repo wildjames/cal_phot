@@ -14,7 +14,7 @@ from celerite.modeling import Model
 
 import numpy as np
 import copy
-from os import path as path, listdir
+from os import path as path, listdir, mkdir, remove
 import sys
 import emcee
 
@@ -361,9 +361,12 @@ def getEclipseTimes(coords, obsname, myLoc=None):
         printer("Defaulting to current directory: {}".format(myLoc))
 
     # Make the ephemeris directory, where I'll put my stuff
+    print("Putting the ephemeris data in {}".format('/'.join([myLoc, 'ephemeris'])))
     try:
-        os.mkdir('/'.join([myLoc, 'ephemeris']))
-    except: pass
+        mkdir('/'.join([myLoc, 'ephemeris']))
+        print("Created the directory!")
+    except:
+        print("The directory already exists!")
 
     # Where am I looking for prior data, and saving my new data?
     oname = 'eclipse_times.txt'
@@ -542,6 +545,7 @@ def getEclipseTimes(coords, obsname, myLoc=None):
             err = np.std(sampler.flatchain[:,2])
             sep = np.mean(sampler.flatchain[:,3])
 
+            temp_file.write("{},{},{}".format(float(t_ecl), float(err), lf))
             printer("Got a solution: {:.7f}+/-{:.7f}\n".format(t_ecl, err))
 
             # Make the maximum likelihood prediction
@@ -584,7 +588,6 @@ def getEclipseTimes(coords, obsname, myLoc=None):
                     locflag = key
                 tl.append(['0', float(t_ecl), float(err), locflag])
                 printer("Saved the data: {}".format(['0', float(t_ecl), float(err), locflag]))
-                temp_file.write("{},{},{},{}".format('0', float(t_ecl), float(err), locflag))
             else:
                 printer("  Did not store eclipse time from {}.".format(lf))
             plt.close()
@@ -598,8 +601,6 @@ def getEclipseTimes(coords, obsname, myLoc=None):
     write_ecl_file(source_key, tl, oname)
     plt.ioff()
 
-    os.remove('eclipse_times.tmp')
-
     #TODO:
     # Temporary placeholder. Think about this.
     # - Get the rounded ephemeris fit from the period and T0 supplied?
@@ -607,3 +608,5 @@ def getEclipseTimes(coords, obsname, myLoc=None):
     printer("This string might help:\ncode {}".format(path.abspath(oname)))
     printer("Please open the file, and edit in the eclipse numbers for each one.")
     input("Hit enter when you've done this!")
+
+    remove('eclipse_times.tmp')

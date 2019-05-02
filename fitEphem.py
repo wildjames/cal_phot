@@ -34,6 +34,44 @@ except ImportError:
 #import corner
 import time
 
+# Use Stu's version of the fitting, which considers error
+def model(pars,x):
+    return pars[0] + pars[1]*x
+
+def chisq(pars,x,y,yerr):
+    resids = ( y - model(pars,x) ) / yerr
+    return np.sum(resids*resids)
+
+def reducedChisq(pars,x,y,yerr):
+    return chisq(pars,x,y,yerr) / (len(x) - len(pars) - 1)
+
+def ln_likelihood(pars,x,y,yerr,obsCodes):
+    errs = yerr.copy()
+    # scale errors by amount set by observatory code
+    emul_factors = pars[2:]
+    multipliers  = emul_factors[obsCodes-1]
+    errs = errs*multipliers
+    return -0.5*(np.sum( np.log( 2.0*np.pi*errs**2 ) ) + chisq(pars,x,y,errs))
+
+def ln_prior(pars):
+    lnp = 0.0
+    # only priors are on error scaling - assume good to 2 orders of magnitude
+    prior = mu.Prior('log_uniform',0.01,100)
+    for param in pars[2:]:
+        lnp += prior.ln_prob(param)
+    return lnp
+
+def ln_prob(pars,x,y,yerr,obsCodes):
+    lnp = ln_prior(pars)
+    if np.isfinite(lnp):
+        return lnp + ln_likelihood(pars,x,y,yerr,obsCodes)
+    else:
+        return lnp
+
+# p = [T0, period]
+def fitfunc(p,x):
+    return p[0] + p[1]*x
+
 def fitEphem(myLoc, T0, period, simple=False):
     """
     Takes eclipse time data from a file, and fits ephemeris parameters (T0, period) to them
@@ -102,45 +140,6 @@ def fitEphem(myLoc, T0, period, simple=False):
         resy = y - fitfunc(pfinal, x)
 
     else:
-        # Use Stu's version of the fitting, which considers error
-        def model(pars,x):
-            return pars[0] + pars[1]*x
-
-        def chisq(pars,x,y,yerr):
-            resids = ( y - model(pars,x) ) / yerr
-            return np.sum(resids*resids)
-
-        def reducedChisq(pars,x,y,yerr):
-            return chisq(pars,x,y,yerr) / (len(x) - len(pars) - 1)
-
-        def ln_likelihood(pars,x,y,yerr,obsCodes):
-            errs = yerr.copy()
-            # scale errors by amount set by observatory code
-            emul_factors = pars[2:]
-            multipliers  = emul_factors[obsCodes-1]
-            errs = errs*multipliers
-            return -0.5*(np.sum( np.log( 2.0*np.pi*errs**2 ) ) + chisq(pars,x,y,errs))
-
-        def ln_prior(pars):
-            lnp = 0.0
-            # only priors are on error scaling - assume good to 2 orders of magnitude
-            prior = mu.Prior('log_uniform',0.01,100)
-            for param in pars[2:]:
-                lnp += prior.ln_prob(param)
-            return lnp
-
-        def ln_prob(pars,x,y,yerr,obsCodes):
-            lnp = ln_prior(pars)
-            if np.isfinite(lnp):
-                return lnp + ln_likelihood(pars,x,y,yerr,obsCodes)
-            else:
-                return lnp
-
-        # p = [T0, period]
-        def fitfunc(p,x):
-            return p[0] + p[1]*x
-
-
         # Get the number of sources, which will each have their errors scaled differently
         numObs = len(source_key)
 
@@ -149,8 +148,6 @@ def fitEphem(myLoc, T0, period, simple=False):
         npars = 2+numObs                # The parameters are the T0, P, and the error scale of each source
         nwalkers = max(16,4*(2+numObs)) # The number of walklers wants to be at least 16,
                                         # or enough to sample our parameter space properly
-        params = np.lib.polynomial.polyfit(x,y,1).tolist() # just fit times and cycle numbers to get guesses
-        params = params[::-1]
 
         # Construct a list of parameters for the model, i.e. T0, P, and the error scale factor of each source
         nameList = ['T0','P']
@@ -184,11 +181,15 @@ def fitEphem(myLoc, T0, period, simple=False):
             bestPars.append(best)
 
             if nameList[i] == 'T0':
+                printer("Old T0: {:.8f}".format(T0))
                 T0 = best
                 T0_err = uplim-lolim
+                printer("New T0: {:.8f}+/-{:.8f}".format(T0, T0_err))
             if nameList[i] == 'P':
+                printer("Old P:  {:.8f}".format(period))
                 P = best
                 P_err = uplim-lolim
+                printer("New P: {:.8f}+/-{:.8f}".format(P, P_err))
         fig = mu.thumbPlot(chain,nameList)
         fig.savefig('/'.join([myLoc, 'ephemeris', 'ephemeris_cornerPlot.pdf']))
         printer("Saved a corner plot of the MCMC fit (including error scaling factors) to:\n-> {}".format('/'.join([myLoc, 'ephemeris', 'ephemeris_cornerPlot.pdf'])))
@@ -211,6 +212,8 @@ def fitEphem(myLoc, T0, period, simple=False):
     printer("This fit had a reduced chisq value of {:.3f}".format(chisq))
     printer('')
     printer("Source          |  (Obs) - (Calc), sec | Cycle Number")
+    def fitfunc(p,x):
+        return p[0] + p[1]*x
     for t in tl:
         dT = fitfunc([T0, P], t[0]) - t[1]
         dT *= 24*60*60
