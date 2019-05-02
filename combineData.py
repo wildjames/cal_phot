@@ -393,17 +393,15 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                     ratio.mask[slice_args]
                     )
 
-                printer("  Removing null data")
-                # If data is bad, i.e. 0, mask it
-                slice_args = np.where((ratio.y != 0) * (ratio.ye != 1) * (ratio.y > 0.0))
-                ratio = hcam.hlog.Tseries(
-                    ratio.t[slice_args],
-                    ratio.y[slice_args],
-                    ratio.ye[slice_args],
-                    ratio.mask[slice_args]
-                    )
-
-                ratio.mask[:] = 0
+                # printer("  Removing null data")
+                # # If data is bad, i.e. 0, mask it
+                # slice_args = np.where((ratio.y != 0) * (ratio.ye != 1) * (ratio.y > 0.0))
+                # ratio = hcam.hlog.Tseries(
+                #     ratio.t[slice_args],
+                #     ratio.y[slice_args],
+                #     ratio.ye[slice_args],
+                #     ratio.mask[slice_args]
+                #     )
 
                 printer("  I sliced out {} data from the lightcurve about the eclipse.".format(len(ratio.t)))
 
@@ -438,6 +436,14 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                             print("  -> Plotting ap {}/{}".format(a, b))
                             toPlot = first / data.tseries(CCD, b)
 
+                            if np.sum(toPlot.mask):
+                                mask = np.where(toPlot.mask == 0)
+
+                                toPlot.t  = toPlot.t[mask]
+                                toPlot.y  = toPlot.y[mask]
+                                toPlot.ye = toPlot.ye[mask]
+                                toPlot.mask = toPlot.mask[mask]
+
                             toPlot.y = toPlot.y / np.mean(toPlot.y)
                             toPlot.y = toPlot.y + (float(j) / 5)
                             j += 1
@@ -453,7 +459,11 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                             fit_X = np.linspace(toPlot.t[0], toPlot.t[-1], 3)
                             fit_Y = straight_line(fit_X, A, B)
 
-                            mean, _, _ = sigma_clipped_stats(toPlot.y, maxiters=2, sigma=3)
+                            # iters is depreciated. Try the new version, if that fails do the old version. yay, flexibility!
+                            try:
+                                mean, _, _ = sigma_clipped_stats(toPlot.y, maxiters=2, sigma=3)
+                            except:
+                                mean, _, _ = sigma_clipped_stats(toPlot.y, iters=2, sigma=3)
                             compAx[CCD_int].axhline(mean, linestyle='--', color='black')
                             compAx[CCD_int].plot(fit_X, fit_Y, color='red', linestyle=':')
                             compAx[CCD_int].scatter(toPlot.t, toPlot.y,
@@ -480,7 +490,7 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                 filename = "{}_{}{}.calib".format(filename, fname.split('/')[-1][:-4], b)
 
                 # Saving data
-                printer("  These data have {} masked points.".format(np.sum(ratio.mask > 0)))
+                printer("  These data have {} masked points.".format(np.sum(ratio.mask != 0)))
                 with open(filename, 'w') as f:
                     f.write("# Phase, Flux, Err_Flux\n")
                     for t, y, ye, mask in zip(ratio.t, ratio.y, ratio.ye, ratio.mask):
