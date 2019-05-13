@@ -1,5 +1,6 @@
 import json
 import requests
+import bs4 as bs
 import os
 from copy import deepcopy
 
@@ -16,6 +17,12 @@ try:
 except ImportError:
     def printer(string, end='\n'):
         print(string, end=end)
+
+import feedparser
+
+from pprint import pprint
+
+
 
 '''
 
@@ -81,7 +88,7 @@ def convert_kg5(sdss_result):
 
     KG5 = g  - 0.2240*(g-r)**2 - 0.3590*(g-r) + 0.0460
     printer("  ** Using the recipe: KG5 = g - 0.2240*(g-r)**2 - 0.3590*(g-r) + 0.0460")
-    printer("  ** Computed the KG5 magnitude: {:.3f}\n".format(KG5))
+    printer("  ** Computed the KG5 magnitude: {:.3f}".format(KG5))
 
     return KG5
 
@@ -97,6 +104,8 @@ def construct_reference(fetchFname):
     }
 
     <fetchFname> is formatted as follows:
+        <CCD1 filter> <CCD2 filter> <CCD3 filter>
+
         "CCD 1 reference 1 RA" "CCD 1 reference 1 Dec"
         "CCD 1 reference 2 RA" "CCD 1 reference 2 Dec"
 
@@ -185,7 +194,7 @@ def construct_reference(fetchFname):
     printer("  {:^15s} | {:^15s}".format('RA', 'DEC'))
     for CCD in CCDs:
         coords = fetchme[CCD]
-        printer("  {:^15s} | {:<15s}".format('CCD {}'.format(CCD), ''))
+        printer("    {:<13s} | {:<15s}".format('CCD {}'.format(CCD), ''))
         for coord in coords:
             ra, dec = coord
             printer("  {:>15s} | {:<15s}".format(ra, dec))
@@ -198,7 +207,7 @@ def construct_reference(fetchFname):
         coords = fetchme[CCD]
         band = bands[int(CCD)]
 
-        for i, coord in enumerate(coords):
+        for index, coord in enumerate(coords):
             ra, dec = coord
 
             printer('    Searching -> RA, Dec: {}, {} for {} band mag'.format(ra, dec, band))
@@ -247,6 +256,7 @@ def construct_reference(fetchFname):
                         target['u'], target['g'], target['r'], target['i'], target['z']
                         )
                     )
+
             else:
                 printer('ERROR! Found no targets at the location: RA: {}, Dec: {}'.format(target['ra'], target['dec']))
                 printer('Try broadening the search radius in this script (was {}),'.format(radius))
@@ -256,6 +266,49 @@ def construct_reference(fetchFname):
             # append the magnitudes found in [bands] to the output dict.
             if band.lower() == 'kg5':
                 target[band] = convert_kg5(target)
+
+
+            ### I need to check the flags here. Mini webscraper:
+            target_entry = 'http://skyserver.sdss.org/DR14//en/tools/explore/summary.aspx?id={}'.format(target['objid'])
+            printer("    Here's the entry on the skyserver:\n    {}".format(target_entry))
+            # Lovely soup
+            resp = requests.post(target_entry)
+            soup = bs.BeautifulSoup(resp.text, features='lxml')
+
+            # The flags are stored in a table, with the first column having the string "Flags"...
+            tables = soup.find_all('table')
+
+            foundFlags = False
+            for table in tables:
+                # Scan through for the table that keeps the flags. USE HTML HEADERS PEOPLE
+                if 'Flags' in table.text:
+                    # Yay!
+                    foundFlags = True
+                    FLAGS = table.text.strip().split()[1:]
+                    if len(FLAGS):
+                        printer("    This star has the following flags:")
+                        for flag in FLAGS:
+                            printer("      -> {}".format(flag))
+
+                        if 'SATURATED' in FLAGS:
+                            printer("THIS STAR HAS SATURATED SDSS, AND WILL NOT GIVE AN ACCURATE FLUX.")
+                            printer("I'll infer its magnitude from other comparisons..")
+                            target[band] = np.nan
+
+                        stop = input("Hit enter to continue if these are okay, 'q' to stop the script: ") + ' '
+                        if 'q' in stop.lower():
+                            printer("User terminated during SDSS star lookups")
+                            quit()
+                        break
+
+            if not foundFlags:
+                # Boooooo
+                printer("Didn't find the flags table... Check this one manually!")
+                printer("\n")
+                input("Cont...")
+
+            printer("    -> Using the {} band magnitude for star {}: {:.3f}".format(band, index, target[band]))
+            printer("\n\n")
 
             try:
                 toWrite[CCD].append(
