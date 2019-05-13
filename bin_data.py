@@ -15,16 +15,16 @@ files = [
 
 # 'SDSSJ0748_0_2018-12-17_g.calib',
 
-# 'SDSSJ0748_0_2017-02-24_r.calib',
-# 'SDSSJ0748_0_2018-02-04_r.calib',
-# 'SDSSJ0748_0_2018-12-17_r_1.calib',
-# 'SDSSJ0748_0_2018-12-17_r_2.calib',
+'SDSSJ0748_0_2017-02-24_r.calib',
+'SDSSJ0748_0_2018-02-04_r.calib',
+'SDSSJ0748_0_2018-12-17_r_1.calib',
+'SDSSJ0748_0_2018-12-17_r_2.calib',
 
 # 'SDSSJ0748_0_2018-02-05_r.calib',
 ]
-binsize = 2
-phi_min = -0.1
-phi_max = +0.2
+binsize = 3
+phi_min = -0.2
+phi_max = +0.5
 
 
 print("Binning by {}".format(binsize))
@@ -53,6 +53,7 @@ for file in files:
 
     print("The file {} has {} data".format(file, ts.shape))
 
+    ax[0].step(ts, fl, alpha=0.3, color='black')
     ax[1].step(ts, fl, label=file)
 
     master_ts += list(ts)
@@ -116,10 +117,10 @@ if cont.lower()[0] == 'y':
             f.write("{} {} {}\n".format(t, fl, fe))
 
     figname = "../figs/"+oname.replace('.calib', '.pdf')
-    if os.path.isfile(figname):
-        new_figname = figname.replace('.pdf', 'BIN{}.pdf'.format(binsize))
-        print("Error! {} already exists. Saving as {} instead...".format(figname, new_figname))
-        figname = new_figname
+    # if os.path.isfile(figname):
+    #     new_figname = figname.replace('.pdf', 'BIN{}.pdf'.format(binsize))
+    #     print("Error! {} already exists. Saving as {} instead...".format(figname, new_figname))
+    #     figname = new_figname
     plt.savefig(figname)
 
 plt.close()
