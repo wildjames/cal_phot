@@ -29,6 +29,15 @@ def sdss_mag2flux(mag):
 
     return flux
 
+def sdss_flux2mag(flx):
+    '''Takes an flux in mJy and converts it to an SDSS magnitude'''
+    alpha = 3631e3
+
+    m = -2.5 * np.log10(flx)
+    m += 2.5 * np.log10(alpha)
+
+    return m
+
 def calc_E(T, T0, P):
     E = (T-T0) / P
     return E
@@ -275,8 +284,12 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
             ### For each CCD, grab the target lightcurve, and the comparisons
             for CCD in CCDs:
                 CCD_int = int(CCD) - 1
-
                 printer("-> CCD {}".format(CCD))
+
+                # Plot the comparison we construct
+                compAx[CCD_int].clear()
+                compAx[CCD_int].set_title("CCD {}, comparison star".format(CCD))
+                compAx[CCD_int].set_ylabel("Counts per frame")
 
                 # Get this frame's apertures
                 ap = aps[CCD]
@@ -285,53 +298,105 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                 if len(ap) == 1:
                     printer("I can't do relative photometry with only one aperture!")
                     printer("!!! Bad log file, '{}' !!!".format(fname))
-                    exit()
+                    raise LookupError("Not enough apertures in the log file!", fname)
+
+                # Check for nans in the log files.
+                for a in ap:
+                    star = data.tseries(CCD, a)
+                    if np.any(np.isnan(star.y)):
+                        printer("!!! Log file cannot contain nan values! File {}".format(fname))
+                        raise ValueError("Log file cannot contain nan values!", fname)
+
 
                 # Grab the target data
                 target = data.tseries(CCD, '1')
 
                 # First comparison star
                 comparison = data.tseries(CCD, '2')
+                N_comparisons = 1
                 printer("  Got the reference star in aperture 2")
-
-                # Plot the comparison we construct
-                compAx[CCD_int].clear()
-                compAx[CCD_int].set_title("CCD {}, comparison star".format(CCD))
-                compAx[CCD_int].set_ylabel("Counts per frame")
-
-                # Add up the reference star fluxes
-                N = 1
-                for a in ap[2:]:
-                    N += 1
-                    comparison = comparison + data.tseries(CCD, a)
-                    printer("  The reference star now includes data from aperture {}".format(a))
-
-                sumComparison = copy.deepcopy(comparison)
-
-                # Take the mean
-                if N > 1:
-                    comparison.y  = comparison.y  / float(N)
-                    comparison.ye = np.sqrt((comparison.ye**2) / float(N))
-
-                ### <comparison> is now a mean COUNT of the comparison stars for each exposure ###
-                ## Calculate their actual mean flux from their apparent magnitudes
 
                 # mags is a list of the relevant comparison star magnitudes.
                 # For non-SDSS fields, this is the clipped mean magnitude of each object.
                 mags = reference_stars[CCD]
+                printer("  Comparison star mags: {}".format(mags))
+
+                # Add up the reference star fluxes
+                for a in ap[2:]:
+                    N_comparisons += 1
+                    comparison = comparison + data.tseries(CCD, a)
+
+                    printer("  The reference star now includes data from aperture {}".format(a))
+
+                # Sometimes, we get nan frames. Let the user know.
+                if np.any(np.isnan(comparison.y)):
+                    printer(" !!! The comparison star contains nan electron counts in {} frames!".format(np.sum(np.isnan(comparison.y))))
+                if np.any(np.isnan(target.y)):
+                    printer(" !!! The target star contains nan electron counts in {} frames!".format(np.sum(np.isnan(target.y))))
+
+                # If we have SDSS stars too bright, get their mags from flux calibrating those that arent
+                if np.any([np.isnan(i) for i in mags]):
+                    printer("\n\n  I have some comparisons that saturated SDSS! Inferring their magnitudes from fainter stars.")
+                    printer("  Collecting fainter stars...")
+                    calibComp = None
+                    for mag, a in zip(mags, ap[1:]):
+                        if np.isnan(mag):
+                            printer("    Skipping aperture {}, as it is nan".format(a))
+                        else:
+                            if calibComp is None:
+                                calibComp = data.tseries(CCD, a)
+                            else:
+                                calibComp += data.tseries(CCD, a)
+
+                    if calibComp is None:
+                        printer("\n\nAll comparison stars saturated SDSS! Pick at least one that doesn't!")
+                        exit()
+
+                    calibComp_counts = np.mean(calibComp.y)
+                    printer("  My non-saturated SDSS stars have a mean count/frame of {:.3f}".format(calibComp_counts))
+
+                    fluxs = sdss_mag2flux(mags)
+                    sumFlux = np.nansum(fluxs)
+                    sumMag = sdss_flux2mag(sumFlux)
+
+                    printer("  My fluxes are {}".format([f for f in fluxs if not np.isnan(f)]))
+                    printer("    with a sum flux of {:.3f} mJy".format(sumFlux))
+                    printer("     and a sum mag of  {:.3f} mag".format(sumMag))
+
+                    for i, (mag, a) in enumerate(zip(mags, ap[1:])):
+                        if np.isnan(mag):
+                            cnts = data.tseries(CCD, a)
+                            meanCnts = np.mean(cnts.y)
+                            if np.any(np.isnan(cnts.y)):
+                                printer("The file {} has nan counts! That's wierd, and you should fix that.")
+                                printer("I'll continue ignoring the nan, BUT FIX IT!")
+                                meanCnts = np.nanmean(cnts.y)
+
+                            mag = sumMag - 2.5*np.log10(meanCnts/calibComp_counts)
+
+                            mags[i] = mag
+                            printer("    Star {} had no SDSS magnitude. Computed a magnitude of {:.3f} from an e- flux of {}".format(a, mag, meanCnts))
+                    printer("\n")
 
 
-                if len(mags) != N:
+
+                if len(mags) != N_comparisons:
                     printer("  Target reduction filename:    {}".format(fname))
                     printer("  Comparison stars filename:    {}".format(refname))
                     printer("!!!!! Number of comparison magnitudes in standard star reduction: {}".format(len(mags)))
                     printer("!!!!! Number of comparison stars in target reduction: {}".format(len(ap[1:])))
                     input("Hit <Enter> to continue")
 
+                ### Conversion of target lightcurve ###
+
+                # Get the non-saturated fluxes
                 fluxs = sdss_mag2flux(mags)
-                # Don't take the clipped mean here, as the meanFlux is the mean, mean flux of our comparison stars,
-                meanFlux  = np.mean(fluxs, dtype=np.float) # Actual FLUX of constructed comparison star
-                sumFlux   = np.sum(fluxs, dtype=np.float)
+                comparison_flux = np.sum(fluxs)
+
+                ratio = target / comparison # counts / counts - ratio between target and comp
+                meanRatio = np.mean(ratio.y)
+                ratio = ratio * comparison_flux # Scale back up to actual flux.
+
 
                 ## Reporting
                 printer("  Comparison star apparent SDSS magnitudes:".format())
@@ -341,29 +406,28 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                 printer("  Apparent fluxes of the comparison stars:")
                 for i, flux in enumerate(fluxs):
                     printer("    Star {} -> {:.3f} mJy".format(i, flux))
-                printer('  Mean apparent Flux: {:.3f} mJy\n'.format(meanFlux))
-                printer("  Instrumental mean counts per frame ({} frames) of {} comparison stars: {:.1f}".format(
+                printer('  Sum apparent Flux: {:.3f} mJy\n'.format(comparison_flux))
+                printer("  Instrumental summed counts per mean frame ({} frames) of {} comparison stars: {:.1f}".format(
                     len(comparison.y), len(ap[1:]), np.mean(comparison.y)
                 ))
-                printer("  mJy per count: {:.3e}".format(meanFlux/np.mean(comparison.y)))
+                printer("  Instrumental counts per mean frame ({} frames) of target: {:.1f}".format(
+                    len(target.y), np.mean(target.y)
+                ))
+                printer("  Mean Target/comparison count ratio: {:.3f}".format(meanRatio))
+                printer("  Mean target magnitude: {:.3f}".format(sdss_flux2mag(meanRatio * comparison_flux)))
 
-
-                # Conversion of target lightcurve
-                cnt_per_flx = sumComparison / sumFlux # Counts/mJy --- float / Tseries is not supported.
-                ratio = target / cnt_per_flx # counts / (counts/mJy) = mJy
-
-                printer("  Correcting data to BMJD time...")
+                printer("\n\n  Correcting data to BMJD time...")
                 ratio = tcorrect(ratio, star_loc, obsname)
 
                 if CCD == '1':
                     meantime = np.mean(ratio.t)
                     E = calc_E(meantime, T0, period)
-                    E = np.rint(E)
                     printer("  The mean time of this eclipse is {:.3f}.".format(meantime))
                     printer("  From ephemeris data, I get an eclipse Number,")
                     printer("    E = ({:.3f} - [T0={:.3f}]) / [P={:.5f}]".format(meantime, T0, period))
-                    printer("    E = {}".format(E))
+                    printer("    E = {:.3f}".format(E))
 
+                    E = np.rint(E)
                     # The above can be off, if the eclipse isnt the minimum. in/decriment until it's within bounds
                     while T0 + E*period < ratio.t[0]:
                         printer("    !!! Eclipse time not within these data! Incrimenting E...")
@@ -412,11 +476,11 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                     compAx[0].set_title("{}\nCCD {}, comparison stars, normalised.".format(fname.split('/')[-1], CCD))
                 ax[CCD_int].set_ylabel('Flux, mJy')
 
-                # Scale the right side labels
-                twinAx[CCD_int].set_ylim( ax[CCD_int].get_ylim() / meanFlux )
-
                 # Plot the ratio
                 ratio.mplot(ax[CCD_int], colour=c[CCD_int])
+
+                # Scale the right side labels
+                twinAx[CCD_int].set_ylim( ax[CCD_int].get_ylim() / comparison_flux )
 
                 compMin =  9e99
                 compMax = -9e99
