@@ -63,9 +63,9 @@ binned_master = pd.DataFrame(data=None,
     columns=master_data.columns)
 
 # Need to go from 1 (the 0th index is junk, extending off to -inf), to the value of nbins (avoid OBOE)
-for bin in range(1, nbins+1):
+for ibin in range(1, nbins+1):
     # Which data?
-    indeces = np.where(inds==bin)
+    indeces = np.where(inds==ibin)
     # Grab data
     sliced = master_data.iloc[indeces]
     # Mean data
@@ -99,4 +99,25 @@ ax[0].set_xlim(lims)
 ax[0].legend()
 ax[1].legend()
 plt.tight_layout()
-plt.show()
+# block=false so that the user can see the plot while deciding stuff
+plt.show(block=False)
+
+cont = input("Write to a file? y/n: ")
+if cont.lower()[0] == 'y':
+    oname = input("Enter a filename: ")
+    oname += '.calib'
+    with open(oname, 'w') as f:
+        f.write("# This file was produced by binning the following files down to {} points:\n".format(nbins))
+        for cf in files:
+            f.write("# {}\n".format(cf))
+        f.write("#\n# phase, flux, error\n")
+        for _, row in binned_master.iterrows():
+            t = row['ts']
+            fl = row['fl']
+            fe = row['fe']
+            f.write("{} {} {}\n".format(t, fl, fe))
+
+    figname = "../figs/"+oname.replace('.calib', '.pdf')
+    plt.savefig(figname)
+
+plt.close()
