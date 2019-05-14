@@ -1,126 +1,102 @@
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
-import os
 
 files = [
-# 'SDSSJ0748_0_2017-01-22_KG5.calib',
-
-# 'SDSSJ0748_0_2017-02-15_KG5.calib',
-# 'SDSSJ0748_0_2017-12-12_KG5.calib',
-
-# 'SDSSJ0748_0_2017-02-14_g_1.calib',
-# 'SDSSJ0748_0_2017-02-14_g_2.calib',
-
-# 'SDSSJ0748_0_2018-12-16_g.calib',
-
-# 'SDSSJ0748_0_2018-12-17_g.calib',
-
-'SDSSJ0748_0_2017-02-24_r.calib',
-'SDSSJ0748_0_2018-02-04_r.calib',
-'SDSSJ0748_0_2018-12-17_r_1.calib',
-'SDSSJ0748_0_2018-12-17_r_2.calib',
-
-# 'SDSSJ0748_0_2018-02-05_r.calib',
+    'SDSSJ0748_0_2017-02-24_r.calib',
+    'SDSSJ0748_0_2018-02-04_r.calib',
+    'SDSSJ0748_0_2018-12-17_r_1.calib',
+    'SDSSJ0748_0_2018-12-17_r_2.calib',
 ]
-binsize = 3
-phi_min = -0.2
-phi_max = +0.5
 
+nbins = 300
+phi_min = -0.1
+phi_max = +0.2
 
-print("Binning by {}".format(binsize))
-print("Trimming phase range to {:.2f}-{:.2f}".format(phi_min, phi_max))
+print("Binning into {} bins between phase {} and {}".format(nbins, phi_min, phi_max))
 
-# These will hold all the data
-master_ts = []
-master_fl = []
-master_fe = []
-
-# Get the data from the files
+# plotting area. Top axis will have output, bottom will have input.
 fig, ax = plt.subplots(2, figsize=[8, 6], sharex=True, sharey=True)
-ax[0].set_title('Binning by {}'.format(binsize))
-for file in files:
-    data = np.loadtxt(file, delimiter=' ')
-    ts = data[:,0]
-    fl = data[:,1]
-    fe = data[:,2]
+ax[0].set_title('Binning down to {} points'.format(nbins))
 
-    # Mask the data down to our window
-    mask = (ts < phi_max) * (ts > phi_min)
-    inrange = np.where(mask)
-    ts = ts[inrange]
-    fl = fl[inrange]
-    fe = fe[inrange]
 
-    print("The file {} has {} data".format(file, ts.shape))
+# Slap all the data in a dict
+master_data = {
+    'ts': [],
+    'fl': [],
+    'fe': []
+}
 
-    ax[0].step(ts, fl, alpha=0.3, color='black')
-    ax[1].step(ts, fl, label=file)
+lab = True
+for f in files:
+    data = np.loadtxt(f, delimiter=' ')
 
-    master_ts += list(ts)
-    master_fl += list(fl)
-    master_fe += list(fe)
+    master_data['ts'].extend(data[:,0])
+    master_data['fl'].extend(data[:,1])
+    master_data['fe'].extend(data[:,2])
 
-# Lists are for wimps. Use arrays
-master_ts = np.array(master_ts)
-master_fl = np.array(master_fl)
-master_fe = np.array(master_fe)
+    ax[1].step(data[:,0], data[:,1], label=f)
+    if lab:
+        ax[0].step(data[:,0], data[:,1], color='lightgrey', label='Input Data')
+        lab = False
+    else:
+        ax[0].step(data[:,0], data[:,1], color='lightgrey')
 
-# Sort by time, so that when we bin adjacent data, they're actually relevant
-sorted_args = np.argsort(master_ts)
+# Lets work with arrays, shall we?
+master_data = pd.DataFrame(master_data)
 
-master_ts = master_ts[sorted_args]
-master_fl = master_fl[sorted_args]
-master_fe = master_fe[sorted_args]
+# Sort the master DF
+master_data.sort_values('ts', ascending=True, inplace=True)
 
-# Output lists
-bin_ts = []
-bin_fl = []
-bin_fe = []
+# I'll bin onto this axis...
+out_X = np.linspace(phi_min, phi_max, nbins)
+# I need to add an extra value to the top and tail of the linspace, or digitize gives me the values out to +/- inf
+sep = np.mean(out_X[1:] - out_X[:-1])
+out_X = np.insert(out_X, 0, out_X[0]-sep)
+out_X = np.append(out_X, out_X[-1]+sep)
 
-# Bin the data. This is probably not the most efficient way of doing this but hey ho
-beg = 0
-end = binsize
-i = 0
-while end < len(master_ts):
-    beg = i*binsize
-    i += 1
-    end = i*binsize
+# Which bins do the values go into? The above defines bin edges!
+inds = np.digitize(master_data['ts'], out_X)
 
-    ## mean is added in quadrature
-    err = master_fe[beg:end] ** 2
-    err = np.mean(err)
+# Initial dict
+binned_master = pd.DataFrame(data=None,
+    columns=master_data.columns)
+
+# Need to go from 1 (the 0th index is junk, extending off to -inf), to the value of nbins (avoid OBOE)
+for bin in range(1, nbins+1):
+    # Which data?
+    indeces = np.where(inds==bin)
+    # Grab data
+    sliced = master_data.iloc[indeces]
+    # Mean data
+    mean = sliced.mean()
+
+    # The mean above does not handle errors correctly. Let's do that;
+    # X = A+B; dX^2 = xA^2 + dB^2
+    err = np.array(sliced['fe']) **2
+    err = np.sum(err)
     err = np.sqrt(err)
+    mean['fe'] = err
 
-    bin_ts.append(np.mean(master_ts[beg:end]))
-    bin_fl.append(np.mean(master_fl[beg:end]))
-    bin_fe.append(err)
+    # Add to binned df. Ignore index must be enabled for some reason.
+    binned_master = binned_master.append(mean, ignore_index=True)
 
-# Plot the bin result
-ax[0].step(bin_ts, bin_fl)
+# Step plots are physically reasonable
+ax[0].step(binned_master['ts'], binned_master['fl'], color='black', where='mid', label='Binned lightcurve')
 
-plt.legend()
+# Don't print errorbars if they're too tiny?
+all_mean = binned_master.mean()
+if all_mean['fe'] > all_mean['fl']/10.:
+    print("Signal/error ratio: {} -- Plotting error bars".format(all_mean['ff']/all_mean['fe']))
+    ax[0].errorbar(binned_master['ts'], binned_master['fl'],
+        yerr=binned_master['fe'], fmt='none', ecolor='black', capsize=0)
+
+# Stretch the x-axis a little, to make it easier to see what's what
+extension = np.max([abs(0.1*phi_min), abs(0.1*phi_max)])
+lims = [phi_min - extension, phi_max + extension]
+ax[0].set_xlim(lims)
+
+ax[0].legend()
+ax[1].legend()
 plt.tight_layout()
-# block=false so that the user can see the plot while deciding stuff
-plt.show(block=False)
-
-print("The result has {} data points.".format(len(bin_ts)))
-cont = input("Write to a file? y/n: ")
-if cont.lower()[0] == 'y':
-    oname = input("Enter a filename: ")
-    oname += '.calib'
-    with open(oname, 'w') as f:
-        f.write("# This file was produced by binning the following files by {}:\n".format(binsize))
-        for cf in files:
-            f.write("# {}\n".format(cf))
-        f.write("#\n# phase, flux, error\n")
-        for t, fl, fe in zip(bin_ts, bin_fl, bin_fe):
-            f.write("{} {} {}\n".format(t, fl, fe))
-
-    figname = "../figs/"+oname.replace('.calib', '.pdf')
-    # if os.path.isfile(figname):
-    #     new_figname = figname.replace('.pdf', 'BIN{}.pdf'.format(binsize))
-    #     print("Error! {} already exists. Saving as {} instead...".format(figname, new_figname))
-    #     figname = new_figname
-    plt.savefig(figname)
-
-plt.close()
+plt.show()
