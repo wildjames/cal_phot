@@ -1,23 +1,90 @@
-##TODO: I need to rework the handling of myLoc, and the directory command
-
 # cal_phot
-A set of scripts that will calibrate *CAM lightcurves from counts to flux above atmosphere.
+A set of scripts that will calibrate periodic \*CAM lightcurves from counts to flux above atmosphere.
 
-These are currently fairly inflexible. Currently, this is a list of this packages' functions:
-- Fold and plot a single eclipse, for the following
-  - If the star is in the SDSS field, perform a lookup for given comparison stars and convert the target's photon counts into apparent magnitude above the atmosphere.
-  - Given the SDSS magnitude of a standard star, and its own separately observed .log file, convert non-SDSS field observations to apparent flux above the atmosphere.
-- Fit ecplise times of a set of lightcurves, and use this to calculate the ephemeris data for a system.
+The scripts available are fairly basic calibration stuff, but this takes a lot of the legwork out of reducing periodic data. Importantly, it makes calls to SDSS, either for the comparisons in the target frame, or a separate reference star taken on the same night/run. And don't worry, these are all corrected for airmass, light travel time, etc! The overall output are a few files:
+- A lightcurve for the star in aperture 1 of each supplied `.log` file
+- Two figures for each lightcurve, one showing the target's flux over the observation, and another plotting the comparisons against each other
+- An mcmc chain that optimises the ephemeris data
 
-The advantage of using this script, and in writing this interpreter at all, is that it creates a consistent record of how a data set was reduced for future reference. This will reduce 'black box' complaints later, when it comes to writing up what we find in the lightcurve data.
+The figure containing the compared comparison stars is there to help diagnose a bad reference star. These should all ideally be flat lines at unity, but life is rarely that perfect.
+
+The main advantage of using this script, and in writing this interpreter at all, is that it creates a consistent record of how a data set was reduced for future reference. This will reduce 'black box' complaints later, when it comes to writing up what we find in the lightcurve data.
+
+## bin_data.py
+Additionally, this git contains my binning script. This script makes an evenly space 1D grid of phase times, and combines the relevant data from given files into those bins. It respects errors, and uses the mean phase of the binned data to preserve as much information a possible.
+
+# Using the Pipeline
+This was written as a side-project, and hasn't been streamlined very much. However, there is a recommended workflow. The process is slightly different for stars in or out of the SDSS field.
+
+## Stars in the SDSS
+### 1. Reduce your raw data with the HIPERCAM pipeline
+
+I find it easiest to start thinking about claibration here, and later on `cal_phot` is going to want to know your comparison star magnitude. Create a new text file with the same name as your log file, and the extension `.coords`, i.e. I reduce a file and call it `star_data.log` with 2 comparison apertures. I then would create another file called `star_data.coords`. This file is going to contain the RA and Dec of our comparison stars, and the filter that we want the observations in. This is the general format:
+```[CCD1 filter] [CCD2 filter] [CCD3 filter] ...
+
+[CCD1 AP1 RA] [CCD1 AP1 DEC]
+
+[CCD2 AP1 RA] [CCD2 AP1 DEC]
+[CCD2 AP2 RA] [CCD2 AP2 DEC]
+
+[CCD3 AP3 RA] [CCD3 AP3 DEC]
+```
+Note that the whitespace is important, the apertures of the different CCDs are separated by a blank line. I find it easiest to have an `Aladin` window open on the side, where right-clicking on a star and clicking `Copy recticle position to clipboard` gives you the RA and Dec.
+
+You should now have two files for each reduction, a `.log` and a `.coords`
+
+### 2. Write an input file
+
+This is the easy part. Create a raw text file, and enter the commands you want to run. They are exectured in order, so multiple instruments, or datasets, or even objects can be calibrated in one run. Though, for ease of understanding what's gone on, it's better to fragment your files. For a star in SDSS, the input is likely to look something like this:
+
+```# Do everything in the current directory.
+directory .
+
+# Where are we observing from?
+observatory 18:35:26, +98:29:12
+inst uspec
+
+### Prior knowledge of the target system
+coords      07:48:59.55 +31:25:12.6    # RA, Dec of target
+period      0.0583110795
+T0          57808.63029759
+
+## Refine our ephemeris for the system ###
+getEclipseTimes     # Get eclipse timing from data files
+fitEphemeris        # Fit the ecplise times for better ephemeris
+                    # The above are the result of this.
+### Can we do an SDSS lookup? ###
+SDSS 1
+
+### What files contain the targets? ###
+
+## This is a list of the best eclipses we have, for the first round of fitting. ##
+logfiles    # List of logfiles to calibrate
+2017-01-22_KG5.log
+2017-02-15_KG5.log
+2017-12-12_KG5.log
+
+### Process the files ###
+oname       SDSSJ0748_0
+combineData
+
+### Now I want to plot my results.
+# overplot [filename] [pattern]
+plot    SDSSJ0748_0_KG5   _KG5
+```
+
+Thats a lot, but easy to break down. We first tell the script that we want to do everything in the current directory. This isnt't stricly necessary in this case, since the default is already the current directory, but I like to be explicit. Then, we tell the script where the observations it's about to process were taken from. This allows the code to correct our observations to heliocentric time, and remove slight timing errors due to the position of the earth changing throughout the year. The code also needs to know the RA and Dec of the target, for the same reason. In a non-SDSS calibration, this will also be used to calculate and subtract airmass effects.
+
+Then, we define ephemeris information in days, and tell the interpreter to run the ephemeris refining tool. This fits the eclipse time to all the lightcurves it finds in the working directory, but asks for confirmation before each one.
+
+`logfiles` tells the script to standby for the actual data files, which are then read in until it finds a blank newline. `oname` defines an output filename template, and combinedata pulls the trigger on the final processing. The processing is interactive, and should be carefully monitored, but should you doubt yourself later, a log of the reduction will be generated in `Calibration.txt`. Finally, I tell `cal_phot` to plot the data in a `.pdf`.
+
 
 # COMMANDS
 The following are all case-insensitive.
 
 - A hash causes the interpreter to ignore the rest of the line
 
-- *binsize* \[int]:
-  - CURRENTLY REMOVED. DO MANUALLY AFTER THE FACT. 
 - *CombineData*:
   - Triggers the actual flux calibration script, using the supplied parameters.
 - *ComparisonLogFiles*:
@@ -35,6 +102,8 @@ The following are all case-insensitive.
   - Search the directory supplied by the *directory* command for .log files, and uses them to search for eclipse times. Saves to file
 - *Help*: 
   - Print the help string
+- *inst* \[str]
+  - Sets the instrument used for the observations. One of \[uspec, ucam, hcam]
 - *LogFiles*:
   - Read in filenames for the target reduction. One file per line, terminated by an empty line.
 - *Observatory* [str]: 
