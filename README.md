@@ -20,7 +20,8 @@ This was written as a side-project, and hasn't been streamlined very much. Howev
 ### 1. Reduce your raw data with the HIPERCAM pipeline
 
 I find it easiest to start thinking about claibration here, and later on `cal_phot` is going to want to know your comparison star magnitude. Create a new text file with the same name as your log file, and the extension `.coords`, i.e. I reduce a file and call it `star_data.log` with 2 comparison apertures. I then would create another file called `star_data.coords`. This file is going to contain the RA and Dec of our comparison stars, and the filter that we want the observations in. This is the general format:
-```[CCD1 filter] [CCD2 filter] [CCD3 filter] ...
+```
+[CCD1 filter] [CCD2 filter] [CCD3 filter] ...
 
 [CCD1 AP1 RA] [CCD1 AP1 DEC]
 
@@ -37,7 +38,8 @@ You should now have two files for each reduction, a `.log` and a `.coords`
 
 This is the easy part. Create a raw text file, and enter the commands you want to run. They are exectured in order, so multiple instruments, or datasets, or even objects can be calibrated in one run. Though, for ease of understanding what's gone on, it's better to fragment your files. For a star in SDSS, the input is likely to look something like this:
 
-```# Do everything in the current directory.
+```
+# Do everything in the current directory.
 directory .
 
 # Where are we observing from?
