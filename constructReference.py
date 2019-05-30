@@ -57,7 +57,10 @@ def robust_mag(cps):
     '''Converts a list of fluxes
 
     '''
-    mean, median, sigma = sigma_clipped_stats(cps, iters=2, sigma=3)
+    try:
+        mean, median, sigma = sigma_clipped_stats(cps, iters=2, sigma=3)
+    except:
+        mean, median, sigma = sigma_clipped_stats(cps, maxiters=2, sigma=3)
     return -2.5*np.log10(mean)
 
 

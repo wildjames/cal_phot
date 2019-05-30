@@ -68,8 +68,6 @@ class Interpreter:
 
         The following are all case-insensitive. A hash causes the interpreter to ignore the rest of the line.
 
-        - *binsize* [int]:
-                CURRENTLY REMOVED. DO MANUALLY AFTER THE FACT.
         - *CombineData*:
                 Triggers the actual flux calibration script, using the supplied parameters.
         - *ComparisonLogFiles*:
@@ -122,17 +120,13 @@ class Interpreter:
         ''')
 
     def get_param(self, pname):
+        '''Attempt to get the parameter from the dict. If it fails, passes None.'''
         try:
             p = self.params[pname]
         except KeyError:
             p = None
             printer("I couldn't retrieve the parameter {}!".format(pname))
-            raise AttributeError
         return p
-
-    def test(self, args):
-        printer('Entered the testing function, with the arguments:\n  {}'.format(args))
-        return None
 
     def getEclipseTimes(self):
         coords    = self.get_param('coords')

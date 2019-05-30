@@ -3,15 +3,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 files = [
-    'SDSSJ0748_0_2017-02-24_r.calib',
-    'SDSSJ0748_0_2018-02-04_r.calib',
-    'SDSSJ0748_0_2018-12-17_r_1.calib',
-    'SDSSJ0748_0_2018-12-17_r_2.calib',
+    # 'SDSSJ0748_ucam_2017-03-20_g.calib',
+    'SDSSJ0748_ucam_2017-03-20_r.calib',
+    # 'SDSSJ0748_ucam_2017-03-20_u.calib',
 ]
-
-nbins = 300
-phi_min = -0.1
-phi_max = +0.2
+nbins = 350
+phi_min = -0.2
+phi_max = +0.3
 
 print("Binning into {} bins between phase {} and {}".format(nbins, phi_min, phi_max))
 
@@ -41,6 +39,8 @@ for f in files:
         lab = False
     else:
         ax[0].step(data[:,0], data[:,1], color='lightgrey')
+
+print("Input data have a {} points".format(len(master_data['ts'])))
 
 # Lets work with arrays, shall we?
 master_data = pd.DataFrame(master_data)
