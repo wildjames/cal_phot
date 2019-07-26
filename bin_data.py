@@ -124,17 +124,6 @@ if __name__ == "__main__":
         zorder=10
     )
 
-    # Don't print errorbars if they're too tiny?
-    all_mean = binned_master.mean()
-    if all_mean['fe'] > all_mean['fl']/10.:
-        print("Signal/error ratio: {} -- Plotting error bars".format(all_mean['fl']/all_mean['fe']))
-        ax[0].errorbar(
-            binned_master['ts'], binned_master['fl'],
-            yerr=binned_master['fe'], fmt='none',
-            ecolor='black', capsize=0,
-            zorder=9, label=None
-        )
-
     # Stretch the x-axis a little, to make it easier to see what's what
     extension = np.max([abs(0.1*phi_min), abs(0.1*phi_max)])
     lims = [phi_min - extension, phi_max + extension]
