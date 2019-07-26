@@ -208,7 +208,7 @@ class Interpreter:
         # print("  Command: {}\n  args: {}".format(command, args))
 
         ## Housekeeping commands
-        if   command == 'test':
+        if command == 'test':
             self.test(args)
         elif command == 'help':
             self.help()

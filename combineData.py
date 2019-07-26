@@ -248,12 +248,10 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
             printer("\n----------------------------------------------------------------\n----------------------------------------------------------------\n")
             printer("Calibrating lightcurves for {}".format(fname))
             printer("\n----------------------------------------------------------------\n----------------------------------------------------------------\n")
-            try:
-                data = hcam.hlog.Hlog.from_ascii(fname)
-                if data == {}:
-                    raise Exception
-            except:
-                data = hcam.hlog.Hlog.from_ulog(fname)
+
+            data = hcam.hlog.Hlog.read(fname)
+            if data == {}:
+                raise Exception
 
             printer("  Read the data file!")
 

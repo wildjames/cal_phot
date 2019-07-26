@@ -469,12 +469,8 @@ def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords,
 
     std_mags = np.array(std_mags)
 
-    try:
-        standard_data = hcam.hlog.Hlog.from_ascii(std_fname)
-        comp_data     = hcam.hlog.Hlog.from_ascii(comp_fname)
-    except:
-        standard_data = hcam.hlog.Hlog.from_ulog(std_fname)
-        comp_data     = hcam.hlog.Hlog.from_ulog(comp_fname)
+    standard_data = hcam.hlog.Hlog.read(std_fname)
+    comp_data     = hcam.hlog.Hlog.read(comp_fname)
 
     # Extract the instrumental magnitudes of the standard
     instrumental_std_mags = get_instrumental_mags(standard_data, std_coords, obsname, ext)

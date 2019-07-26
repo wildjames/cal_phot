@@ -206,7 +206,7 @@ def smooth_derivative(tseries, med_half_width, box_half_width):
     return locs, convolve(deriv, kernel)
 
 def get_tseries(logfile, ccdnam, ap_targ, ap_comp):
-    log = Hlog.from_ulog(logfile)
+    log = Hlog.read(logfile)
     return log.tseries(ccdnam, ap_targ) / log.tseries(ccdnam, ap_comp)
 
 # Define a cost function for MCMC
@@ -397,16 +397,10 @@ def getEclipseTimes(coords, obsname, myLoc=None):
     for lf in fnames:
         printer("  Looking at the file {}".format(lf))
         # lets make the file reading more robust
-        try:
-            log = Hlog.from_ascii(lf)
-            if log == {}:
-                raise Exception
-        except Exception:
-            printer("  Using the ulog funtion to read data...")
-            log = Hlog.from_ulog(lf)
-            if log == {}:
-                printer("  Failed to get data from ulog function, skipping this file.")
-                continue
+        log = Hlog.read(lf)
+        if log == {}:
+            printer("  Failed to get data from Hlog.read function, skipping this file.")
+            continue
         aps = log.apnames
 
         printer("File: {}".format(lf))
