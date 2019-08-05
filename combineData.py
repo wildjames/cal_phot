@@ -281,6 +281,8 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
             # Loop through the CCDs.
             ### For each CCD, grab the target lightcurve, and the comparisons
             for CCD in CCDs:
+                lightcurve_metadata = '# This is data from the file {}, CCD {}\n'.format(fname, CCD)
+
                 CCD_int = int(CCD) - 1
                 printer("-> CCD {}".format(CCD))
 
@@ -318,6 +320,7 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                 # For non-SDSS fields, this is the clipped mean magnitude of each object.
                 mags = reference_stars[CCD]
                 printer("  Comparison star mags: {}".format(mags))
+                lightcurve_metadata += "# Comparison star mags: {}\n".format(mags)
 
                 # Add up the reference star fluxes
                 for a in ap[2:]:
@@ -329,12 +332,17 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                 # Sometimes, we get nan frames. Let the user know.
                 if np.any(np.isnan(comparison.y)):
                     printer(" !!! The comparison star contains nan electron counts in {} frames!".format(np.sum(np.isnan(comparison.y))))
+                    lightcurve_metadata += "#  !!! The comparison star contains nan electron counts in {} frames!\n".format(np.sum(np.isnan(comparison.y)))
                 if np.any(np.isnan(target.y)):
                     printer(" !!! The target star contains nan electron counts in {} frames!".format(np.sum(np.isnan(target.y))))
+                    lightcurve_metadata += "#  !!! The target star contains nan electron counts in {} frames!\n".format(np.sum(np.isnan(target.y)))
 
                 # If we have SDSS stars too bright, get their mags from flux calibrating those that arent
                 if np.any([np.isnan(i) for i in mags]):
                     printer("\n\n  I have some comparisons that saturated SDSS! Inferring their magnitudes from fainter stars.")
+
+                    lightcurve_metadata += "# Some comparison stars saturated the SDSS image.\n# Their magnitudes were inferred from fainter stars\n"
+
                     printer("  Collecting fainter stars...")
                     calibComp = None
                     for mag, a in zip(mags, ap[1:]):
@@ -352,6 +360,7 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
 
                     calibComp_counts = np.mean(calibComp.y)
                     printer("  My non-saturated SDSS stars have a mean count/frame of {:.3f}".format(calibComp_counts))
+                    lightcurve_metadata += "# My non-saturated SDSS stars have a mean count/frame of {:.3f}\n".format(calibComp_counts)
 
                     fluxs = sdss_mag2flux(mags)
                     sumFlux = np.nansum(fluxs)
@@ -361,19 +370,30 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                     printer("    with a sum flux of {:.3f} mJy".format(sumFlux))
                     printer("     and a sum mag of  {:.3f} mag".format(sumMag))
 
+                    lightcurve_metadata += "# My fluxes are {}\n".format([f for f in fluxs if not np.isnan(f)])
+                    lightcurve_metadata += "#   with a sum flux of {:.3f} mJy\n".format(sumFlux)
+                    lightcurve_metadata += "#    and a sum mag of  {:.3f} mag\n".format(sumMag)
+
                     for i, (mag, a) in enumerate(zip(mags, ap[1:])):
                         if np.isnan(mag):
                             cnts = data.tseries(CCD, a)
                             meanCnts = np.mean(cnts.y)
                             if np.any(np.isnan(cnts.y)):
-                                printer("The file {} has nan counts! That's wierd, and you should fix that.")
+                                printer("The file {} has nan counts! That's wierd, and you should fix that.".format(fname))
                                 printer("I'll continue ignoring the nan, BUT FIX IT!")
+
+                                lightcurve_metadata += "# The file {} has nan counts! That's wierd, and you should fix that.\n".format(fname)
+                                lightcurve_metadata += "# I'll continue ignoring the nan, BUT FIX IT!\n"
+
                                 meanCnts = np.nanmean(cnts.y)
 
                             mag = sumMag - 2.5*np.log10(meanCnts/calibComp_counts)
 
                             mags[i] = mag
                             printer("    Star {} had no SDSS magnitude. Computed a magnitude of {:.3f} from an e- flux of {}".format(a, mag, meanCnts))
+
+                            lightcurve_metadata += "# Star {} had no SDSS magnitude. Computed a magnitude of {:.3f} from an e- flux of {}\n".format(a, mag, meanCnts)
+
                     printer("\n")
 
 
@@ -383,6 +403,8 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                     printer("  Comparison stars filename:    {}".format(refname))
                     printer("!!!!! Number of comparison magnitudes in standard star reduction: {}".format(len(mags)))
                     printer("!!!!! Number of comparison stars in target reduction: {}".format(len(ap[1:])))
+
+                    lightcurve_metadata += "# !! WARNING !!! There was a mismatch between the number of apertures in the target and comparison reductions!\n"
                     input("Hit <Enter> to continue")
 
                 ### Conversion of target lightcurve ###
@@ -397,13 +419,20 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
 
 
                 ## Reporting
-                printer("  Comparison star apparent SDSS magnitudes:".format())
+                printer("  Comparison star apparent SDSS magnitudes:")
+                lightcurve_metadata += "# Comparison star apparent SDSS magnitudes:\n"
                 for m, mag in enumerate(mags):
                     printer("    Star {} -> {:.3f} mag".format(m, mag))
+                    lightcurve_metadata += "#   Star {} -> {:.3f} mag\n".format(m, mag)
                 printer("")
+
                 printer("  Apparent fluxes of the comparison stars:")
+                lightcurve_metadata += "# Apparent fluxes of the comparison stars:\n"
+
                 for i, flux in enumerate(fluxs):
                     printer("    Star {} -> {:.3f} mJy".format(i, flux))
+                    lightcurve_metadata += "#   Star {} -> {:.3f} mJy\n".format(i, flux)
+
                 printer('  Sum apparent Flux: {:.3f} mJy\n'.format(comparison_flux))
                 printer("  Instrumental summed counts per mean frame ({} frames) of {} comparison stars: {:.1f}".format(
                     len(comparison.y), len(ap[1:]), np.mean(comparison.y)
@@ -413,6 +442,14 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                 ))
                 printer("  Mean Target/comparison count ratio: {:.3f}".format(meanRatio))
                 printer("  Mean target magnitude: {:.3f}".format(sdss_flux2mag(meanRatio * comparison_flux)))
+
+
+                lightcurve_metadata += '# Sum apparent Flux: {:.3f} mJy\n'.format(comparison_flux)
+                lightcurve_metadata += "# Instrumental summed counts per mean frame ({} frames) of {} comparison stars: {:.1f}\n".format(len(comparison.y), len(ap[1:]), np.mean(comparison.y))
+                lightcurve_metadata += "# Instrumental counts per mean frame ({} frames) of target: {:.1f}\n".format(len(target.y), np.mean(target.y))
+                lightcurve_metadata += "# Mean Target/comparison count ratio: {:.3f}\n".format(meanRatio)
+                lightcurve_metadata += "# Mean target magnitude: {:.3f}\n".format(sdss_flux2mag(meanRatio * comparison_flux))
+
 
                 printer("\n\n  Correcting data to BMJD time...")
                 ratio = tcorrect(ratio, star_loc, obsname)
@@ -440,6 +477,8 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
 
                     eclTime = T0 + E*period
                     printer("  The eclipse is then at time {:.3f}".format(eclTime))
+
+                    lightcurve_metadata += "# I calculated an eclipse time of {}, and phase-folded around that.\n".format(eclTime)
 
                     printer("")
 
@@ -554,6 +593,7 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                 # Saving data
                 printer("  These data have {} masked points.".format(np.sum(ratio.mask != 0)))
                 with open(filename, 'w') as f:
+                    f.write(lightcurve_metadata)
                     f.write("# Phase, Flux, Err_Flux\n")
                     for t, y, ye, mask in zip(ratio.t, ratio.y, ratio.ye, ratio.mask):
                         if not mask:

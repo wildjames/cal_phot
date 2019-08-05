@@ -140,7 +140,9 @@ if __name__ == "__main__":
         oname = input("Enter a filename: ")
         if oname == '':
             exit()
-        oname += '.calib'
+        if not oname.endswith('.calib'):
+            oname += '.calib'
+
         with open(oname, 'w') as f:
             f.write("# This file was produced by binning the following files down to {} points between phase {} and {}:\n".format(nbins, phi_min, phi_max))
             for cf in files:
