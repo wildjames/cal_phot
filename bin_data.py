@@ -15,11 +15,16 @@ if __name__ == "__main__":
         default=350
     )
     parser.add_argument(
-        'phi',
+        'MIN',
         help='The phase range of the files will be truncated to within MIN MAX',
         type=float,
-        nargs=2,
-        default=[-np.inf, np.inf]
+        default=-np.inf
+    )
+    parser.add_argument(
+        'MAX',
+        help='The phase range of the files will be truncated to within MIN MAX',
+        type=float,
+        default=np.inf
     )
     parser.add_argument(
         'files',
@@ -31,7 +36,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     nbins = args.nbin
-    phi_min, phi_max = args.phi
+    phi_min, phi_max = args.MIN, args.MAX
     files = args.files
 
 

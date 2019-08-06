@@ -1,30 +1,29 @@
-from hipercam.hlog import Hlog
-
-from astropy import coordinates as coord, units
-from astropy.time import Time
-from astropy.convolution import Box1DKernel, convolve
-from astropy.stats import sigma_clipped_stats
-
-from scipy.signal import medfilt
-from scipy.optimize import minimize, leastsq
-
-import celerite
-from celerite import terms
-from celerite.modeling import Model
-
-import numpy as np
 import copy
-from os import path as path, listdir, mkdir, remove
-import sys
-import emcee
-
-from matplotlib.pyplot import close as closeplot
-from matplotlib import pyplot as plt
-
 #import corner
 import glob
+import sys
+from os import listdir, mkdir
+from os import path as path
+from os import remove
+
+import celerite
+import emcee
+import numpy as np
+from astropy import coordinates as coord
+from astropy import units
+from astropy.convolution import Box1DKernel, convolve
+from astropy.stats import sigma_clipped_stats
+from astropy.time import Time
+from celerite import terms
+from celerite.modeling import Model
+from hipercam.hlog import Hlog
+from matplotlib import pyplot as plt
+from matplotlib.pyplot import close as closeplot
+from scipy.optimize import leastsq, minimize
+from scipy.signal import medfilt
 
 import mcmc_utils
+
 try:
     from logger import printer
 except:
@@ -62,7 +61,7 @@ class PlotPoints:
             self.grad.axvline(self.lowerlim, color='red', linestyle='--')
             self.data.axvline(self.lowerlim, color='red', linestyle='--')
 
-        if '+' in event.key:
+        if '+' in event.key or "=" in event.key:
             print("  upper limit of data is {:.6f}".format(event.xdata))
             self.upperlim = event.xdata
             self.grad.axvline(self.upperlim, color='green', linestyle='--')
@@ -313,7 +312,7 @@ def write_ecl_file(source_key, tl, oname):
     return
 
 
-def getEclipseTimes(coords, obsname, myLoc=None):
+def getEclipseTimes(fnames, coords, obsname, myLoc=None):
     '''
     Searches <myLoc> for .log files, and uses them to get the times of the eclipses.
 
@@ -360,17 +359,21 @@ def getEclipseTimes(coords, obsname, myLoc=None):
         myLoc = path.curdir
         printer("Defaulting to current directory: {}".format(myLoc))
 
+
+    # Make the ephemeris dir, if needed
+    ephem_dir = path.join(myLoc, "EPHEMERIS")
+
     # Make the ephemeris directory, where I'll put my stuff
-    print("Putting the ephemeris data in {}".format('/'.join([myLoc, 'ephemeris'])))
+    print("Putting the ephemeris data in {}".format(ephem_dir))
     try:
-        mkdir('/'.join([myLoc, 'ephemeris']))
+        mkdir(ephem_dir)
         print("Created the directory!")
     except:
         print("The directory already exists!")
 
     # Where am I looking for prior data, and saving my new data?
     oname = 'eclipse_times.txt'
-    oname = '/'.join([myLoc, 'ephemeris', oname])
+    oname = path.join(ephem_dir, oname)
 
 
 
@@ -384,7 +387,7 @@ def getEclipseTimes(coords, obsname, myLoc=None):
     if len(fnames) == 0:
         printer("I couldn't find any log files in:")
         printer("{}".format(myLoc))
-        raise FileNotFoundError
+        raise FileNotFoundError("No log files in {}".format(myLoc))
 
     # List the files we found
     printer("Found these log files: ")
@@ -427,6 +430,7 @@ def getEclipseTimes(coords, obsname, myLoc=None):
         gauss = PlotPoints(fig)
         gauss.connect()
         plt.tight_layout()
+
         plt.show(block=True)
 
         try:

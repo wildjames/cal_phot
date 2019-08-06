@@ -68,10 +68,6 @@ def ln_prob(pars,x,y,yerr,obsCodes):
     else:
         return lnp
 
-# p = [T0, period]
-def fitfunc(p,x):
-    return p[0] + p[1]*x
-
 def fitEphem(myLoc, T0, period, simple=False):
     """
     Takes eclipse time data from a file, and fits ephemeris parameters (T0, period) to them
@@ -110,7 +106,11 @@ def fitEphem(myLoc, T0, period, simple=False):
     printer("\n\n--- Fitting ephemeris to data ---")
 
     # Read in the eclipsetimes.txt file
-    fname = '/'.join([myLoc, 'ephemeris', 'eclipse_times.txt'])
+    fname = path.join(myLoc, 'EPHEMERIS', 'eclipse_times.txt')
+
+    if not path.isfile(fname):
+        raise FileNotFoundError("I don't have any eclipse times to fit!")
+
     source_key, tl = read_ecl_file(fname)
 
     ### Fitting
@@ -169,8 +169,11 @@ def fitEphem(myLoc, T0, period, simple=False):
         #production
         sampler.reset()
         nprod = 20000
-        sampler = mu.run_mcmc_save(sampler,pos,nprod,state,"{}/ephemeris/ephemerisChain.txt".format(myLoc))
-        chain = mu.flatchain(sampler.chain,npars,thin=1)
+
+        chain_fname = path.join(myLoc, "EPHEMERIS", "ephemeris_chain.txt")
+
+        sampler = mu.run_mcmc_save(sampler, pos, nprod, state, chain_fname)
+        chain = mu.flatchain(sampler.chain, npars, thin=1)
 
         # Gather and report the best values
         bestPars = []
@@ -190,9 +193,13 @@ def fitEphem(myLoc, T0, period, simple=False):
                 P = best
                 P_err = uplim-lolim
                 printer("New P: {:.8f}+/-{:.8f}".format(P, P_err))
+
         fig = mu.thumbPlot(chain,nameList)
-        fig.savefig('/'.join([myLoc, 'ephemeris', 'ephemeris_cornerPlot.pdf']))
-        printer("Saved a corner plot of the MCMC fit (including error scaling factors) to:\n-> {}".format('/'.join([myLoc, 'ephemeris', 'ephemeris_cornerPlot.pdf'])))
+
+        corner_fname = path.join(myLoc, "EPHEMERIS", "ephemeris_corner_plot.pdf")
+        fig.savefig(corner_fname)
+
+        printer("Saved a corner plot of the MCMC fit (including error scaling factors) to:\n-> {}".format(corner_fname))
         plt.close('all')
 
         resy = 86400.0*(y-model(bestPars,x))
@@ -212,6 +219,7 @@ def fitEphem(myLoc, T0, period, simple=False):
     printer("This fit had a reduced chisq value of {:.3f}".format(chisq))
     printer('')
     printer("Source          |  (Obs) - (Calc), sec | Cycle Number")
+
     def fitfunc(p,x):
         return p[0] + p[1]*x
     for t in tl:
@@ -235,7 +243,10 @@ def fitEphem(myLoc, T0, period, simple=False):
     plt.axhline(ls='--',color='k', zorder=1)
     plt.xlabel('Cycle No.')
     plt.ylabel('O-C (s)')
-    plt.savefig('ephemeris/ephemeris_scatter.pdf')
+
+    scatter_fname = path.join(myLoc, "EPHEMERIS", "ephemeris_scatter.pdf")
+
+    plt.savefig(scatter_fname)
     plt.show()
 
     printer("")

@@ -51,8 +51,9 @@ def calc_E_Err(T, T0, P, T_err, T0_err, P_err):
     return E_err
 
 
-def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_fname=None, comp_fnames=None,
-                myLoc='.', ext=None, fnames=None, std_coords=None, std_mags=None):
+def combineData(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
+                comp_fnames=None, myLoc='.', ext=None, fnames=None,
+                std_coords=None, std_mags=None):
     '''
     Takes a set of *CAM observations (and data on the system), and produces a set of phase folded lightcurves.
 
@@ -121,17 +122,18 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
     ## First, find the logfiles we want to use
     if fnames==None:
         fnames = []
-        try:
-            for file in os.listdir('/'.join([myLoc, 'Reduced_Data'])):
-                if file.endswith('.log'):
-                    fnames.append('/'.join([myLoc,'Reduced_Data', file]))
-        except:
-            for file in os.listdir('/'.join([myLoc])):
-                if file.endswith('.log'):
-                    fnames.append('/'.join([myLoc, file]))
+
+        red_data_dir = os.path.join(myLoc, 'REDUCED')
+        if not os.path.isdir(red_data_dir):
+            raise FileNotFoundError("Couldn't find {}".format(red_data_dir))
+
+        for file_name in os.listdir(red_data_dir):
+            if file_name.endswith('.log'):
+                fname = os.path.join(red_data_dir, file_name)
+
         if len(fnames) == 0:
             printer("  I couldn't find any log files! Stopping...")
-            exit()
+            raise Exception("I couldn't find any log files! Stopping...")
 
     if SDSS:
         comp_fnames = [x.replace('.log', '.coords') for x in fnames]
@@ -152,17 +154,15 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
             raise NameError
 
     # Writing out
+    lc_dir = os.path.join(myLoc, 'MCMC_LIGHTCURVES')
     try:
-        os.mkdir('/'.join([myLoc, 'lightcurves']))
-    except: pass
-    try:
-        os.mkdir('/'.join([myLoc, 'figs']))
+        os.mkdir(lc_dir)
     except: pass
 
-    oname = oname.split('/')
-    if oname[0] != myLoc:
-        oname = [myLoc, 'lightcurves'] + oname
-    oname = '/'.join(oname)
+    figs_dir = os.path.join(myLoc, 'MCMC_LIGHTCURVES', "FIGS")
+    try:
+        os.mkdir(figs_dir)
+    except: pass
 
 
     # Report the things we're working with
@@ -214,7 +214,7 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
     # Plotting area
     print("Making plotting area...", end='')
     plt.ion()
-    fig, ax = plt.subplots(nCCD, figsize=[11.69,8.27], sharex=True)
+    fig, ax = plt.subplots(nCCD, figsize=[11.69, 8.27], sharex=True)
     # If we only have one CCD, axes still need to be a lists
     if nCCD == 1:
         ax = [ax]
@@ -242,13 +242,16 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
     print(" Done!")
 
     # I want a master pdf file with all the nights' lightcurves plotted
-    pdfname = '/'.join([myLoc, 'figs', 'all_nights.pdf'])
+    # pdfname = '/'.join([myLoc, 'figs', 'all_nights.pdf'])
+    pdfname = os.path.join(figs_dir, "all_nights.pdf")
     with PdfPages(pdfname) as pdf:
         for fname, refname in zip(fnames, comp_fnames):
             printer("\n----------------------------------------------------------------\n----------------------------------------------------------------\n")
             printer("Calibrating lightcurves for {}".format(fname))
             printer("\n----------------------------------------------------------------\n----------------------------------------------------------------\n")
 
+            print("CWD: {}".format(os.getcwd()))
+            print(fname)
             data = hcam.hlog.Hlog.read(fname)
             if data == {}:
                 raise Exception
@@ -308,6 +311,32 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                         raise ValueError("Log file cannot contain nan values!", fname)
 
 
+                # Get some data on the quality of the observations
+                metadata = '#\n# Reduction info:'
+                to_proc = data[CCD]
+
+                ap_x = [header for header in
+                    to_proc.dtype.fields if "x_" in header]
+
+                ap_y = [header for header in
+                    to_proc.dtype.fields if "y_" in header]
+
+                ap_fwhm = [header for header in
+                    to_proc.dtype.fields if "fwhm_" in header]
+
+                for x_label, y_label, fwhm_label in zip(ap_x, ap_y, ap_fwhm):
+                    x_pix_loc = to_proc[x_label].mean()
+                    y_pix_loc = to_proc[y_label].mean()
+                    fwhm_pix_loc = to_proc[fwhm_label].mean()
+
+                    aperture_number =x_label.replace("x_", "")
+
+                    metadata += '#   Aperture {}\n'.format(aperture_number)
+                    metadata += "#     x location: {:.0f}\n".format(x_pix_loc)
+                    metadata += "#     y location: {:.0f}\n".format(y_pix_loc)
+                    metadata += "#     fwhm:       {:.2f}\n#\n#\n".format(fwhm_pix_loc)
+                lightcurve_metadata += metadata
+
                 # Grab the target data
                 target = data.tseries(CCD, '1')
 
@@ -355,8 +384,7 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                                 calibComp += data.tseries(CCD, a)
 
                     if calibComp is None:
-                        printer("\n\nAll comparison stars saturated SDSS! Pick at least one that doesn't!")
-                        exit()
+                        raise Exception("All comparison stars saturated SDSS! Pick at least one that doesn't!")
 
                     calibComp_counts = np.mean(calibComp.y)
                     printer("  My non-saturated SDSS stars have a mean count/frame of {:.3f}".format(calibComp_counts))
@@ -425,6 +453,7 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                     printer("    Star {} -> {:.3f} mag".format(m, mag))
                     lightcurve_metadata += "#   Star {} -> {:.3f} mag\n".format(m, mag)
                 printer("")
+                lightcurve_metadata += "#\n#\n#\n"
 
                 printer("  Apparent fluxes of the comparison stars:")
                 lightcurve_metadata += "# Apparent fluxes of the comparison stars:\n"
@@ -432,6 +461,7 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                 for i, flux in enumerate(fluxs):
                     printer("    Star {} -> {:.3f} mJy".format(i, flux))
                     lightcurve_metadata += "#   Star {} -> {:.3f} mJy\n".format(i, flux)
+                lightcurve_metadata += "#\n"
 
                 printer('  Sum apparent Flux: {:.3f} mJy\n'.format(comparison_flux))
                 printer("  Instrumental summed counts per mean frame ({} frames) of {} comparison stars: {:.1f}".format(
@@ -444,9 +474,9 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                 printer("  Mean target magnitude: {:.3f}".format(sdss_flux2mag(meanRatio * comparison_flux)))
 
 
-                lightcurve_metadata += '# Sum apparent Flux: {:.3f} mJy\n'.format(comparison_flux)
+                lightcurve_metadata += '# Sum apparent Flux: {:.3f} mJy\n#\n#\n'.format(comparison_flux)
                 lightcurve_metadata += "# Instrumental summed counts per mean frame ({} frames) of {} comparison stars: {:.1f}\n".format(len(comparison.y), len(ap[1:]), np.mean(comparison.y))
-                lightcurve_metadata += "# Instrumental counts per mean frame ({} frames) of target: {:.1f}\n".format(len(target.y), np.mean(target.y))
+                lightcurve_metadata += "# Instrumental counts per mean frame ({} frames) of target: {:.1f}\n#\n".format(len(target.y), np.mean(target.y))
                 lightcurve_metadata += "# Mean Target/comparison count ratio: {:.3f}\n".format(meanRatio)
                 lightcurve_metadata += "# Mean target magnitude: {:.3f}\n".format(sdss_flux2mag(meanRatio * comparison_flux))
 
@@ -477,10 +507,11 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
 
                     eclTime = T0 + E*period
                     printer("  The eclipse is then at time {:.3f}".format(eclTime))
-
-                    lightcurve_metadata += "# I calculated an eclipse time of {}, and phase-folded around that.\n".format(eclTime)
-
                     printer("")
+
+                lightcurve_metadata += "# I calculated an eclipse time of {} BMJD, and phase-folded around that\n".format(eclTime)
+                lightcurve_metadata += "# with a T0 of {}, and a period of {}, making this eclipse {}.\n".format(T0, period, E)
+                lightcurve_metadata += "# I also sliced out the phase -0.5 -> +0.5!!\n#\n#\n"
 
                 # slice out the data between phase -0.5 and 0.5
                 printer("  Slicing out data between phase -0.5 -> +0.5")
@@ -509,8 +540,11 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                 # Plotting management
                 ax[CCD_int].clear()
                 if CCD_int == 0:
-                    ax[0].set_title(fname.split('/')[-1])
-                    compAx[0].set_title("{}\nCCD {}, comparison stars, normalised.".format(fname.split('/')[-1], CCD))
+                    title = os.path.split(fname)[1]
+
+                    ax[0].set_title(title)
+                    compAx[0].set_title("{}\nCCD {}, comparison stars, normalised.".format(title, CCD))
+
                 ax[CCD_int].set_ylabel('Flux, mJy')
 
                 # Plot the ratio
@@ -587,8 +621,13 @@ def combineData(oname, coords, obsname, T0, period, inst='ucam', SDSS=True, std_
                 else:
                     b = '_'+b
 
+                date = time.Time(eclTime, format='mjd')
+                date = date.strftime("%Y-%m-%d@%Hh%Mm%Ss")
+
                 filename = oname
-                filename = "{}_{}{}.calib".format(filename, fname.split('/')[-1][:-4], b)
+                filename = "{}_{}{}.calib".format(filename, date, b)
+
+                filename = os.path.join(lc_dir, filename)
 
                 # Saving data
                 printer("  These data have {} masked points.".format(np.sum(ratio.mask != 0)))

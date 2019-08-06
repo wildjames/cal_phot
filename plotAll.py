@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from logger import printer
-from os import mkdir
+from os import mkdir, path
 
 def plot_all(files, oname, pattern, myLoc='.'):
     '''
@@ -16,7 +16,7 @@ def plot_all(files, oname, pattern, myLoc='.'):
         printer("  Saving overplotted eclipses to 'overplotted_eclipses.pdf'")
         oname = 'overplotted_eclipses'
 
-    oname = '/'.join([myLoc, 'figs', oname])
+    oname = path.join(myLoc, 'MCMC_LIGHTCURVES', "FIGS", oname)
     try:
         mkdir(myLoc+'figs')
     except: pass

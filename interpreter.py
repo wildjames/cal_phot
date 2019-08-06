@@ -14,8 +14,8 @@ from logger import printer, header
 class Interpreter:
     def __init__(self, inFile=None, prompt=False):
         # Resize the terminal
-        print("\x1b[8;{110};{80}t")
-        print("\033[2J")
+        print(r"\x1b[8;{110};{80}t")
+        print(r"\033[2J")
 
         # Initialise variables. Store args in a dict.
         self.params = {
@@ -119,19 +119,10 @@ class Interpreter:
                 Write out all the parameters as they stand at that point, to the file given
         ''')
 
-    def get_param(self, pname):
-        '''Attempt to get the parameter from the dict. If it fails, passes None.'''
-        try:
-            p = self.params[pname]
-        except KeyError:
-            p = None
-            printer("I couldn't retrieve the parameter {}!".format(pname))
-        return p
-
     def getEclipseTimes(self):
-        coords    = self.get_param('coords')
-        obsname   = self.get_param('obsname')
-        directory = self.get_param('directory')
+        coords    = self.params['coords']
+        obsname   = self.params['obsname']
+        directory = self.params['directory']
 
         printer("Getting eclipse times from data...")
 
@@ -139,9 +130,9 @@ class Interpreter:
 
 
     def fitEphem(self):
-        directory = self.get_param('directory')
-        T0        = self.get_param('T0')
-        period    = self.get_param('period')
+        directory = self.params['directory']
+        T0        = self.params['T0']
+        period    = self.params['period']
 
         printer("Fitting eclipse times to refine period and T0 parameters")
 
@@ -150,16 +141,16 @@ class Interpreter:
         self.params['period'] = period
 
     def combineData(self):
-        oname     = self.get_param('oname')
-        coords    = self.get_param('coords')
-        obsname   = self.get_param('obsname')
-        inst      = self.get_param('inst')
-        T0        = self.get_param('T0')
-        period    = self.get_param('period')
-        myLoc     = self.get_param('directory')
-        fnames    = self.get_param('fnames')
-        SDSS      = self.get_param('SDSS')
-        ext       = self.get_param('ext')
+        oname     = self.params['oname']
+        coords    = self.params['coords']
+        obsname   = self.params['obsname']
+        inst      = self.params['inst']
+        T0        = self.params['T0']
+        period    = self.params['period']
+        myLoc     = self.params['directory']
+        fnames    = self.params['fnames']
+        SDSS      = self.params['SDSS']
+        ext       = self.params['ext']
 
         printer("Combining, calibrating, and plotting data...")
         if SDSS:
@@ -167,12 +158,12 @@ class Interpreter:
             myLoc=myLoc, fnames=fnames, ext=ext)
         else:
             # Retrieve the SDSS-matching reductions for each night
-            comparisons = self.get_param('comparisonfnames')
-            stdLogfile  = self.get_param('stdLogfile')
-            stdCoords   = self.get_param('stdcoords')
-            stdMags     = self.get_param('mags')
+            comparisons = self.params['comparisonfnames']
+            stdLogfile  = self.params['stdLogfile']
+            stdCoords   = self.params['stdcoords']
+            stdMags     = self.params['mags']
 
-            # ref_kappa = self.get_param('kappas')
+            # ref_kappa = self.params['kappas']
             written_files = combineData(oname, coords, obsname, T0, period, SDSS=False,
                 myLoc=myLoc, fnames=fnames, comp_fnames=comparisons, inst=inst,
                 std_fname=stdLogfile, std_coords=stdCoords, std_mags=stdMags, ext=ext)
@@ -208,9 +199,7 @@ class Interpreter:
         # print("  Command: {}\n  args: {}".format(command, args))
 
         ## Housekeeping commands
-        if command == 'test':
-            self.test(args)
-        elif command == 'help':
+        if command == 'help':
             self.help()
             exit()
         elif command in ['stop', 'exit', 'quit']:
@@ -233,8 +222,9 @@ class Interpreter:
                 os.mkdir(directory)
 
             # Check if we have preexisting lightcurves
-            if not os.path.exists('/'.join([directory, 'lightcurves'])):
-                os.mkdir('/'.join([directory, 'lightcurves']))
+            lc_dir = os.path.join(directory, 'MCMC_LIGHTCURVES')
+            if not os.path.exists(lc_dir):
+                os.mkdir(lc_dir)
 
         elif command == 'observatory':
             # Changes the observing location
@@ -264,15 +254,15 @@ class Interpreter:
                 paramname = 'reduction_params.txt'
             else:
                 paramname = args[0]
+
             with open(paramname, 'w') as f:
-                for i, item in enumerate(self.params):
+                for item in self.params:
                     f.write("{} {}\n".format(item, self.params[item]))
             printer("Wrote parameters to 'reduction_params.txt'!")
 
         elif command == 'inst':
             if args == None:
-                print("You need to define an instrument!")
-                exit()
+                raise Exception("You need to define an instrument!")
             elif args[0] in self.instruments:
                 self.params['inst'] = args[0]
                 print("Observations were taken with {}".format(self.params['inst']))
@@ -281,7 +271,7 @@ class Interpreter:
         elif command == 'sdss':
             # Toggle SDSS field
             if args == []:
-                printer("Missing argument! Usage:\nSDSS [y/yes/True/n/no/False]")
+                printer("Missing argument! Usage:\nSDSS [y/yes/True/1/0/n/no/False]")
             SDSS = args[0] in ['y', '1', 'yes', 'true']
             self.params['SDSS'] = SDSS
             printer("Are we in the SDSS field? [{}]".format(SDSS))
@@ -409,13 +399,13 @@ class Interpreter:
             printer("")
 
         # plotAll
-        elif command == 'plot':
+        elif command == 'plot' or command == 'overplot':
             if args != []:
                 oname = args[0]
                 band  = args[1]
             else:
                 oname = ''
-            myLoc = self.get_param('directory')
+            myLoc = self.params['directory']
             plot_all(self.written_files, oname, band, myLoc)
 
 
