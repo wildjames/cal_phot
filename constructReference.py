@@ -1,26 +1,28 @@
 import json
-import requests
-import bs4 as bs
 import os
 from copy import deepcopy
+from pprint import pprint
 
-import numpy as np
-import matplotlib.pyplot as plt
-
-from astropy import time, coordinates as coord, units as u
-from astropy.stats import sigma_clipped_stats
-from astropy.coordinates import AltAz
-
+import bs4 as bs
+import feedparser
 import hipercam as hcam
+import matplotlib.pyplot as plt
+import numpy as np
+import requests
+from astropy import coordinates as coord
+from astropy import time
+from astropy import units as u
+from astropy.coordinates import AltAz
+from astropy.stats import sigma_clipped_stats
+
+from lxml.html.soupparser import fromstring
+
 try:
     from logger import printer
 except ImportError:
     def printer(string, end='\n'):
         print(string, end=end)
 
-import feedparser
-
-from pprint import pprint
 
 
 
@@ -272,7 +274,7 @@ def construct_reference(fetchFname):
 
 
             ### I need to check the flags here. Mini webscraper:
-            target_entry = 'http://skyserver.sdss.org/DR14//en/tools/explore/summary.aspx?id={}'.format(target['objid'])
+            target_entry = 'http://skyserver.sdss.org/DR14/en/tools/explore/summary.aspx?id={}'.format(target['objid'])
             printer("    Here's the entry on the skyserver:\n    {}".format(target_entry))
             # Lovely soup
             resp = requests.post(target_entry)

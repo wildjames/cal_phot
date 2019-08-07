@@ -120,13 +120,14 @@ class Interpreter:
         ''')
 
     def getEclipseTimes(self):
+        fnames    = self.params['fnames']
         coords    = self.params['coords']
         obsname   = self.params['obsname']
         directory = self.params['directory']
 
         printer("Getting eclipse times from data...")
 
-        getEclipseTimes(coords, obsname, myLoc=directory)
+        getEclipseTimes(fnames, coords, obsname, myLoc=directory)
 
 
     def fitEphem(self):

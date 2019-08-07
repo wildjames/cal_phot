@@ -379,18 +379,18 @@ def getEclipseTimes(fnames, coords, obsname, myLoc=None):
 
     source_key, tl = read_ecl_file(oname)
 
-    # What am I using to get new data from?
-    printer("Grabbing log files...")
-    fnames = list(glob.iglob('{}/**/*.log'.format(myLoc), recursive=True))
-    fnames = sorted(fnames)
-
-    if len(fnames) == 0:
-        printer("I couldn't find any log files in:")
-        printer("{}".format(myLoc))
-        raise FileNotFoundError("No log files in {}".format(myLoc))
+    # # What am I using to get new data from?
+    # printer("Grabbing log files...")
+    # fnames = list(glob.iglob('{}/**/*.log'.format(myLoc), recursive=True))
+    # fnames = sorted(fnames)
+    #
+    # if len(fnames) == 0:
+    #     printer("I couldn't find any log files in:")
+    #     printer("{}".format(myLoc))
+    #     raise FileNotFoundError("No log files in {}".format(myLoc))
 
     # List the files we found
-    printer("Found these log files: ")
+    printer("Getting eclipse times from these log files: ")
     for i, fname in enumerate(fnames):
         printer("  {:>2d} - {}".format(i, fname))
     printer('  ')

@@ -432,7 +432,7 @@ def combineData(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
                     printer("!!!!! Number of comparison magnitudes in standard star reduction: {}".format(len(mags)))
                     printer("!!!!! Number of comparison stars in target reduction: {}".format(len(ap[1:])))
 
-                    lightcurve_metadata += "# !! WARNING !!! There was a mismatch between the number of apertures in the target and comparison reductions!\n"
+                    lightcurve_metadata += "# !! WARNING !!! There was a mismatch between the number of apertures in the target and comparison reductions!! #\n"
                     input("Hit <Enter> to continue")
 
                 ### Conversion of target lightcurve ###
