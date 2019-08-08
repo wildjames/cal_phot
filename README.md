@@ -20,6 +20,8 @@ This was written as a side-project, and hasn't been streamlined very much. Howev
 ### 1. Reduce your raw data with the HIPERCAM pipeline
 The HiPERCAM pipeline is fairly easy to use. There's great doumentation to be found [here](http://deneb.astro.warwick.ac.uk/phsaap/hipercam/docs/html/commands.html), but I'll summarise the rough steps;
 
+- Make a flat and bias frame from the relevant runs
+  - `makeflat`, `makebias`
 - Make a mean frame, used to define apertures
   - `averun`
 - Set the apertures that you want to extract
