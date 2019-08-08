@@ -11,15 +11,32 @@ The figure containing the compared comparison stars is there to help diagnose a 
 The main advantage of using this script, and in writing this interpreter at all, is that it creates a consistent record of how a data set was reduced for future reference. This will reduce 'black box' complaints later, when it comes to writing up what we find in the lightcurve data.
 
 ## bin_data.py
-Additionally, this git contains my binning script. This script makes an evenly space 1D grid of phase times, and combines the relevant data from given files into those bins. It respects errors, and uses the mean phase of the binned data to preserve as much information a possible.
+Additionally, this git contains my binning script. This script makes an evenly spaced 1D grid of phase times, and combines the relevant data from given files into those bins. It respects errors, weights means by them, and uses the mean phase of the binned data in each bin to preserve as much information a possible.
 
 # Using the Pipeline
 This was written as a side-project, and hasn't been streamlined very much. However, there is a recommended workflow. The process is slightly different for stars in or out of the SDSS field.
 
 ## Stars in the SDSS
 ### 1. Reduce your raw data with the HIPERCAM pipeline
+The HiPERCAM pipeline is fairly easy to use. There's great doumentation to be found [here](http://deneb.astro.warwick.ac.uk/phsaap/hipercam/docs/html/commands.html), but I'll summarise the rough steps;
 
-I find it easiest to start thinking about claibration here, and later on `cal_phot` is going to want to know your comparison star magnitude. Create a new text file with the same name as your log file, and the extension `.coords`, i.e. I reduce a file and call it `star_data.log` with 2 comparison apertures. I then would create another file called `star_data.coords`. This file is going to contain the RA and Dec of our comparison stars, and the filter that we want the observations in. This is the general format:
+- Make a mean frame, used to define apertures
+  - `averun`
+- Set the apertures that you want to extract
+  - `setaper`
+- Generate the reduction file
+  - `genred`
+- Tweak the reduction file and optimise the settings
+  - (black magic)
+- Reduce the data!
+  - `reduce`
+
+This produces a `.log` file, containing the electron counts per aperture, per frame. However, this still needs to be calibrated, and DOESN'T contain any pointing info. So, we need to do a lookup for some actual apparent magnitudes.
+
+
+### 2. Make auxilliary files
+
+I find it easiest to start thinking about claibration here, and later on `cal_phot` is going to want to know your comparison star magnitude. Create a new text file with the same name as your log file, and the extension `.coords`, i.e. I reduce a file and call it `star_data.log` with 2 comparison apertures, then create another file called `star_data.coords`. This file is going to contain the RA and Dec of our comparison stars, and the filter that we want the observations in. This is the general format:
 ```
 [CCD1 filter] [CCD2 filter] [CCD3 filter] ...
 
@@ -29,19 +46,18 @@ I find it easiest to start thinking about claibration here, and later on `cal_ph
 [CCD2 AP2 RA] [CCD2 AP2 DEC]
 
 [CCD3 AP3 RA] [CCD3 AP3 DEC]
+
+...
 ```
 Note that the whitespace is important, the apertures of the different CCDs are separated by a blank line. I find it easiest to have an `Aladin` window open on the side, where right-clicking on a star and clicking `Copy recticle position to clipboard` gives you the RA and Dec.
 
 You should now have two files for each reduction, a `.log` and a `.coords`
 
-### 2. Write an input file
+### 3. Write an input file
 
 This is the easy part. Create a raw text file, and enter the commands you want to run. They are exectured in order, so multiple instruments, or datasets, or even objects can be calibrated in one run. Though, for ease of understanding what's gone on, it's better to fragment your files. For a star in SDSS, the input is likely to look something like this:
 
 ```
-# Do everything in the current directory.
-directory .
-
 # Where are we observing from?
 observatory 18:35:26, +98:29:12
 inst uspec
@@ -51,10 +67,6 @@ coords      07:48:59.55 +31:25:12.6    # RA, Dec of target
 period      0.0583110795
 T0          57808.63029759
 
-## Refine our ephemeris for the system ###
-getEclipseTimes     # Get eclipse timing from data files
-fitEphemeris        # Fit the ecplise times for better ephemeris
-                    # The above are the result of this.
 ### Can we do an SDSS lookup? ###
 SDSS 1
 
@@ -66,6 +78,10 @@ logfiles    # List of logfiles to calibrate
 2017-02-15_KG5.log
 2017-12-12_KG5.log
 
+## Refine our ephemeris for the system ###
+getEclipseTimes     # Get eclipse timing from data files
+fitEphemeris        # Fit the ecplise times for better ephemeris
+   
 ### Process the files ###
 oname       SDSSJ0748_0
 combineData
@@ -75,11 +91,19 @@ combineData
 plot    SDSSJ0748_0_KG5   _KG5
 ```
 
-Thats a lot, but easy to break down. We first tell the script that we want to do everything in the current directory. This isnt't stricly necessary in this case, since the default is already the current directory, but I like to be explicit. Then, we tell the script where the observations it's about to process were taken from. This allows the code to correct our observations to heliocentric time, and remove slight timing errors due to the position of the earth changing throughout the year. The code also needs to know the RA and Dec of the target, for the same reason. In a non-SDSS calibration, this will also be used to calculate and subtract airmass effects.
+That looks like a lot, but fairly easy to break down. First, we tell the script where the observations it's about to process were taken from, in `lat, lon`. This allows the code to correct our observations to heliocentric time, and remove slight timing differences due to the position of the earth changing throughout the year. The code also needs to know the RA and Dec of the target, for the same reason. In a non-SDSS calibration, this will also be used to calculate and subtract airmass effects.
 
-Then, we define ephemeris information in days, and tell the interpreter to run the ephemeris refining tool. This fits the eclipse time to all the lightcurves it finds in the working directory, but asks for confirmation before each one.
+We tell the script what log files contain the data we're interested in. The list is terminated by a blank line.
 
-`logfiles` tells the script to standby for the actual data files, which are then read in until it finds a blank newline. `oname` defines an output filename template, and combinedata pulls the trigger on the final processing. The processing is interactive, and should be carefully monitored, but should you doubt yourself later, a log of the reduction will be generated in `Calibration.txt`. Finally, I tell `cal_phot` to plot the data in a `.pdf`.
+Then, we define our existing ephemeris information *in days* before running a script to extract the eclipse times from the `.log` files we've defined as containing eclipses. Once that's done, we tell the interpreter to run the ephemeris refining tool. This fits the eclipse time to all the lightcurves it finds in the working directory, but asks for confirmation before each one.
+
+`oname` defines an output filename template, and combinedata pulls the trigger on the final processing. The processing is interactive and should be carefully monitored, but should you doubt yourself later, a log of the reduction will be generated in `Calibration.log`. Finally, I tell `cal_phot` to `plot` the data in a `.pdf`.
+
+### 3. Run it!
+`python3 interpreter.py commandFile.dat`
+
+# TODO:
+- Move the input file over to YAML, and make the input method less horiffic to use.
 
 
 # COMMANDS
