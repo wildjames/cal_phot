@@ -73,12 +73,11 @@ T0          57808.63029759
 SDSS 1
 
 ### What files contain the targets? ###
-
 ## This is a list of the best eclipses we have, for the first round of fitting. ##
 logfiles    # List of logfiles to calibrate
-2017-01-22_KG5.log
-2017-02-15_KG5.log
-2017-12-12_KG5.log
+REDUCED/uspec2017-01-22_KG5.log
+REDUCED/uspec2017-02-15_KG5.log
+REDUCED/uspec2017-12-12_KG5.log
 
 ## Refine our ephemeris for the system ###
 getEclipseTimes     # Get eclipse timing from data files
@@ -103,6 +102,56 @@ Then, we define our existing ephemeris information *in days* before running a sc
 
 ### 3. Run it!
 `python3 interpreter.py commandFile.dat`
+
+## Non-SDSS Systems
+
+These are slightly trickier, since I can't do an automatic lookup for `*CAM`-like filters. You'll have to help me out with a bit of extra legwork by *also* reducing a standard star observation on (or near) the night that the target was observed. The script is then going to take that observation, knowing the magnitude of the star, and work out the electron-count-to-flux ratio which can then be applied to the target reductions.
+
+### 1. Reduce the target observations
+
+This is the same as for an SDSS-field system. Just do as you would normally.
+
+### 2. Reduce the standard star observation
+The observer has likely observed a standard on the night (check the logs). Reduce this system with settings that make sense for it, but REMEMBER THOSE SETTINGS! In order to be consistent between the std. and the comparisons that we're gonna care about later, make sure you use a fixed aeperture size in the reduction! 
+
+Then, go over to the target obeservation, and use *the exact same settings* to reduce the target frames. Use the same `.ape` file as you used in step 1, though! This will ensure consistency. I tend to call this standard-like reduction `<system_name>_standard.log`. This will be fed to the configuration file later.
+
+### 3. Construct the configuration file
+
+There are a few extra bits of info needed in the configuration now. The std. star will not, by definition, be in the same patch of sky as the target, and almost certainly will be viewed through a different airmass. We need to correct for this, so the software needs to know where the standard is in the sky. We also need to know the extinction at the observing site, so the following chunk needs to be added to the config `.dat`;
+
+```
+# Observing conditions
+observatory lasilla
+# https://www.eso.org/sci/observing/tools/Extinction.html
+# http://skyserver.sdss.org/dr2/en/proj/advanced/color/sdssfilters.asp
+extinction  0.08  0.161 0.52  # mags/airmass, r', g', u'
+inst ucam
+
+### Standard star information
+SDSS 0                                            # Are we in the SDSS field?
+stdLogfile  REDUCED/ucam/2016-08-22_std.log       # Logfile containing the standard star
+stdCoords   15:51:59.89 +32:56:54.3               # RA, Dec
+stdMags     10.979 10.647 10.629                  # r', g', u'
+
+### Comparison stars, reduced with the same settings as the standard. One for each file!
+comparisonLogfiles      # Ordered list of target logfiles, reduced with IDENTICAL reduction settings to the standard logfile
+REDUCED/ucam/2016-08-22_comp.log
+REDUCED/ucam/2016-08-23_comp.log
+REDUCED/ucam/2016-08-24_comp.log
+REDUCED/ucam/2016-08-25_comp.log
+```
+
+### 3. Run the interpreter
+
+That's it! The software will walk you through the rest.
+
+
+## Problems?
+
+Email me, so I can find out what I've explained badly and improve this walkthrough.
+
+---
 
 # TODO:
 - Move the input file over to YAML, and make the input method less horiffic to use.
