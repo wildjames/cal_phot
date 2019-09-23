@@ -17,9 +17,10 @@ def plot_all(files, oname, pattern, myLoc='.'):
         oname = 'overplotted_eclipses'
 
     oname = path.join(myLoc, 'MCMC_LIGHTCURVES', "FIGS", oname)
-    try:
-        mkdir(myLoc+'figs')
-    except: pass
+    directory = path.split(oname)[0]
+    if not path.isdir(directory):
+        mkdir(directory)
+
 
     # filter the files so we only have green lightcurves
     printer("  Plotting the following {} lightcurves:".format(pattern))
