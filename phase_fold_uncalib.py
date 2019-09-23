@@ -1,4 +1,3 @@
-import copy
 import os
 from pathlib import Path
 
@@ -6,8 +5,7 @@ import hipercam as hcam
 import matplotlib.pyplot as plt
 import numpy as np
 from astropy import units
-from astropy.coordinates import EarthLocation, SkyCoord
-from astropy.time import Time
+from astropy.coordinates import SkyCoord
 
 from getEclipseTimes import tcorrect
 
@@ -74,7 +72,7 @@ for fname in fnames:
 
     # If we fail reading in the log file with the Hipercam software, use the
     # Ultracam version.
-    except:
+    except Exception:
         print("Reading with the ULTRACAM pipeline: {}".format(fname))
         data = hcam.hlog.Hlog.rulog(fname)
 
