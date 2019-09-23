@@ -235,10 +235,10 @@ class Interpreter:
 
         elif command == 'coords':
             # Changes the coordinates of the object you're about to talk about.
-            if len(args) < 2:
+            if len(args) != 2:
                 printer("I didn't get the right RA and Dec format! -> 'RA Dec'")
                 printer("Please use:\n  RA - HH:MM:SS.SS\n  DEC - DD:MM:SS.SS\n")
-                pass
+                raise Exception("Incorrect co-ord format; please use: HH:MM:SS.SS")
             else:
                 coords = '{} {}'.format(args[0], args[1])
                 coords.replace(':', ' ')
@@ -328,18 +328,11 @@ class Interpreter:
             self.params['comparisonfnames'] = fnames
 
         elif command == 'stdmags':
-            # Must be in the format <r' g' u'>
-            if len(args) < 3:
-                printer("I didn't get enough magnitudes for the standard star!")
-            else:
-                mags = [float(m) for m in args[:3]]
-                self.params['mags'] = mags
-
-                printer("The standard star has the following apparent magnitudes:")
-                printer("  r': {:.3f}\n  g': {:.3f}\n  u': {:.3f}".format(
-                    mags[0], mags[1], mags[2]
-                ))
-
+            mags = [float(m) for m in args]
+            self.params['mags'] = mags
+            print("Got the following standard star apparent magnitudes:")
+            for i, m in enumerate(mags):
+                print("  - CCD {:d}: {:.3f}".format(i, m))
 
         # Eclipse times, and ephemeris stuff
         elif command == 'geteclipsetimes':

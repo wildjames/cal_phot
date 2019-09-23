@@ -573,6 +573,12 @@ def getEclipseTimes(fnames, coords, obsname, myLoc=None):
 
             cont = input("  Save these data? y/n: ")
             if cont.lower() == 'y':
+                figname = lf
+                figname = figname.replace('/', '_').replace(".log", ".png")
+                figname = path.join("EPHEMERIS", figname)
+                printer("Saved the ephemeral fit to:\n   {}".format(figname))
+                plt.savefig(figname)
+
                 locflag = input("    What is the source of these data: ")
 
                 key = '-1' # This ensures that if source_key is empty, the new data are pushed to index '0'
@@ -588,6 +594,7 @@ def getEclipseTimes(fnames, coords, obsname, myLoc=None):
                 printer("Saved the data: {}".format(['0', float(t_ecl), float(err), locflag]))
             else:
                 printer("  Did not store eclipse time from {}.".format(lf))
+
             plt.close()
             printer("")
         except celerite.solver.LinAlgError:

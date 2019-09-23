@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from os import path, mkdir
 
 import argparse
 
@@ -39,6 +40,8 @@ if __name__ == "__main__":
     phi_min, phi_max = args.MIN, args.MAX
     files = args.files
 
+    if not path.isdir('FIGS'):
+        mkdir("FIGS")
 
     print("Binning into {} bins between phase {} and {}".format(nbins, phi_min, phi_max))
 
@@ -148,6 +151,7 @@ if __name__ == "__main__":
         if not oname.endswith('.calib'):
             oname += '.calib'
 
+
         with open(oname, 'w') as f:
             f.write("# This file was produced by binning the following files down to {} points between phase {} and {}:\n".format(nbins, phi_min, phi_max))
             for cf in files:
@@ -160,6 +164,7 @@ if __name__ == "__main__":
                 f.write("{} {} {}\n".format(t, fl, fe))
 
         figname = oname.replace('.calib', '.pdf')
+        oname = path.join('FIGS', oname)
         plt.savefig(figname)
 
     plt.close()

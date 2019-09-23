@@ -2,6 +2,7 @@ import json
 import os
 from copy import deepcopy
 from pprint import pprint
+from time import sleep
 
 import bs4 as bs
 import feedparser
@@ -14,7 +15,6 @@ from astropy import time
 from astropy import units as u
 from astropy.coordinates import AltAz
 from astropy.stats import sigma_clipped_stats
-
 from lxml.html.soupparser import fromstring
 
 try:
@@ -388,6 +388,7 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
         printer("  No coordinates or observatory provided, setting airmass to 0.0")
         airmass = 0.0
 
+    printer("Getting the INSTRUMENTAL (electron flux) magnitudes for the log file")
 
     all_mags = {}
     aps = data.apnames
@@ -397,6 +398,7 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
         ext = [0.0 for i in CCDs]
 
     for CCD in CCDs:
+        printer("\n\n\n---> Doing CCD {} <---".format(CCD))
         # Get this frame's apertures
         ap = sorted(aps[CCD])
 
@@ -404,8 +406,45 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
 
         star = data.tseries(CCD, '1')
 
+        # infer CCD exposure time. Assuming negligible dead time:
+        caclulated_exptime = star.t - np.roll(star.t, 1)
+
+        # first is junk, time is in seconds
+        caclulated_exptime = np.mean(caclulated_exptime[1:]) * 60*60*24
+        mean_reported_exptime = np.mean(data[CCD]['Exptim'])
+
+        # If there is more than a 5% discrepancy, we should ask what to do
+        if abs(caclulated_exptime - mean_reported_exptime) / mean_reported_exptime > 0.05 * mean_reported_exptime:
+            printer("\n\nThere is a significant discrepancy between the reported exposure time, and the calculated one!")
+            printer("Reported mean exposure time: {:.3f}".format(mean_reported_exptime))
+            printer("Inferred exposure time: {:.3f}".format(caclulated_exptime))
+            choice = input("Please enter a choice:\n  1 - use reported exposure time\n  2 - use inferred exposure time\n  3 - Enter a custom exposure time\n  q - stop script\n> ").lower().strip()
+
+            if choice == '1':
+                exptime = mean_reported_exptime
+            elif choice == '2':
+                exptime = caclulated_exptime
+            elif choice == '3':
+                exptime = float(input('Please enter an exposure time, in seconds: '))
+            elif choice == 'q':
+                exit()
+            else:
+                printer("Invalid user input! Quitting...")
+                exit()
+
+            printer("User selected an exposure time of {:.3f}\n\n".format(exptime))
+            sleep(1)
+
+        else:
+            exptime = mean_reported_exptime
+
+
+
         # star counts/s
-        fl = star.y / data[CCD]['Exptim']
+        fl = star.y / exptime
+
+        printer("The first aperture had a mean counts per frame of {:.2f}".format(np.mean(star.y)))
+        printer("  and a mean exposure time of {:.3f}".format(exptime))
 
         # Calculate the mean apparent magnitude of the star above the atmosphere
         mag = robust_mag(fl)
@@ -418,11 +457,14 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
                 star = data.tseries(CCD, comp)
 
                 # star counts/s
-                fl = star.y / data[CCD]['Exptim']
+                fl = star.y / exptime
+
+                printer("Aperture {} had a mean counts per frame of {:.2f}".format(comp, np.mean(star.y)))
+                printer("  and a mean exposure time of {:.3f}".format(np.mean(data[CCD]['Exptim'])))
 
                 # Calculate the mean apparent magnitude of the star above the atmosphere
                 mag = robust_mag(fl)
-                # printer("  Pre-ext correct: CCD {}, Ap {}, mag: {:.3f}".format(CCD, comp, mag))
+                printer("  Pre-ext correct: CCD {}, Ap {}, mag: {:.3f}".format(CCD, comp, mag))
                 mags.append(mag)
 
 

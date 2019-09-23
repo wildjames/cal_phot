@@ -180,19 +180,19 @@ def fitEphem(myLoc, T0, period, simple=False):
         for i in range(npars):
             par = chain[:,i]
             lolim,best,uplim = np.percentile(par,[16,50,84])
-            printer("{:>20s} = {:.10f} +{:.10f} -{:.10f}".format(nameList[i],best,uplim-best,best-lolim))
+            # printer("{:>20s} = {:.10f} +{:.10f} -{:.10f}".format(nameList[i],best,uplim-best,best-lolim))
             bestPars.append(best)
 
             if nameList[i] == 'T0':
                 printer("Old T0: {:.8f}".format(T0))
                 T0 = best
                 T0_err = uplim-lolim
-                printer("New T0: {:.8f}+/-{:.8f}".format(T0, T0_err))
+                printer("New T0: {:.8f}+/-{:.8f}\n".format(T0, T0_err))
             if nameList[i] == 'P':
                 printer("Old P:  {:.8f}".format(period))
                 P = best
                 P_err = uplim-lolim
-                printer("New P: {:.8f}+/-{:.8f}".format(P, P_err))
+                printer("New P: {:.8f}+/-{:.8f}\n".format(P, P_err))
 
         fig = mu.thumbPlot(chain,nameList)
 

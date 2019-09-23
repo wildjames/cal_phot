@@ -158,11 +158,15 @@ def combineData(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
     try:
         os.mkdir(lc_dir)
     except: pass
+    print("Lightcurves will go in: {}".format(lc_dir))
+    input('>')
 
     figs_dir = os.path.join(myLoc, 'MCMC_LIGHTCURVES', "FIGS")
     try:
         os.mkdir(figs_dir)
     except: pass
+    print("Figures will go in: {}".format(figs_dir))
+    input('>')
 
 
     # Report the things we're working with
@@ -250,11 +254,15 @@ def combineData(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
             printer("Calibrating lightcurves for {}".format(fname))
             printer("\n----------------------------------------------------------------\n----------------------------------------------------------------\n")
 
-            print("CWD: {}".format(os.getcwd()))
-            print(fname)
+            print("CWD:  {}".format(os.getcwd()))
+            print("File: {}".format(fname))
             data = hcam.hlog.Hlog.read(fname)
             if data == {}:
-                raise Exception
+                data = hcam.hlog.Hlog.rulog(fname)
+            if data == {}:
+                data = hcam.hlog.Hlog.rfits(fname)
+            if data == {}:
+                raise Exception("Could not properly read in log file, {}".format(fname))
 
             printer("  Read the data file!")
 
@@ -312,7 +320,7 @@ def combineData(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
 
 
                 # Get some data on the quality of the observations
-                metadata = '#\n# Reduction info:'
+                metadata = '#\n# Reduction info:\n\n'
                 to_proc = data[CCD]
 
                 ap_x = [header for header in
@@ -525,16 +533,6 @@ def combineData(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
                     ratio.mask[slice_args]
                     )
 
-                # printer("  Removing null data")
-                # # If data is bad, i.e. 0, mask it
-                # slice_args = np.where((ratio.y != 0) * (ratio.ye != 1) * (ratio.y > 0.0))
-                # ratio = hcam.hlog.Tseries(
-                #     ratio.t[slice_args],
-                #     ratio.y[slice_args],
-                #     ratio.ye[slice_args],
-                #     ratio.mask[slice_args]
-                #     )
-
                 printer("  I sliced out {} data from the lightcurve about the eclipse.".format(len(ratio.t)))
 
                 # Plotting management
@@ -616,16 +614,17 @@ def combineData(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
 
                 # File handling stuff
                 b = band[CCD_int]
-                if b == '???':
-                    b = ''
-                else:
-                    b = '_'+b
+                while b == '???':
+                    b = input("What band are these data?: ")
+                    if b == '':
+                        print("PLEASE ENTER A BAND NAME for:\n{}\n".format(fname))
+                        b = "???"
 
                 date = time.Time(eclTime, format='mjd')
                 date = date.strftime("%Y-%m-%d@%Hh%Mm%Ss")
 
                 filename = oname
-                filename = "{}_{}{}.calib".format(filename, date, b)
+                filename = "{}_{}_{}.calib".format(filename, date, b)
 
                 filename = os.path.join(lc_dir, filename)
 
@@ -635,8 +634,8 @@ def combineData(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
                     f.write(lightcurve_metadata)
                     f.write("# Phase, Flux, Err_Flux\n")
                     for t, y, ye, mask in zip(ratio.t, ratio.y, ratio.ye, ratio.mask):
-                        if not mask:
-                            f.write("{} {} {}\n".format(t, y, ye))
+                        # if not mask:
+                        f.write("{} {} {}\n".format(t, y, ye))
 
                 written_files.append(filename)
                 printer("  Wrote data to {}".format(filename))
