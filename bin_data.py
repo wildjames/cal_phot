@@ -1,9 +1,19 @@
+import argparse
+import atexit
+import readline
+from os import mkdir, path
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from os import path, mkdir
 
-import argparse
+histfile = ".bin_history"
+try:
+    readline.read_history_file(histfile)
+except FileNotFoundError:
+    pass
+
+atexit.register(readline.write_history_file, histfile)
 
 
 if __name__ == "__main__":
