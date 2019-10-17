@@ -577,7 +577,11 @@ def combineData(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
                     # # Plot the mean count flux on the figure -- only used when single aperture, as not as useful as ratios
                     compAx[CCD_int].errorbar(comparison.t, comparison.y, yerr=comparison.ye,
                         label='Mean', color='black', linestyle='', marker='o', capsize=0)
-                    compAx[CCD_int].axhline(np.mean(comparison.y), linestyle='--', color='black')
+                    try:
+                        mean, _, _ = sigma_clipped_stats(toPlot.y, maxiters=2, sigma=3)
+                    except:
+                        mean, _, _ = sigma_clipped_stats(toPlot.y, iters=2, sigma=3)
+                    compAx[CCD_int].axhline(mean, linestyle='--', color='black')
                     compMin = np.min(comparison.y)
                     compMax = np.max(comparison.y)
                 else:

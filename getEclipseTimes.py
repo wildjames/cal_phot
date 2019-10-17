@@ -413,7 +413,10 @@ def getEclipseTimes(fnames, coords, obsname, myLoc=None):
             continue
 
         # Get the first CCD lightcurve, and correct it to the barycentric time
-        inspect = log.tseries('1', '1') / log.tseries('1', aps['1'][1])
+        try:
+            inspect = log.tseries('2', '1') / log.tseries('2', aps['1'][1])
+        except:
+            inspect = log.tseries('1', '1') / log.tseries('1', aps['1'][1])
         printer("Correcting observations from MJD to Barycentric MJD")
         printer("  -> Location: {}".format(obsname))
         printer("  -> Star: {}".format(star))
@@ -534,7 +537,7 @@ def getEclipseTimes(fnames, coords, obsname, myLoc=None):
 
             # Data
             sampler.reset()
-            nsteps = 2000
+            nsteps = 500
 
             for i, result in enumerate(sampler.sample(pos, iterations=nsteps)):
                 n = int((width+1) * float(i) / nsteps)
