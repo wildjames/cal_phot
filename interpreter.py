@@ -1,11 +1,9 @@
-#!/usr/bin/env python3
-
 import numpy as np
 import sys
 import os
 
 from getEclipseTimes import getEclipseTimes
-from combineData import combineData
+from extractData import extract_data as combineData
 from fitEphem import fitEphem
 from plotAll import plot_all
 

@@ -51,7 +51,7 @@ def calc_E_Err(T, T0, P, T_err, T0_err, P_err):
     return E_err
 
 
-def combineData(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
+def extract_data(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
                 comp_fnames=None, myLoc='.', ext=None, fnames=None,
                 std_coords=None, std_mags=None, no_calibration=False):
     '''
@@ -161,14 +161,12 @@ def combineData(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
         os.mkdir(lc_dir)
     except: pass
     print("Lightcurves will go in: {}".format(lc_dir))
-    input('>')
 
     figs_dir = os.path.join(myLoc, 'MCMC_LIGHTCURVES', "FIGS")
     try:
         os.mkdir(figs_dir)
     except: pass
     print("Figures will go in: {}".format(figs_dir))
-    input('>')
 
 
     # Report the things we're working with
@@ -578,9 +576,9 @@ def combineData(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
                     compAx[CCD_int].errorbar(comparison.t, comparison.y, yerr=comparison.ye,
                         label='Mean', color='black', linestyle='', marker='o', capsize=0)
                     try:
-                        mean, _, _ = sigma_clipped_stats(toPlot.y, maxiters=2, sigma=3)
+                        mean, _, _ = sigma_clipped_stats(comparison.y, maxiters=2, sigma=3)
                     except:
-                        mean, _, _ = sigma_clipped_stats(toPlot.y, iters=2, sigma=3)
+                        mean, _, _ = sigma_clipped_stats(comparison.y, iters=2, sigma=3)
                     compAx[CCD_int].axhline(mean, linestyle='--', color='black')
                     compMin = np.min(comparison.y)
                     compMax = np.max(comparison.y)

@@ -1,0 +1,47 @@
+# Calibration configuration for ASASSN-15aa, now with YAML!
+
+#######################
+#### REQUIRED DATA ####
+#######################
+
+# Observing location data
+observatory: lasilla
+
+# Target data
+target_coords: 10:49:25.91 -21:47:35.9
+period:        0.37553966
+T0:            57773.806750
+
+# Are we in the SDSS field?
+SDSS: 1
+
+# We want to refine the ephemeris
+get_eclipse_times: 1
+fit_ephemeris: 1
+
+
+
+# Data
+ucam:
+  ## This is a list of the best eclipses we have, for the first round of fitting. ##
+  oname: ASASSN-15aa_ucam
+  logfiles:
+    - REDUCED/ucam/2017-05-15/run009.log
+    - REDUCED/ucam/2018-01-23/run017_best.log
+    - REDUCED/ucam/2018-01-24/run024.log
+    - REDUCED/ucam/2018-01-26/run015.log
+
+  flux_calibrate: 1
+  extract_data: 1
+
+
+##################
+#### Optional ####
+##################
+
+#plot:
+#  [filename] [pattern]
+plot:
+  - [ASASSN-15aa_r, _r.calib]
+  - [ASASSN-15aa_g, _g.calib]
+  - [ASASSN-15aa_u, _u.calib]
