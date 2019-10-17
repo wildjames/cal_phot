@@ -46,6 +46,7 @@ Dec = input("Please enter star DEC: ")
 
 star = SkyCoord(
     ' '.join([RA,Dec]),
+    frame='icrs',
     unit=(units.hour, units.deg)
 )
 

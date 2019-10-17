@@ -53,7 +53,7 @@ def calc_E_Err(T, T0, P, T_err, T0_err, P_err):
 
 def combineData(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
                 comp_fnames=None, myLoc='.', ext=None, fnames=None,
-                std_coords=None, std_mags=None):
+                std_coords=None, std_mags=None, no_calibration=False):
     '''
     Takes a set of *CAM observations (and data on the system), and produces a set of phase folded lightcurves.
 
@@ -135,7 +135,9 @@ def combineData(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
             printer("  I couldn't find any log files! Stopping...")
             raise Exception("I couldn't find any log files! Stopping...")
 
-    if SDSS:
+    if no_calibration:
+        comp_fnames = ['' for _ in fnames]
+    elif SDSS:
         comp_fnames = [x.replace('.log', '.coords') for x in fnames]
     else:
         if comp_fnames == None:
@@ -205,7 +207,7 @@ def combineData(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
         c = ['red', 'green', 'blue']
     elif inst == 'hcam':
         nCCD = 5
-        band = ['u', 'g', 'r', 'i', 'z'] #TODO: verify this!!
+        band = ['u', 'g', 'r', 'i', 'z']
         c = ['blue', 'green', 'red', 'magenta', 'black']
 
     printer("  I'm using the instrument {}, which has {} CCDS in the following order:".format(inst, nCCD))
@@ -274,8 +276,22 @@ def combineData(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
                 printer("ERROR! No data in the file!")
             printer("  The observations have the following CCDs: {}".format([int(ccd) for ccd in CCDs]))
 
-            # If we're in the SDSS field, grab the reference stars' magnitudes from their coords.
-            if SDSS:
+            printer("Am I flux calibrating the data? {}".format(not no_calibration))
+            if no_calibration:
+                printer("Not doing flux calibration! Setting reference magnitudes to correspond to a flux=1")
+
+                reference_stars = {}
+                for CCD in CCDs:
+                    mags = []
+
+                    # The comparison star fluxes get added together, so each should have an even share of 1 mJy.
+                    individual_flx = 1.0 / len(aps[CCD][1:])
+                    for ap in aps[CCD][1:]:
+                        mags.append(sdss_flux2mag(individual_flx))
+                    reference_stars[CCD] = np.array(mags)
+
+                printer("'Unit' Reference stars have a magnitude of {:.2f}\n".format(sdss_flux2mag(1.0)))
+            elif SDSS:
                 printer("  Looking up SDSS magnitudes from the database")
                 reference_stars = construct_reference(refname)
             else:
@@ -357,7 +373,11 @@ def combineData(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
                 # For non-SDSS fields, this is the clipped mean magnitude of each object.
                 mags = reference_stars[CCD]
                 printer("  Comparison star mags: {}".format(mags))
-                lightcurve_metadata += "# Comparison star mags: {}\n".format(mags)
+                if no_calibration:
+                    lightcurve_metadata += "# No flux calibration being done!!\n"
+                    lightcurve_metadata += "# simulated a dummy comparison magnitude of 1.00 mJy\n"
+                else:
+                    lightcurve_metadata += "# Comparison star mags: {}\n".format(mags)
 
                 # Add up the reference star fluxes
                 for a in ap[2:]:

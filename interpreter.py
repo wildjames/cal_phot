@@ -23,9 +23,9 @@ class Interpreter:
             'directory': os.path.curdir,
             'ext': 0.161,
             'binsize': 1,
-            'anal_new': True,
             'fnames': None,
-            'SDSS': 0
+            'SDSS': 0,
+            'no_calibration': False
         }
         self.written_files = []
 
@@ -152,11 +152,19 @@ class Interpreter:
         fnames    = self.params['fnames']
         SDSS      = self.params['SDSS']
         ext       = self.params['ext']
+        nocal     = self.params['no_calibration']
 
         printer("Combining, calibrating, and plotting data...")
-        if SDSS:
-            written_files = combineData(oname, coords, obsname, T0, period, SDSS=True, inst=inst,
-            myLoc=myLoc, fnames=fnames, ext=ext)
+        if nocal:
+            written_files = combineData(
+                oname, coords, obsname, T0, period, SDSS=True, inst=inst,
+                myLoc=myLoc, fnames=fnames, ext=ext, no_calibration=nocal
+            )
+        elif SDSS:
+            written_files = combineData(
+                oname, coords, obsname, T0, period, SDSS=True, inst=inst,
+                myLoc=myLoc, fnames=fnames, ext=ext
+            )
         else:
             # Retrieve the SDSS-matching reductions for each night
             comparisons = self.params['comparisonfnames']
@@ -164,10 +172,12 @@ class Interpreter:
             stdCoords   = self.params['stdcoords']
             stdMags     = self.params['mags']
 
-            # ref_kappa = self.params['kappas']
-            written_files = combineData(oname, coords, obsname, T0, period, SDSS=False,
+            written_files = combineData(
+                oname, coords, obsname, T0, period, SDSS=False,
                 myLoc=myLoc, fnames=fnames, comp_fnames=comparisons, inst=inst,
-                std_fname=stdLogfile, std_coords=stdCoords, std_mags=stdMags, ext=ext)
+                std_fname=stdLogfile, std_coords=stdCoords, std_mags=stdMags,
+                ext=ext, no_calibration=nocal
+            )
 
         self.written_files += written_files
 
@@ -391,6 +401,10 @@ class Interpreter:
             for fname in fnames:
                 printer("- {}".format(fname))
             printer("")
+
+        elif command == 'no_calibration':
+            print("No flux calibration")
+            self.params['no_calibration'] = True
 
         # plotAll
         elif command == 'plot' or command == 'overplot':

@@ -56,13 +56,11 @@ It will construct a dict of the magnitudes from the result and return it.
 '''
 
 def robust_mag(cps):
-    '''Converts a list of fluxes
-
-    '''
+    '''Converts a list of fluxes to magnitudes'''
     try:
-        mean, median, sigma = sigma_clipped_stats(cps, iters=2, sigma=3)
-    except:
         mean, median, sigma = sigma_clipped_stats(cps, maxiters=2, sigma=3)
+    except:
+        mean, median, sigma = sigma_clipped_stats(cps, iters=2, sigma=3)
     return -2.5*np.log10(mean)
 
 
@@ -373,20 +371,44 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
 
         star_loc = coord.SkyCoord(
             coords,
-            unit=(u.hourangle, u.deg), frame='icrs')
+            unit=(u.hourangle, u.deg), frame='icrs'
+        )
 
         # I want altitude converted to zenith angle. Airmass is roughly constant over
         # a single eclipse so only do it once to save time.
-        obs_T = float(data['1'][0][1])
+        obs_T = data.tseries('1', '1').t
         obs_T = time.Time(obs_T, format='mjd')
-        star_loc_AltAz = star_loc.transform_to(AltAz(obstime=obs_T, location=observatory))
-        zenith_angle = (np.pi/2)*u.rad - (star_loc_AltAz.alt.rad * u.rad)
-        airmass = 1. / np.cos(zenith_angle)
-        printer("  For the observations at {}, calculated altitude of {:.3f}, and airmass of {:.3f}\n".format(
-            obs_T.iso, star_loc_AltAz.alt.value, airmass))
+
+        # Define the altAz frame, containing the time and location
+        altAz_frame = AltAz(obstime=obs_T, location=observatory)
+        star_loc_AltAz = star_loc.transform_to(altAz_frame)
+
+         # Compute the airmass, at the time of the first frame
+        zenith_angle = 90. - star_loc_AltAz.alt.deg
+        zenith_angle_rad = np.deg2rad(zenith_angle)
+        airmass = 1. / np.cos(zenith_angle_rad)
+
+        printer(
+            "  For the observations starting at {} and ending at {}...".format(
+                obs_T[0].iso, obs_T[-1].iso
+            )
+        )
+        printer(
+            "   -> Zenith angle starts at {:.3f}, and ends at {:.3f}".format(
+                zenith_angle[0], zenith_angle[-1]
+            )
+        )
+        printer(
+            "   -> Airmass starts at {:.3f}, ends at {:.3f}".format(
+                airmass[0], airmass[-1]
+            )
+        )
     else:
         printer("  No coordinates or observatory provided, setting airmass to 0.0")
-        airmass = 0.0
+        airmass = [0.0 for _ in data.tseries('1', '1').t]
+
+    ##TODO: The mean airmass is used for now.
+    airmass = np.mean(airmass)
 
     printer("Getting the INSTRUMENTAL (electron flux) magnitudes for the log file")
 
@@ -398,7 +420,7 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
         ext = [0.0 for i in CCDs]
 
     for CCD in CCDs:
-        printer("\n\n\n---> Doing CCD {} <---".format(CCD))
+        printer("\n---> Doing CCD {} <---".format(CCD))
         # Get this frame's apertures
         ap = sorted(aps[CCD])
 
@@ -411,40 +433,42 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
 
         # first is junk, time is in seconds
         caclulated_exptime = np.mean(caclulated_exptime[1:]) * 60*60*24
-        mean_reported_exptime = np.mean(data[CCD]['Exptim'])
+        reported_exptime = data[CCD]['Exptim']
+
+        # The one I'll use by default
+        exptime = reported_exptime
 
         # If there is more than a 5% discrepancy, we should ask what to do
+        mean_reported_exptime = np.mean(reported_exptime)
         if abs(caclulated_exptime - mean_reported_exptime) / mean_reported_exptime > 0.05 * mean_reported_exptime:
-            printer("\n\nThere is a significant discrepancy between the reported exposure time, and the calculated one!")
+            printer("\nThere is a significant discrepancy between the reported exposure time, and the calculated one!")
             printer("Reported mean exposure time: {:.3f}".format(mean_reported_exptime))
             printer("Inferred exposure time: {:.3f}".format(caclulated_exptime))
-            choice = input("Please enter a choice:\n  1 - use reported exposure time\n  2 - use inferred exposure time\n  3 - Enter a custom exposure time\n  q - stop script\n> ").lower().strip()
 
-            if choice == '1':
-                exptime = mean_reported_exptime
-            elif choice == '2':
-                exptime = caclulated_exptime
-            elif choice == '3':
-                exptime = float(input('Please enter an exposure time, in seconds: '))
-            elif choice == 'q':
-                exit()
-            else:
-                printer("Invalid user input! Quitting...")
-                exit()
+            printer("--> I will use the reported exposure time.")
 
-            printer("User selected an exposure time of {:.3f}\n\n".format(exptime))
-            sleep(1)
+            # choice = input("Please enter a choice:\n  1 - use reported exposure time\n  2 - use inferred exposure time\n  3 - Enter a custom exposure time\n  q - stop script\n> ").lower().strip()
 
-        else:
-            exptime = mean_reported_exptime
+            # if choice == '1':
+            #     exptime = mean_reported_exptime
+            # elif choice == '2':
+            #     exptime = caclulated_exptime
+            # elif choice == '3':
+            #     exptime = float(input('Please enter an exposure time, in seconds: '))
+            # elif choice == 'q':
+            #     exit()
+            # else:
+            #     printer("Invalid user input! Quitting...")
+            #     exit()
 
-
+            # printer("User selected an exposure time of {:.3f}\n\n".format(exptime))
+            # sleep(1)
 
         # star counts/s
         fl = star.y / exptime
 
         printer("The first aperture had a mean counts per frame of {:.2f}".format(np.mean(star.y)))
-        printer("  and a mean exposure time of {:.3f}".format(exptime))
+        printer("  and a mean exposure time of {:.3f}".format(np.mean(exptime)))
 
         # Calculate the mean apparent magnitude of the star above the atmosphere
         mag = robust_mag(fl)
@@ -460,13 +484,12 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
                 fl = star.y / exptime
 
                 printer("Aperture {} had a mean counts per frame of {:.2f}".format(comp, np.mean(star.y)))
-                printer("  and a mean exposure time of {:.3f}".format(np.mean(data[CCD]['Exptim'])))
+                printer("  and a mean exposure time of {:.3f}".format(np.mean(exptime)))
 
                 # Calculate the mean apparent magnitude of the star above the atmosphere
                 mag = robust_mag(fl)
                 printer("  Pre-ext correct: CCD {}, Ap {}, mag: {:.3f}".format(CCD, comp, mag))
                 mags.append(mag)
-
 
         mags = np.array(mags)
 
@@ -517,6 +540,7 @@ def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords,
     comp_data     = hcam.hlog.Hlog.read(comp_fname)
 
     # Extract the instrumental magnitudes of the standard
+    printer("   -> Computing the instrumental magnitudes of the standard")
     instrumental_std_mags = get_instrumental_mags(standard_data, std_coords, obsname, ext)
 
     # Convert the dict recieved into an array, so that we have the zero points [r, g, b, ..] in CCD order
@@ -527,6 +551,7 @@ def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords,
 
 
     # Get the comparison instrumental mags, in the taget frame
+    printer("\n\n   -> Computing the instrumental magnitudes of the target frame")
     instrumental_comp_mags = get_instrumental_mags(comp_data, comp_coords, obsname, ext)
 
     # Discard the variable star magnitude, and do the zero point correction

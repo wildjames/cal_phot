@@ -351,6 +351,7 @@ def getEclipseTimes(fnames, coords, obsname, myLoc=None):
 
     star = coord.SkyCoord(
         coords,
+        frame='icrs',
         unit=(units.hour, units.deg)
     )
 
@@ -413,6 +414,9 @@ def getEclipseTimes(fnames, coords, obsname, myLoc=None):
 
         # Get the first CCD lightcurve, and correct it to the barycentric time
         inspect = log.tseries('1', '1') / log.tseries('1', aps['1'][1])
+        printer("Correcting observations from MJD to Barycentric MJD")
+        printer("  -> Location: {}".format(obsname))
+        printer("  -> Star: {}".format(star))
         inspect_corr = tcorrect(inspect, star, obsname)
         # Discard the first 10 observations, as they're often junk
         inspect_corr = inspect_corr[10:]
@@ -486,6 +490,9 @@ def getEclipseTimes(fnames, coords, obsname, myLoc=None):
         if not soln.success:
             printer('  Warning: may not have converged')
             printer(soln.message)
+
+        print("solution from minimise:")
+        print(soln)
 
         gp.set_parameter_vector(soln.x)
         mean_model.set_parameter_vector(gp.get_parameter_vector()[2:])

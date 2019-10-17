@@ -47,10 +47,15 @@ def reducedChisq(pars,x,y,yerr):
 
 def ln_likelihood(pars,x,y,yerr,obsCodes):
     errs = yerr.copy()
+
     # scale errors by amount set by observatory code
     emul_factors = pars[2:]
-    multipliers  = emul_factors[obsCodes-1]
+
+    # multipliers  = emul_factors[obsCodes-1]
+    multipliers = np.array([1.0 for _ in emul_factors[obsCodes-1]])
+
     errs = errs*multipliers
+
     return -0.5*(np.sum( np.log( 2.0*np.pi*errs**2 ) ) + chisq(pars,x,y,errs))
 
 def ln_prior(pars):
@@ -163,7 +168,7 @@ def fitEphem(myLoc, T0, period, simple=False):
         sampler = emcee.EnsembleSampler(nwalkers,npars,ln_prob,args=[x,y,ey,obsCodes],threads=4)
 
         #burn in
-        nburn=20000
+        nburn=50000
         pos, prob, state = mu.run_burnin(sampler, p0,nburn)
 
         #production
@@ -245,6 +250,17 @@ def fitEphem(myLoc, T0, period, simple=False):
     plt.ylabel('O-C (s)')
 
     scatter_fname = path.join(myLoc, "EPHEMERIS", "ephemeris_scatter.pdf")
+    ephem_fname = path.join(myLoc, "EPHEMERIS", "ephemeris_fit.txt")
+    with open(ephem_fname, 'w') as f:
+        f.write("Got a T0 of     {:>5.15f}+/-{:<.2e}\n".format(T0, T0_err))
+        f.write("Got a period of {:>5.15f}+/-{:<.2e}\n".format(P, P_err))
+        f.write("This fit had a reduced chisq value of {:.3f}\n".format(chisq))
+        f.write('\n')
+        f.write("Source          |  (Obs) - (Calc), sec | Cycle Number\n")
+        for t in tl:
+            dT = fitfunc([T0, P], t[0]) - t[1]
+            dT *= 24*60*60
+            f.write(" {:<14s} | {:>20.4f} | {:d}\n".format(source_key[str(int(t[3]))], dT , int(t[0]) ))
 
     plt.savefig(scatter_fname)
     plt.show()
