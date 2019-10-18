@@ -520,7 +520,7 @@ def getEclipseTimes(fnames, coords, obsname, myLoc=None):
         # print(86400*(p0[:,2] - np.transpose(np.repeat(out, nwalkers).reshape((ndim, nwalkers)))[:,2]))
 
         # Construct a sampler
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, log_like, args=[y, gp], threads=1)
+        sampler = emcee.EnsembleSampler(nwalkers, ndim, log_like, args=[y, gp])
 
 
         width=40

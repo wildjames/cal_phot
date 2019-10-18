@@ -1,5 +1,6 @@
 from ruamel import yaml
 import argparse
+from pathlib import Path
 
 from getEclipseTimes import getEclipseTimes
 from extractData import extract_data
@@ -21,86 +22,76 @@ if __name__ in "__main__":
     args = parser.parse_args()
     yaml_fname = args.input_file
 
-
-    defaults = {
-        'oname': "Reduced_system",
-        'get_eclipse_times': False,
-        'fit_ephemeris': False,
-    }
-
     with open(yaml_fname) as yaml_file:
         input_dict = yaml.safe_load(yaml_file)
 
-    for key, value in defaults.items():
-        if key not in input_dict.keys():
-            print("I have no value for {}. Using the default of [{}]".format(key, value))
-            input_dict[key] = value
-
-    pprint(input_dict)
-
-    # Scrub the input dict to be in the correct formats.
     # All keys lowercase
     keys = list(input_dict.keys())
     for key in keys:
         input_dict[key.lower()] = input_dict[key]
 
-    # These items must be Boolean
-    bool_keys = [
-        'sdss',
-        'get_eclipse_times',
-        'fit_ephemeris',
-        'extract_data',
-        'flux_calibrate'
-    ]
-    # Same, for floats
-    float_keys = [
-        'period',
-        't0',
-    ]
+
+    # What data do I have to extract:
+    to_extract = input_dict['extract']
 
 
-    #### Do the conversions ####
-    ## Bools
-    # Top level input dict
-    for key in bool_keys:
-        if key in input_dict.keys():
-            input_dict[key] = bool(input_dict[key])
-    # Containers
-    outer_keys = list(input_dict.keys())
-    for key in input_dict.keys():
-        value = input_dict[key]
+    # Set default values
+    global_defaults = {
+        'directory': '.',
+        'fit_ephemeris': False,
+    }
+    for key, value in global_defaults.items():
+        if key not in input_dict.keys():
+            input_dict[key] = value
 
-        if type(value) == dict:
-            print("{} is a dict!".format(key))
-            inner_keys = list(value.keys())
-            for key in bool_keys:
-                if key in inner_keys:
-                    value[key] = bool(value[key])
-
-    ## Floats
-    # Top level input dict
-    for key in bool_keys:
-        if key in input_dict.keys():
-            input_dict[key] = float(input_dict[key])
-    # Containers
-    outer_keys = list(input_dict.keys())
-    for key in input_dict.keys():
-        value = input_dict[key]
-
-        if type(value) == dict:
-            print("{} is a dict!".format(key))
-            inner_keys = list(value.keys())
-            for key in bool_keys:
-                if key in inner_keys:
-                    value[key] = float(value[key])
+    payload_defaults = {
+        'oname': "Reduced_system",
+        'get_eclipse_times': False,
+        'fit_ephemeris': False,
+    }
+    for key, value in payload_defaults.items():
+        for payload_key, payload in to_extract.items():
+            if key not in payload.keys():
+                print("{} has no value for {}. Using the default of [{}]".format(payload_key, key, value))
+                payload[key] = value
 
     pprint(input_dict)
+    print("\n\n")
+    pprint(to_extract)
 
 
-    # Do what the user wants us to
+    # Information gathering
     is_SDSS = input_dict['sdss']
+    do_fit_ephem = input_dict['fit_ephemeris']
+    target_coords = input_dict['target_coords']
+    directory = input_dict['directory']
+    T0 = input_dict['t0']
+    period = input_dict['period']
 
-    if is_SDSS:
-        pass
-    else:
-        pass
+    for key, payload in to_extract.items():
+        print("Data: {}".format(key))
+        pprint(payload)
+        print("\n\n")
+
+        do_get_ecl_times = payload['get_eclipse_times']
+
+        if do_get_ecl_times:
+            print("I want to get eclipse times for {}".format(key))
+
+            obsname = payload['observatory']
+            try:
+                fnames = payload['logfiles']
+            except KeyError:
+                print("Searching for log files...")
+                globbed = Path('.').glob("**/*.log")
+                fnames = list(globbed)
+                fnames = [str(f) for f in fnames]
+                for fname in fnames:
+                    print(fname)
+
+            printer("Getting eclipse times from data...")
+
+            getEclipseTimes(fnames, target_coords, obsname, myLoc=directory)
+
+    if do_fit_ephem:
+        T0, period = fitEphem(directory, T0, period)
