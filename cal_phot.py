@@ -10,6 +10,7 @@ from plotAll import plot_all
 
 from logger import printer, header
 
+#TODO: Write a help file
 
 if __name__ in "__main__":
     parser = argparse.ArgumentParser("YAML input method.")
@@ -108,6 +109,9 @@ if __name__ in "__main__":
 
         fnames = payload['logfiles']
         no_calibration = not payload['flux_calibrate']
+
+        if not payload['extract_data']:
+            continue
 
         if no_calibration:
             written_files = extract_data(

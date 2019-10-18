@@ -1,13 +1,4 @@
-# Calibration configuration for ASASSN-15aa, now with YAML!
-
-#######################
-#### REQUIRED DATA ####
-#######################
-
-# Observing location data
-observatory: lasilla
-
-# Target data
+# Target data that we know already
 target_coords: 10:49:25.91 -21:47:35.9
 period:        0.37553966
 T0:            57773.806750
@@ -15,33 +6,44 @@ T0:            57773.806750
 # Are we in the SDSS field?
 SDSS: 1
 
-# We want to refine the ephemeris
-get_eclipse_times: 1
-fit_ephemeris: 1
-
-
+directory: 'TEST'
 
 # Data
-ucam:
-  ## This is a list of the best eclipses we have, for the first round of fitting. ##
-  oname: ASASSN-15aa_ucam
-  logfiles:
-    - REDUCED/ucam/2017-05-15/run009.log
-    - REDUCED/ucam/2018-01-23/run017_best.log
-    - REDUCED/ucam/2018-01-24/run024.log
-    - REDUCED/ucam/2018-01-26/run015.log
+extract:
+  # The name of <data_1> doesn't matter, so long as it exists.
+  data_1:
+    observatory: lasilla
+    inst: ucam
 
-  flux_calibrate: 1
-  extract_data: 1
+    oname: ASASSN-15aa_ucam
+    logfiles:
+      - REDUCED/ucam/2017-05-15/run009.log
+      - REDUCED/ucam/2018-01-23/run017_best.log
+
+    # We want to refine the ephemeris
+    get_eclipse_times: true
+
+    flux_calibrate: 0
+    extract_data: false
 
 
-##################
-#### Optional ####
-##################
 
-#plot:
-#  [filename] [pattern]
-plot:
-  - [ASASSN-15aa_r, _r.calib]
-  - [ASASSN-15aa_g, _g.calib]
-  - [ASASSN-15aa_u, _u.calib]
+  # Second batch. Handled separately from the first, NOT flux calibrated
+  data_2:
+    observatory: lasilla
+    inst: ucam
+
+    oname: ASASSN-15aa_ucam2
+    logfiles:
+      - REDUCED/ucam/2018-01-24/run024.log
+      - REDUCED/ucam/2018-01-26/run015.log
+
+    # We want to refine the ephemeris
+    get_eclipse_times: 0
+
+    extract_data: False
+
+
+# This will be done after get_eclipse_times, and before data extraction
+fit_ephemeris: True
+

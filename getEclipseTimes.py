@@ -22,7 +22,6 @@ from matplotlib.pyplot import close as closeplot
 from scipy.optimize import leastsq, minimize
 from scipy.signal import medfilt
 
-import mcmc_utils
 
 try:
     from logger import printer
@@ -543,11 +542,6 @@ def getEclipseTimes(fnames, coords, obsname, myLoc=None):
                 n = int((width+1) * float(i) / nsteps)
                 sys.stdout.write("\r  Sampling data... [{}{}]".format('#'*n, ' '*(width - n)))
             print("")
-
-            # chain = sampler.flatchain
-            # fig = mcmc_utils.thumbPlot(chain,['g1', 'g2', 'T0', 'sep', 'peak', 'log_sigma2'])
-            # fig.savefig('/'.join([myLoc, 'ephemeris', 'eclipse_{}_cornerPlot.pdf'.format(lf.split('/')[-1])]))
-            # plt.show(block=False)
 
             t_ecl = np.mean(sampler.flatchain[:,2])
             err = np.std(sampler.flatchain[:,2])
