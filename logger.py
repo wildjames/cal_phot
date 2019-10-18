@@ -31,9 +31,12 @@ def header(inFile):
     file = 'Calibration.txt'
     with open(file, 'w') as o:
         o.write("#####################################    COPY OF INPUT FILE    #####################################\n")
-        with open(inFile, 'r') as f:
-            for line in f:
-                o.write(line)
+        try:
+            with open(inFile, 'r') as f:
+                for line in f:
+                    o.write(line)
+        except:
+            o.write(inFile)
         o.write("\n#####################################    END OF INPUT FILE     #####################################\n\n\n")
         o.write("\n##################################### BEGIN CALIBRATION OUTPUT #####################################\n")
 

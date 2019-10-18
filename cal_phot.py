@@ -11,9 +11,6 @@ from plotAll import plot_all
 from logger import printer, header
 
 
-# REMOVEME
-from pprint import pprint
-
 if __name__ in "__main__":
     parser = argparse.ArgumentParser("YAML input method.")
     parser.add_argument(
@@ -25,6 +22,9 @@ if __name__ in "__main__":
 
     with open(yaml_fname) as yaml_file:
         input_dict = yaml.safe_load(yaml_file)
+
+    # Copy the input file to the Calibration.txt
+    header(yaml_file)
 
     # All keys lowercase
     keys = list(input_dict.keys())
@@ -57,11 +57,6 @@ if __name__ in "__main__":
                 print("{} has no value for {}. Using the default of [{}]".format(payload_key, key, value))
                 payload[key] = value
 
-    pprint(input_dict)
-    print("\n\n")
-    pprint(to_extract)
-
-
     # Information gathering
     is_SDSS = input_dict['sdss']
     do_fit_ephem = input_dict['fit_ephemeris']
@@ -78,7 +73,6 @@ if __name__ in "__main__":
     # Do the eclipse times, where needed
     for key, payload in to_extract.items():
         print("Data: {}".format(key))
-        pprint(payload)
         print("\n\n")
 
         do_get_ecl_times = payload['get_eclipse_times']
