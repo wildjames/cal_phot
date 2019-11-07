@@ -25,7 +25,7 @@ if __name__ in "__main__":
         input_dict = yaml.safe_load(yaml_file)
 
     # Copy the input file to the Calibration.txt
-    header(yaml_file)
+    header(yaml_fname)
 
     # All keys lowercase
     keys = list(input_dict.keys())
@@ -40,7 +40,7 @@ if __name__ in "__main__":
     # Set default values
     global_defaults = {
         'directory': '.',
-        'fit_ephemeris': False,
+        'fit ephemeris': False,
     }
     for key, value in global_defaults.items():
         if key not in input_dict.keys():
@@ -48,9 +48,9 @@ if __name__ in "__main__":
 
     payload_defaults = {
         'oname': "Reduced_system",
-        'get_eclipse_times': False,
-        'fit_ephemeris': False,
-        'flux_calibrate': True
+        'get eclipse times': False,
+        'fit ephemeris': False,
+        'flux calibrate': True
     }
     for key, value in payload_defaults.items():
         for payload_key, payload in to_extract.items():
@@ -60,8 +60,8 @@ if __name__ in "__main__":
 
     # Information gathering
     is_SDSS = input_dict['sdss']
-    do_fit_ephem = input_dict['fit_ephemeris']
-    target_coords = input_dict['target_coords']
+    do_fit_ephem = input_dict['fit ephemeris']
+    target_coords = input_dict['target coords']
     directory = input_dict['directory']
     T0 = input_dict['t0']
     period = input_dict['period']
@@ -76,7 +76,7 @@ if __name__ in "__main__":
         print("Data: {}".format(key))
         print("\n\n")
 
-        do_get_ecl_times = payload['get_eclipse_times']
+        do_get_ecl_times = payload['get eclipse times']
 
         if do_get_ecl_times:
             print("I want to get eclipse times for {}".format(key))
@@ -106,30 +106,35 @@ if __name__ in "__main__":
         oname = payload['oname']
         observatory = payload['observatory']
         instrument = payload['inst']
+        extinction = payload['extinction']
 
         fnames = payload['logfiles']
-        no_calibration = not payload['flux_calibrate']
+        no_calibration = not payload['flux calibrate']
 
-        if not payload['extract_data']:
+        if not payload['extract data']:
             continue
 
         if no_calibration:
+            print("NOT CALIBRATING THE FLUX OF THE TARGET")
             written_files = extract_data(
                 oname, target_coords, observatory, T0, period,
                 inst=instrument, SDSS=True, fnames=fnames,
-                myLoc=directory
+                myLoc=directory, no_calibration=True
             )
             extracted_files += written_files
 
         elif is_SDSS:
+            print("TARGET IS IN SDSS. PERFORMING LOOKUP")
             written_files = extract_data(
                 oname, target_coords, observatory, T0, period,
                 inst=instrument, SDSS=is_SDSS, myLoc=directory,
+                ext=extinction,
                 fnames=fnames
             )
             extracted_files += written_files
 
         else:
+            print("TARGET NOT IN SDSS BUT MUST BE CALIBRATED USING STANDARD STAR")
             comparisons = payload['comparison logfiles']
             std_logfile = payload['standard logfile']
             std_coords = payload['standard coords']
@@ -139,8 +144,10 @@ if __name__ in "__main__":
                 oname, target_coords, observatory, T0, period,
                 SDSS=is_SDSS, myLoc=directory, fnames=fnames,
                 comp_fnames=comparisons, inst=instrument,
-                std_fname=std_logfile, std_coords=std_coords, std_mags=std_mags
+                std_fname=std_logfile, std_coords=std_coords, std_mags=std_mags,
+                ext=extinction
             )
+            extracted_files += written_files
 
     if len(written_files):
         print("I created the following files:")

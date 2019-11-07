@@ -6,6 +6,10 @@ T0:            57773.806750
 # Are we in the SDSS field?
 SDSS: 1
 
+# This will be done after get_eclipse_times, and before data extraction
+fit_ephemeris: True
+
+
 directory: 'TEST'
 
 # Data
@@ -42,8 +46,4 @@ extract:
     get_eclipse_times: 0
 
     extract_data: False
-
-
-# This will be done after get_eclipse_times, and before data extraction
-fit_ephemeris: True
 

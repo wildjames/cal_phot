@@ -343,7 +343,7 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
     obsname: str
         Optional. Observing location name of the data.
 
-    ext: list-like
+    ext: iterable
         Optional. Extinction corrections to apply, given in CCD order. i.e. [<CCD1 ext>, <CCD2 ext>, ...]
 
 
@@ -364,19 +364,25 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
         # Where are we?
         try:
             observatory = coord.EarthLocation.of_site(obsname)
+            printer("Observatory successfully retrieved from site name")
         except:
-            lat, lon = obsname.split(',')
-            print("  Earth location from latitude, longitude: {}, {}".format(lat, lon))
+            obsname = obsname.split(',')
+            if len(obsname) != 2:
+                printer("  The lat, lon MUST!!! be comma separated!")
+                exit()
+            lat, lon = obsname
+            printer("  Earth location from latitude, longitude: {}, {}".format(lat, lon))
             observatory = coord.EarthLocation.from_geodetic(lat=lat, lon=lon)
 
         star_loc = coord.SkyCoord(
             coords,
-            unit=(u.hourangle, u.deg), frame='icrs'
+            unit=(u.hourangle, u.deg)
         )
 
         # I want altitude converted to zenith angle. Airmass is roughly constant over
         # a single eclipse so only do it once to save time.
         obs_T = data.tseries('1', '1').t
+        print(obs_T.dtype)
         obs_T = time.Time(obs_T, format='mjd')
 
         # Define the altAz frame, containing the time and location
@@ -384,7 +390,7 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
         star_loc_AltAz = star_loc.transform_to(altAz_frame)
 
          # Compute the airmass, at the time of the first frame
-        zenith_angle = 90. - star_loc_AltAz.alt.deg
+        zenith_angle = 90 - star_loc_AltAz.alt.deg
         zenith_angle_rad = np.deg2rad(zenith_angle)
         airmass = 1. / np.cos(zenith_angle_rad)
 
@@ -409,6 +415,15 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
 
     ##TODO: The mean airmass is used for now.
     airmass = np.mean(airmass)
+    print("Mean airmass: {:.3f}".format(airmass))
+    if airmass <= 0:
+        printer("Airmass is negative!! We have a problem there!")
+        printer("EarthLocation (constructed from {}):".format(obsname))
+        printer(str(observatory))
+        printer(str(observatory.lat), str(observatory.lon))
+        printer("Star location:")
+        printer(str(star_loc))
+        input("Hit enter to continue... ")
 
     printer("Getting the INSTRUMENTAL (electron flux) magnitudes for the log file")
 
@@ -416,8 +431,9 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
     aps = data.apnames
     CCDs = [str(i+1) for i, key in enumerate(aps)]
 
-    if ext == None:
+    if ext is None:
         ext = [0.0 for i in CCDs]
+    ext = np.array(ext)
 
     for CCD in CCDs:
         printer("\n---> Doing CCD {} <---".format(CCD))
@@ -428,41 +444,7 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
 
         star = data.tseries(CCD, '1')
 
-        # infer CCD exposure time. Assuming negligible dead time:
-        caclulated_exptime = star.t - np.roll(star.t, 1)
-
-        # first is junk, time is in seconds
-        caclulated_exptime = np.mean(caclulated_exptime[1:]) * 60*60*24
-        reported_exptime = data[CCD]['Exptim']
-
-        # The one I'll use by default
-        exptime = reported_exptime
-
-        # If there is more than a 5% discrepancy, we should ask what to do
-        mean_reported_exptime = np.mean(reported_exptime)
-        if abs(caclulated_exptime - mean_reported_exptime) / mean_reported_exptime > 0.05 * mean_reported_exptime:
-            printer("\nThere is a significant discrepancy between the reported exposure time, and the calculated one!")
-            printer("Reported mean exposure time: {:.3f}".format(mean_reported_exptime))
-            printer("Inferred exposure time: {:.3f}".format(caclulated_exptime))
-
-            printer("--> I will use the reported exposure time.")
-
-            # choice = input("Please enter a choice:\n  1 - use reported exposure time\n  2 - use inferred exposure time\n  3 - Enter a custom exposure time\n  q - stop script\n> ").lower().strip()
-
-            # if choice == '1':
-            #     exptime = mean_reported_exptime
-            # elif choice == '2':
-            #     exptime = caclulated_exptime
-            # elif choice == '3':
-            #     exptime = float(input('Please enter an exposure time, in seconds: '))
-            # elif choice == 'q':
-            #     exit()
-            # else:
-            #     printer("Invalid user input! Quitting...")
-            #     exit()
-
-            # printer("User selected an exposure time of {:.3f}\n\n".format(exptime))
-            # sleep(1)
+        exptime = data[CCD]['Exptim']
 
         # star counts/s
         fl = star.y / exptime
@@ -545,6 +527,7 @@ def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords,
 
     # Convert the dict recieved into an array, so that we have the zero points [r, g, b, ..] in CCD order
     instrumental_std_mags = [instrumental_std_mags[str(i+1)][0] for i, _ in enumerate(instrumental_std_mags)]
+    instrumental_std_mags = np.array(instrumental_std_mags)
 
     # The zero points are the difference between observed and expected.
     zero_points = instrumental_std_mags - std_mags

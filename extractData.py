@@ -295,7 +295,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
             else:
                 printer("  Getting comparison star apparent magnitudes, from standard observation")
                 reference_stars = get_comparison_magnitudes(std_fname, refname, std_coords=std_coords,
-                    comp_coords=coords, std_mags=std_mags, obsname=obsname, ext=ext)
+                    comp_coords=coords, obsname=obsname, std_mags=std_mags, ext=ext)
 
             for a in ax:
                     a.clear()
@@ -449,8 +449,6 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
                             lightcurve_metadata += "# Star {} had no SDSS magnitude. Computed a magnitude of {:.3f} from an e- flux of {}\n".format(a, mag, meanCnts)
 
                     printer("\n")
-
-
 
                 if len(mags) != N_comparisons:
                     printer("  Target reduction filename:    {}".format(fname))
