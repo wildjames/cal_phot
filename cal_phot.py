@@ -174,4 +174,5 @@ if __name__ in "__main__":
             for fname in files:
                 print("  - {}".format(fname))
             print()
-            plot_all(files, input_dict['overplot filename'], myLoc=directory)
+            oname = "{}_{}".format(input_dict["overplot filename"], band)
+            plot_all(files, oname, myLoc=directory)
