@@ -215,7 +215,9 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
     written_files = []
 
 
-    # Plotting area
+    ## Plotting ##
+    ADU_lightcurves = {}
+
     print("Making plotting area...", end='')
     plt.ion()
     fig, ax = plt.subplots(nCCD, figsize=[11.69, 8.27], sharex=True)
@@ -466,48 +468,11 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
                 comparison_flux = np.sum(fluxs)
 
                 ratio = target / comparison # counts / counts - ratio between target and comp
-                meanRatio = np.mean(ratio.y)
-                ratio = ratio * comparison_flux # Scale back up to actual flux.
-
-
-                ## Reporting
-                printer("  Comparison star apparent SDSS magnitudes:")
-                lightcurve_metadata += "# Comparison star apparent SDSS magnitudes:\n"
-                for m, mag in enumerate(mags):
-                    printer("    Star {} -> {:.3f} mag".format(m, mag))
-                    lightcurve_metadata += "#   Star {} -> {:.3f} mag\n".format(m, mag)
-                printer("")
-                lightcurve_metadata += "#\n#\n#\n"
-
-                printer("  Apparent fluxes of the comparison stars:")
-                lightcurve_metadata += "# Apparent fluxes of the comparison stars:\n"
-
-                for i, flux in enumerate(fluxs):
-                    printer("    Star {} -> {:.3f} mJy".format(i, flux))
-                    lightcurve_metadata += "#   Star {} -> {:.3f} mJy\n".format(i, flux)
-                lightcurve_metadata += "#\n"
-
-                printer('  Sum apparent Flux: {:.3f} mJy\n'.format(comparison_flux))
-                printer("  Instrumental summed counts per mean frame ({} frames) of {} comparison stars: {:.1f}".format(
-                    len(comparison.y), len(ap[1:]), np.mean(comparison.y)
-                ))
-                printer("  Instrumental counts per mean frame ({} frames) of target: {:.1f}".format(
-                    len(target.y), np.mean(target.y)
-                ))
-                printer("  Mean Target/comparison count ratio: {:.3f}".format(meanRatio))
-                printer("  Mean target magnitude: {:.3f}".format(sdss_flux2mag(meanRatio * comparison_flux)))
-
-
-                lightcurve_metadata += '# Sum apparent Flux: {:.3f} mJy\n#\n#\n'.format(comparison_flux)
-                lightcurve_metadata += "# Instrumental summed counts per mean frame ({} frames) of {} comparison stars: {:.1f}\n".format(len(comparison.y), len(ap[1:]), np.mean(comparison.y))
-                lightcurve_metadata += "# Instrumental counts per mean frame ({} frames) of target: {:.1f}\n#\n".format(len(target.y), np.mean(target.y))
-                lightcurve_metadata += "# Mean Target/comparison count ratio: {:.3f}\n".format(meanRatio)
-                lightcurve_metadata += "# Mean target magnitude: {:.3f}\n".format(sdss_flux2mag(meanRatio * comparison_flux))
-
 
                 printer("\n\n  Correcting data to BMJD time...")
                 ratio = tcorrect(ratio, star_loc, obsname)
 
+                # If we're the first CCD, figure out what eclipse cycle we are
                 if CCD == '1':
                     meantime = np.mean(ratio.t)
                     E = calc_E(meantime, T0, period)
@@ -550,6 +515,48 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
                     )
 
                 printer("  I sliced out {} data from the lightcurve about the eclipse.".format(len(ratio.t)))
+
+                ADU_lightcurves[fname] = copy.deepcopy(ratio)
+
+
+                # Convert the ratio from ADU to mJy
+                ratio = ratio * comparison_flux # Scale back up to actual flux.
+
+
+                ## Reporting
+                printer("  Comparison star apparent SDSS magnitudes:")
+                lightcurve_metadata += "# Comparison star apparent SDSS magnitudes:\n"
+                for m, mag in enumerate(mags):
+                    printer("    Star {} -> {:.3f} mag".format(m, mag))
+                    lightcurve_metadata += "#   Star {} -> {:.3f} mag\n".format(m, mag)
+                printer("")
+                lightcurve_metadata += "#\n#\n#\n"
+
+                printer("  Apparent fluxes of the comparison stars:")
+                lightcurve_metadata += "# Apparent fluxes of the comparison stars:\n"
+
+                for i, flux in enumerate(fluxs):
+                    printer("    Star {} -> {:.3f} mJy".format(i, flux))
+                    lightcurve_metadata += "#   Star {} -> {:.3f} mJy\n".format(i, flux)
+                lightcurve_metadata += "#\n"
+
+                printer('  Sum apparent Flux: {:.3f} mJy\n'.format(comparison_flux))
+                printer("  Instrumental summed counts per mean frame ({} frames) of {} comparison stars: {:.1f}".format(
+                    len(comparison.y), len(ap[1:]), np.mean(comparison.y)
+                ))
+                printer("  Instrumental counts per mean frame ({} frames) of target: {:.1f}".format(
+                    len(target.y), np.mean(target.y)
+                ))
+                meanRatio = np.mean(ratio.y)
+                printer("  Mean Target/comparison count ratio: {:.3f}".format(meanRatio))
+                printer("  Mean target magnitude: {:.3f}".format(sdss_flux2mag(meanRatio * comparison_flux)))
+
+
+                lightcurve_metadata += '# Sum apparent Flux: {:.3f} mJy\n#\n#\n'.format(comparison_flux)
+                lightcurve_metadata += "# Instrumental summed counts per mean frame ({} frames) of {} comparison stars: {:.1f}\n".format(len(comparison.y), len(ap[1:]), np.mean(comparison.y))
+                lightcurve_metadata += "# Instrumental counts per mean frame ({} frames) of target: {:.1f}\n#\n".format(len(target.y), np.mean(target.y))
+                lightcurve_metadata += "# Mean Target/comparison count ratio: {:.3f}\n".format(meanRatio)
+                lightcurve_metadata += "# Mean target magnitude: {:.3f}\n".format(sdss_flux2mag(meanRatio * comparison_flux))
 
                 # Plotting management
                 ax[CCD_int].clear()
@@ -680,6 +687,25 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
             pdf.savefig(compFig)
     printer("  ")
     printer("  Saved the plots to {}".format(pdfname))
+    plt.close(compFig)
+
+    # Plot the ADU lightcurves for the user.
+    for a in ax:
+            a.clear()
+            a.set_ylabel('Flux, ADU')
+    ax[-1].set_xlabel('Phase, days')
+    ax[0].set_title('Waiting for data...')
+
+    for fname in fnames:
+        tseries = ADU_lightcurves[fname]
+        flx = tseries.y
+        phase = tseries.t
+        ax.plot(phase, flx, label=fname)
+    ax.legend()
+    ax[0].set_title("ADU Lightcurves of all files")
+    plt.tight_layout()
+    fig.canvas.draw_idle()
+
     plt.close('all')
     plt.ioff()
 
