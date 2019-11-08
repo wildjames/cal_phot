@@ -153,3 +153,25 @@ if __name__ in "__main__":
         print("I created the following files:")
         for f in written_files:
             print(" -> {}".format(f))
+
+    if input_dict['overplot']:
+        print("I want to plot the following on top of each other:")
+        colors = {}
+        for fname in written_files:
+            print(" - {}".format(fname))
+
+            # If the calib filename ends with a band I've not already got in
+            # the colors dict, add it to that. Otherwise, start a new list of files
+            band = fname.replace(".calib", "").split("_")[-1]
+            if band in colors.keys():
+                colors[band].append(fname)
+            else:
+                colors[band] = [fname]
+
+
+        for band, files in colors.items():
+            print("{} band files:".format(band))
+            for fname in files:
+                print("  - {}".format(fname))
+            print()
+            plot_all(files, input_dict['overplot filename'], myLoc=directory)

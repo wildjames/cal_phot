@@ -3,10 +3,9 @@ import matplotlib.pyplot as plt
 from logger import printer
 from os import mkdir, path
 
-def plot_all(files, oname, pattern, myLoc='.'):
+def plot_all(files, oname, myLoc='.'):
     '''
     Takes a list of .calib files, and plots them all over each other as a step plot.
-    Plots only files containing str(pattern)
 
     Returns None
     '''
@@ -22,13 +21,6 @@ def plot_all(files, oname, pattern, myLoc='.'):
         mkdir(directory)
 
 
-    # filter the files so we only have green lightcurves
-    printer("  Plotting the following {} lightcurves:".format(pattern))
-    files = [x for x in files if '{}'.format(pattern) in x]
-    for f in files:
-        printer("    - {}".format(f))
-
-
     CB_color_cycle = ['#377eb8', '#ff7f00', '#4daf4a',
                       '#f781bf', '#a65628', '#984ea3',
                       '#999999', '#e41a1c', '#dede00']
@@ -40,11 +32,11 @@ def plot_all(files, oname, pattern, myLoc='.'):
         d = np.loadtxt(f, delimiter=' ')
         d = np.transpose(d)
         ax.step(d[0,:], d[1,:], label=f, color=CB_color_cycle[i%9])
-        # d[1,:] = d[1,:] / np.mean(d[1,:])
-        # odata = np.append(odata, d, axis=1)
         i+= 1
 
-    plt.title("*{}* eclispes".format(pattern))
+    plt.title("Flux-calibrated eclispes")
+    ax.set_ylabel('Flux, mJy')
+    ax.set_xlabel("Phase")
     plt.legend()
     plt.tight_layout()
     plt.show()
