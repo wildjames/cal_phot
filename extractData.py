@@ -216,7 +216,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
 
 
     ## Plotting ##
-    ADU_lightcurves = {}
+    ADU_lightcurves = {fname: [] for fname in fnames}
 
     print("Making plotting area...", end='')
     plt.ion()
@@ -516,8 +516,8 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
 
                 printer("  I sliced out {} data from the lightcurve about the eclipse.".format(len(ratio.t)))
 
-                ADU_lightcurves[fname] = copy.deepcopy(ratio)
-
+                # Save the ratio for later
+                ADU_lightcurves[fname].append(copy.deepcopy(ratio))
 
                 # Convert the ratio from ADU to mJy
                 ratio = ratio * comparison_flux # Scale back up to actual flux.
@@ -685,26 +685,35 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
             print()
             pdf.savefig(fig)
             pdf.savefig(compFig)
+        plt.close(compFig)
+
+        # Plot the ADU lightcurves for the user.
+        for a in ax:
+                a.clear()
+                a.set_ylabel('Flux, ADU')
+        ax[-1].set_xlabel('Phase, days')
+        ax[0].set_title('Waiting for data...')
+
+        print(ADU_lightcurves)
+        for fname, lightcurves in ADU_lightcurves.items():
+            for i, tseries in enumerate(lightcurves):
+                print("{} // CCD {}".format(fname, i))
+                flx = tseries.y
+                phase = tseries.t
+
+                ax[i].plot(phase, flx, label=fname)
+
+        for a in ax:
+            a.legend()
+        ax[0].set_title("ADU Lightcurves of all files")
+        plt.tight_layout()
+        fig.canvas.draw_idle()
+        plt.savefig()
+
+        input("Hit enter to continue... ")
+
     printer("  ")
     printer("  Saved the plots to {}".format(pdfname))
-    plt.close(compFig)
-
-    # Plot the ADU lightcurves for the user.
-    for a in ax:
-            a.clear()
-            a.set_ylabel('Flux, ADU')
-    ax[-1].set_xlabel('Phase, days')
-    ax[0].set_title('Waiting for data...')
-
-    for fname in fnames:
-        tseries = ADU_lightcurves[fname]
-        flx = tseries.y
-        phase = tseries.t
-        ax.plot(phase, flx, label=fname)
-    ax.legend()
-    ax[0].set_title("ADU Lightcurves of all files")
-    plt.tight_layout()
-    fig.canvas.draw_idle()
 
     plt.close('all')
     plt.ioff()
