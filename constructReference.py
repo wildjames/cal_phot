@@ -368,7 +368,7 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
         except:
             obsname = obsname.split(',')
             if len(obsname) != 2:
-                printer("  The lat, lon MUST!!! be comma separated!")
+                printer("  The (lat, lon) MUST!!! be comma separated!")
                 exit()
             lat, lon = obsname
             printer("  Earth location from latitude, longitude: {}, {}".format(lat, lon))
@@ -382,7 +382,6 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
         # I want altitude converted to zenith angle. Airmass is roughly constant over
         # a single eclipse so only do it once to save time.
         obs_T = data.tseries('1', '1').t
-        print(obs_T.dtype)
         obs_T = time.Time(obs_T, format='mjd')
 
         # Define the altAz frame, containing the time and location

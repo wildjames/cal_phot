@@ -306,7 +306,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
             # Loop through the CCDs.
             ### For each CCD, grab the target lightcurve, and the comparisons
             for CCD in CCDs:
-                lightcurve_metadata = '# This is data from the file {}, CCD {}\n'.format(fname, CCD)
+                lightcurve_metadata = '# This is data from the file {} CCD {}\n'.format(fname, CCD)
 
                 CCD_int = int(CCD) - 1
                 printer("-> CCD {}".format(CCD))
