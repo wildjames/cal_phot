@@ -85,7 +85,6 @@ def deg2arcsec(inp, ra):
     return output
 
 def convert_kg5(sdss_result):
-    from pprint import pprint
     r = sdss_result['r']
     g = sdss_result['g']
 

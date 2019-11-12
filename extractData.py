@@ -708,7 +708,8 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
         ax[0].set_title("ADU Lightcurves of all files")
         plt.tight_layout()
         fig.canvas.draw_idle()
-        plt.savefig()
+        oname = os.path.join(figs_dir, 'ADU_lightcurves.pdf')
+        fig.savefig(oname)
 
         input("Hit enter to continue... ")
 
