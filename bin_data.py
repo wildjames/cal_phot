@@ -161,11 +161,14 @@ if __name__ == "__main__":
         if not oname.endswith('.calib'):
             oname += '.calib'
 
+        reason = input("Why have the data been binned this way?\n  > ")
+        reason.replace("\n", "\n# ")
 
         with open(oname, 'w') as f:
             f.write("# This file was produced by binning the following files down to {} points between phase {} and {}:\n".format(nbins, phi_min, phi_max))
             for cf in files:
                 f.write("# {}\n".format(cf))
+            f.write("#\n# REASON GIVEN BY USER:\n# {}\n#\n#".format(reason))
             f.write("#\n# phase, flux, error\n")
             for _, row in binned_master.iterrows():
                 t = row['ts']
