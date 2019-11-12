@@ -694,7 +694,6 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
         ax[-1].set_xlabel('Phase, days')
         ax[0].set_title('Waiting for data...')
 
-        print(ADU_lightcurves)
         for fname, lightcurves in ADU_lightcurves.items():
             for i, tseries in enumerate(lightcurves):
                 print("{} // CCD {}".format(fname, i))
