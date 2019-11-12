@@ -49,8 +49,8 @@ if __name__ in "__main__":
     payload_defaults = {
         'oname': "Reduced_system",
         'get eclipse times': False,
-        'fit ephemeris': False,
-        'flux calibrate': True
+        'flux calibrate': True,
+        'extract data': True,
     }
     for key, value in payload_defaults.items():
         for payload_key, payload in to_extract.items():
