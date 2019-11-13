@@ -20,6 +20,8 @@ def plot_all(files, oname, myLoc='.'):
     if not path.isdir(directory):
         mkdir(directory)
 
+    print("Saving figures to {}".format(oname))
+
 
     CB_color_cycle = ['#377eb8', '#ff7f00', '#4daf4a',
                       '#f781bf', '#a65628', '#984ea3',

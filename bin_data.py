@@ -162,7 +162,18 @@ if __name__ == "__main__":
             oname += '.calib'
 
         reason = input("Why have the data been binned this way?\n  > ")
-        reason.replace("\n", "\n# ")
+
+        # Split up the lines
+        nChar = len(reason)
+        reasons = []
+        start = 0
+        stop = 77
+        while start < nChar:
+            reasons.append(reason[start:stop].strip())
+            start = stop
+            stop += 77
+
+        reason = '\n# '.join(reasons)
 
         with open(oname, 'w') as f:
             f.write("# This file was produced by binning the following files down to {} points between phase {} and {}:\n".format(nbins, phi_min, phi_max))

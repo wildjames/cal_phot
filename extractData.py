@@ -249,7 +249,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
 
     # I want a master pdf file with all the nights' lightcurves plotted
     # pdfname = '/'.join([myLoc, 'figs', 'all_nights.pdf'])
-    pdfname = os.path.join(figs_dir, "all_nights.pdf")
+    pdfname = os.path.join(figs_dir, oname+"_all_nights.pdf")
     with PdfPages(pdfname) as pdf:
         for fname, refname in zip(fnames, comp_fnames):
             printer("\n----------------------------------------------------------------\n----------------------------------------------------------------\n")
@@ -573,6 +573,8 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
 
                 # Scale the right side labels
                 twinAx[CCD_int].set_ylim( ax[CCD_int].get_ylim() / comparison_flux )
+                # Draw
+                fig.canvas.draw_idle()
 
                 compMin =  9e99
                 compMax = -9e99
@@ -596,16 +598,18 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
                             print("  -> Plotting ap {}/{}".format(a, b))
                             toPlot = first / data.tseries(CCD, b)
 
-                            if np.sum(toPlot.mask):
-                                mask = np.where(toPlot.mask == 0)
+                            # # Apply the mask to the data
+                            # if np.sum(toPlot.mask):
+                            #     mask = np.where(toPlot.mask == 0)
+                            #     print("  -> {} masked data!".format(np.sum(toPlot.mask)))
 
-                                toPlot.t  = toPlot.t[mask]
-                                toPlot.y  = toPlot.y[mask]
-                                toPlot.ye = toPlot.ye[mask]
-                                toPlot.mask = toPlot.mask[mask]
+                            #     toPlot.t  = toPlot.t[mask]
+                            #     toPlot.y  = toPlot.y[mask]
+                            #     toPlot.ye = toPlot.ye[mask]
+                            #     toPlot.mask = toPlot.mask[mask]
 
                             toPlot.y = toPlot.y / np.mean(toPlot.y)
-                            toPlot.y = toPlot.y + (float(j) / 5)
+                            toPlot.y = toPlot.y + (j / 5)
                             j += 1
 
                             # Get min and max axis limits
@@ -631,6 +635,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
                                 label="Aperture {}/{} - grad: {:.2f}".format(a, b, A),
                                 alpha=0.6
                             )
+                            compFig.canvas.draw_idle()
 
                 # Add in legend artist
                 compAx[CCD_int].legend()
@@ -707,8 +712,8 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
         ax[0].set_title("ADU Lightcurves of all files")
         plt.tight_layout()
         fig.canvas.draw_idle()
-        oname = os.path.join(figs_dir, 'ADU_lightcurves.pdf')
-        fig.savefig(oname)
+        ADU_name = os.path.join(figs_dir, oname+'_ADU_lightcurves.pdf')
+        fig.savefig(ADU_name)
 
         input("Hit enter to continue... ")
 
