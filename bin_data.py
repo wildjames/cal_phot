@@ -4,6 +4,7 @@ import readline
 from os import mkdir, path
 
 import matplotlib.pyplot as plt
+from cycler import cycler
 import numpy as np
 import pandas as pd
 
@@ -67,8 +68,12 @@ if __name__ == "__main__":
         'fe': []
     }
 
+    # Colour cycler, to synch steps and their errorbars
+    my_colors = ['#558edb', '#65cc7d', '#7f5143', '#737884', '#f6b9f1', '#fd5e05']
+
+
     lab = True
-    for f in files:
+    for i, f in enumerate(files):
         print("-", f)
         data = np.loadtxt(f, delimiter=' ')
 
@@ -76,7 +81,11 @@ if __name__ == "__main__":
         master_data['fl'].extend(data[:,1])
         master_data['fe'].extend(data[:,2])
 
-        ax[1].step(data[:,0], data[:,1], label=f)
+        j = i % len(my_colors)
+        color = my_colors[j]
+
+        ax[1].step(data[:,0], data[:,1], label=f, where='mid', color=color)
+        ax[1].errorbar(data[:,0], data[:,1], yerr=data[:,2], fmt='none', color=color)
         if lab:
             ax[0].step(data[:,0], data[:,1], color='lightgrey',
             where='mid', label='Input Data')
