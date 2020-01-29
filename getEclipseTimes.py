@@ -2,6 +2,7 @@ import copy
 #import corner
 import glob
 import sys
+from multiprocessing import Pool
 from os import listdir, mkdir
 from os import path as path
 from os import remove
@@ -21,7 +22,6 @@ from matplotlib import pyplot as plt
 from matplotlib.pyplot import close as closeplot
 from scipy.optimize import leastsq, minimize
 from scipy.signal import medfilt
-
 
 try:
     from logger import printer
@@ -502,7 +502,7 @@ def getEclipseTimes(fnames, coords, obsname, myLoc=None):
         out = soln['x']
         t_ecl = out[2]
 
-        printer("Using MCMC to characterise error at peak likelihood...")
+        printer("\n\nUsing MCMC to characterise error at peak likelihood...")
 
 
         # Use an MCMC model, starting from the solution we found, to model the errors
@@ -516,32 +516,25 @@ def getEclipseTimes(fnames, coords, obsname, myLoc=None):
         p0 -= (scatter/2)
         p0 = np.transpose(np.repeat(out, nwalkers).reshape((ndim, nwalkers))) + p0
 
-        # print(86400*(p0[:,2] - np.transpose(np.repeat(out, nwalkers).reshape((ndim, nwalkers)))[:,2]))
-
-        # Construct a sampler
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, log_like, args=[y, gp])
-
-
-        width=40
-
-        # Burn in
-        print("")
-        nsteps = 1000
         try:
+            # Construct a sampler
+            pool = Pool()
+            sampler = emcee.EnsembleSampler(
+                nwalkers, ndim,
+                log_like,
+                args=[y, gp],
+                pool=pool
+            )
+
+            # Burn in
+            width=40
+            nsteps = 1000
             for i, result in enumerate(sampler.sample(p0, iterations=nsteps)):
                 n = int((width+1) * float(i) / nsteps)
                 # print(result[0])
-                sys.stdout.write("\r  Burning in...    [{}{}]".format('#'*n, ' '*(width - n)))
+                sys.stdout.write("\r  Sampling...    [{}{}]".format('#'*n, ' '*(width - n)))
+            pool.close()
             pos, prob, state = result
-
-            # Data
-            sampler.reset()
-            nsteps = 500
-
-            for i, result in enumerate(sampler.sample(pos, iterations=nsteps)):
-                n = int((width+1) * float(i) / nsteps)
-                sys.stdout.write("\r  Sampling data... [{}{}]".format('#'*n, ' '*(width - n)))
-            print("")
 
             t_ecl = np.mean(sampler.flatchain[:,2])
             err = np.std(sampler.flatchain[:,2])
@@ -558,11 +551,13 @@ def getEclipseTimes(fnames, coords, obsname, myLoc=None):
             color = "#ff7f0e"
             plt.close('all')
             fig, ax = plt.subplots(2, 1, sharex=True)
-            ax[0].plot(x, y, '.')
-            ax[0].plot(x, mu, color=color)
+            ax[0].plot(x, y, '.', label='Data')
+            ax[0].plot(x, mu, color=color, label='Data GP interpolation')
             ax[0].fill_between(x, mu+std, mu-std, color=color, alpha=0.3, edgecolor="none")
-            ax[0].plot(x, mean_model.get_value(x), 'k-')
-            ax[0].axvline(t_ecl, color='magenta')
+            ax[0].plot(x, mean_model.get_value(x), linestyle='--', color='blue', label='MCMC result')
+            # mean_model.set_parameter_vector(soln.x[2:])
+            # ax[0].plot(x, mean_model.get_value(x), linestyle='--', color='red', label='scipy result')
+            ax[0].axvline(t_ecl, color='magenta', label='Eclipse time')
 
             inspect_corr.mplot(ax[1])
             ax[1].set_title('Lightcurve')
@@ -570,7 +565,9 @@ def getEclipseTimes(fnames, coords, obsname, myLoc=None):
             ax[1].axvline(t_ecl+(sep/2.), color='red')
             ax[1].axvline(t_ecl-(sep/2.), color='red')
 
+            ax[0].set_xlim(x[0], x[-1])
             ax[0].set_title("maximum likelihood prediction - {}".format(lf.split('/')[-1]))
+            ax[0].legend()
             plt.tight_layout()
             print("  Plotting fit...")
             plt.show(block=False)
@@ -604,6 +601,7 @@ def getEclipseTimes(fnames, coords, obsname, myLoc=None):
         except celerite.solver.LinAlgError:
             printer('  Celerite failed to factorize or solve matrix. This can happen when the data are poorly fitted by the double gaussian!')
             printer("  Skipping this file.")
+            input("> ")
 
     printer("\nDone all the files!")
 
