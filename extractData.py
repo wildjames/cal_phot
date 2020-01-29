@@ -51,9 +51,10 @@ def calc_E_Err(T, T0, P, T_err, T0_err, P_err):
     return E_err
 
 
-def extract_data(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
-                comp_fnames=None, myLoc='.', ext=None, fnames=None,
-                std_coords=None, std_mags=None, no_calibration=False):
+def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
+                comp_mags=None, myLoc='.', fnames=None,
+                lower_phase=-0.5, upper_phase=0.5,
+                no_calibration=False):
     '''
     Takes a set of *CAM observations (and data on the system), and produces a set of phase folded lightcurves.
 
@@ -92,26 +93,11 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
     SDSS: bool, optional
         If True, I'll do an SDSS lookup for the comparison star magnitudes. If False, use a standard star to calibrate
 
-    std_fname: str, optional
-        .log file containing a standard star reduction, to calibrate flux of comparisons
-
-    comp_fnames: list, optional
-        list of comparison reductions that match the standard star reduction.
-
     myLoc: str, optional
         Working directory. If not supplied, default to current working directory
 
-    ext: list, optional
-        Extinction coeffiecients, in order of CCD, mags/airmass
-
     fnames: list, optional
         List of target reduction files. If not supplied, searches for log files
-
-    std_coords: str, optional
-        Ra, Dec of standard star, as a string that Astropy can read
-
-    std_mags: list of float, optional
-        Apparent magnitude of the standard in each CCD
 
     Returns:
     --------
@@ -135,25 +121,25 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
             printer("  I couldn't find any log files! Stopping...")
             raise Exception("I couldn't find any log files! Stopping...")
 
-    if no_calibration:
-        comp_fnames = ['' for _ in fnames]
-    elif SDSS:
-        comp_fnames = [x.replace('.log', '.coords') for x in fnames]
-    else:
-        if comp_fnames == None:
-            "I didn't get any comparison reductions. Please supply these!"
-            raise NameError
+    # if no_calibration:
+    #     comp_fnames = ['' for _ in fnames]
+    # elif SDSS:
+    #     comp_fnames = [x.replace('.log', '.coords') for x in fnames]
+    # else:
+    #     if comp_fnames == None:
+    #         "I didn't get any comparison reductions. Please supply these!"
+    #         raise NameError
 
-        # Check we have the same number of comparison reductions as we do target reductions
-        if len(comp_fnames) != len(fnames):
-            printer("Error! I got a different number of comparison reductions and target reductions!")
-            printer("Comparisons:")
-            for f in comp_fnames:
-                printer(f)
-            printer("\nTargets:")
-            for f in fnames:
-                printer(f)
-            raise NameError
+    #     # Check we have the same number of comparison reductions as we do target reductions
+    #     if len(comp_fnames) != len(fnames):
+    #         printer("Error! I got a different number of comparison reductions and target reductions!")
+    #         printer("Comparisons:")
+    #         for f in comp_fnames:
+    #             printer(f)
+    #         printer("\nTargets:")
+    #         for f in fnames:
+    #             printer(f)
+    #         raise NameError
 
     # Writing out
     lc_dir = os.path.join(myLoc, 'MCMC_LIGHTCURVES')
@@ -214,6 +200,13 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
 
     written_files = []
 
+    if not no_calibration and not SDSS:
+        print("  For each of these CCDs, I've been given comparison stars of the following magnitudes:")
+        reference_stars = {}
+        for i, CCD in enumerate(comp_mags):
+            print("    CCD {} ({} band): ".format(i+1, band[i]))
+            print("      {}".format(CCD))
+            reference_stars[str(i+1)] = np.array(CCD)
 
     ## Plotting ##
     ADU_lightcurves = {fname: [] for fname in fnames}
@@ -251,7 +244,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
     # pdfname = '/'.join([myLoc, 'figs', 'all_nights.pdf'])
     pdfname = os.path.join(figs_dir, oname+"_all_nights.pdf")
     with PdfPages(pdfname) as pdf:
-        for fname, refname in zip(fnames, comp_fnames):
+        for fname in fnames:
             printer("\n----------------------------------------------------------------\n----------------------------------------------------------------\n")
             printer("Calibrating lightcurves for {}".format(fname))
             printer("\n----------------------------------------------------------------\n----------------------------------------------------------------\n")
@@ -276,6 +269,9 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
                 printer("ERROR! No data in the file!")
             printer("  The observations have the following CCDs: {}".format([int(ccd) for ccd in CCDs]))
 
+            ## TODO:
+            # Make this part happen only ONCE per batch, so that comparison star
+            # magnitudes are shared between files in the same batch!!
             printer("Am I flux calibrating the data? {}".format(not no_calibration))
             if no_calibration:
                 printer("Not doing flux calibration! Setting reference magnitudes to correspond to a flux=1")
@@ -293,11 +289,11 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
                 printer("'Unit' Reference stars have a magnitude of {:.2f}\n".format(sdss_flux2mag(1.0)))
             elif SDSS:
                 printer("  Looking up SDSS magnitudes from the database")
-                reference_stars = construct_reference(refname)
+                reference_stars = construct_reference(fname.replace('.log', '.coords'))
             else:
-                printer("  Getting comparison star apparent magnitudes, from standard observation")
-                reference_stars = get_comparison_magnitudes(std_fname, refname, std_coords=std_coords,
-                    comp_coords=coords, obsname=obsname, std_mags=std_mags, ext=ext)
+                printer("  My comparison stars have the following apparent mags:")
+                for b, mags in reference_stars.items():
+                    printer("    - Band {}, mags: {}".format(b, mags))
 
             for a in ax:
                     a.clear()
@@ -503,9 +499,9 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS, std_fname=None,
                 lightcurve_metadata += "# I also sliced out the phase -0.5 -> +0.5!!\n#\n#\n"
 
                 # slice out the data between phase -0.5 and 0.5
-                printer("  Slicing out data between phase -0.5 -> +0.5")
+                printer("  Slicing out data between phase {} and {}".format(lower_phase, upper_phase))
                 slice_time = (ratio.t - eclTime) / period
-                slice_args = (slice_time < 0.5)  *  (slice_time > -0.5)
+                slice_args = (slice_time < upper_phase)  *  (slice_time > lower_phase)
 
                 ratio = hcam.hlog.Tseries(
                     slice_time[slice_args],

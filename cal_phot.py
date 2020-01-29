@@ -73,9 +73,6 @@ if __name__ in "__main__":
 
     # Do the eclipse times, where needed
     for key, payload in to_extract.items():
-        print("Data: {}".format(key))
-        print("\n\n")
-
         do_get_ecl_times = payload['get eclipse times']
 
         if do_get_ecl_times:
@@ -106,7 +103,7 @@ if __name__ in "__main__":
         oname = payload['oname']
         observatory = payload['observatory']
         instrument = payload['inst']
-        extinction = payload['extinction']
+        lower_phase, upper_phase = payload["phase range"]
 
         fnames = payload['logfiles']
         no_calibration = not payload['flux calibrate']
@@ -119,33 +116,34 @@ if __name__ in "__main__":
             written_files = extract_data(
                 oname, target_coords, observatory, T0, period,
                 inst=instrument, SDSS=True, fnames=fnames,
+                lower_phase=lower_phase, upper_phase=upper_phase,
                 myLoc=directory, no_calibration=True
             )
             extracted_files += written_files
 
         elif is_SDSS:
             print("TARGET IS IN SDSS. PERFORMING LOOKUP")
+
             written_files = extract_data(
                 oname, target_coords, observatory, T0, period,
                 inst=instrument, SDSS=is_SDSS, myLoc=directory,
-                ext=extinction,
+                lower_phase=lower_phase, upper_phase=upper_phase,
                 fnames=fnames
             )
             extracted_files += written_files
 
         else:
-            print("TARGET NOT IN SDSS BUT MUST BE CALIBRATED USING STANDARD STAR")
-            comparisons = payload['comparison logfiles']
-            std_logfile = payload['standard logfile']
-            std_coords = payload['standard coords']
-            std_mags = payload['standard mags']
+            print("TARGET NOT IN SDSS AND MUST BE CALIBRATED USING STANDARD STAR")
+            print('')
+            if "comparison magnitudes" not in payload.keys():
+                raise IndexError("Please supply comparison apparent magnitudes, in CCD order! (use comparison_magnitudes.py to get these!)")
+            comparisons = payload['comparison magnitudes']
 
             written_files = extract_data(
                 oname, target_coords, observatory, T0, period,
-                SDSS=is_SDSS, myLoc=directory, fnames=fnames,
-                comp_fnames=comparisons, inst=instrument,
-                std_fname=std_logfile, std_coords=std_coords, std_mags=std_mags,
-                ext=extinction
+                inst=instrument, SDSS=is_SDSS, myLoc=directory,
+                fnames=fnames,
+                comp_mags=comparisons
             )
             extracted_files += written_files
 
@@ -174,5 +172,5 @@ if __name__ in "__main__":
             for fname in files:
                 print("  - {}".format(fname))
             print()
-            oname = "{}_{}".format(input_dict["oname"], band)
+            oname = "{}_{}".format(input_dict["overplot filename"], band)
             plot_all(files, oname, myLoc=directory)

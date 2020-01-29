@@ -44,6 +44,7 @@ def plot_all(files, oname, myLoc='.'):
     plt.show()
     print("This figure will be saved as {}".format(oname+'.pdf'))
     input('Continue > ')
+    print("---------------------------------------------------------")
     plt.savefig(oname+'.pdf')
 
     plt.close()
