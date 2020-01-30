@@ -16,7 +16,11 @@ A fairly verbose log is produces by each script in the file, `Calibration.txt`. 
 
 ## Scripts you'll want to use
 
-### `calc_extinction.py`
+### `cal_phot`
+
+This is the main calibration script. See below for details, but in short it needs a configuration yaml file.
+
+### `calc_extinction`
 
 This takes a long observations and, assuming the apertures you use to reduce it are around constant-brightness stars, calculates the extinction in each frame. This requires a few things to be thought about to work properly:
 
@@ -24,11 +28,11 @@ This takes a long observations and, assuming the apertures you use to reduce it 
   - The larger the airmass range, the better. The logs on `deneb` list the airmass range for an observation, so use that to inform what run you use.
   - Variable targets will result in junk. There's a lazy way and a smart way to deal with this - use many apertures to make sure that at least some are constant sources, or actually check each target's RA and Dec in catalogues for variability.
 
-### `comparison_mags.py`
+### `comparison_mags`
 
 We need to know the apparent magnitudes of the comparison stars so that we can convert ADU counts to a flux in mJy. This is easy when we're in the SDSS field, since the code can just look that up, but if we're elsewhere in the sky we have to jump through some hoops. This script will calculate the average apparent magnitude of all apertures in a logfile, except the first one (assumed to be the target). The result of this can be put into the `cal_phot` config file.
 
-### `bin_data.py`
+### `bin_data`
 
 Note to self: **Always be wary about *how* and *why* you're binning some data together!**
 
@@ -67,6 +71,7 @@ I find it easiest to start thinking about claibration here, since you'll already
 
 Create a new text file with the same name as your log file, and the extension `.coords`, i.e. I reduce a file and call it `star_data.log` with 2 comparison apertures, then create another file called `star_data.coords`. This file is going to contain the RA and Dec of our *comparison* stars (**there is no entry for the target!!**), and the filter that we want the observations in. This is the general format:
 
+```
     [CCD1 filter] [CCD2 filter] [CCD3 filter] ...
 
     [CCD1 AP1 RA] [CCD1 AP1 DEC]
@@ -77,6 +82,7 @@ Create a new text file with the same name as your log file, and the extension `.
     [CCD3 AP3 RA] [CCD3 AP3 DEC]
 
     ...
+```
 
 Note that the whitespace is important, the apertures of the different CCDs are separated by a blank line. I find it easiest to have an `Aladin` window open on the side, where right-clicking on a star and clicking `Copy recticle position to clipboard` gives you the RA and Dec.
 
@@ -92,7 +98,7 @@ This is the easy part. Create a raw text file, and enter the commands you want t
 
 ### 5. Run it!
 
-`python3 interpreter.py commandFile.dat`
+`cal_phot cal_commands.yaml`
 
 ## Non-SDSS Systems
 

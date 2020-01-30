@@ -6,7 +6,7 @@ from astropy import units as u
 from matplotlib import pyplot as plt
 from scipy.optimize import leastsq as lsq
 
-import .mcmc_utils as mu
+from .mcmc_utils import *
 from .getEclipseTimes import read_ecl_file
 
 try:
@@ -43,7 +43,7 @@ def ln_likelihood(pars,x,y,yerr,obsCodes):
 def ln_prior(pars):
     lnp = 0.0
     # only priors are on error scaling - assume good to 2 orders of magnitude
-    prior = mu.Prior('log_uniform',0.01,100)
+    prior = Prior('log_uniform',0.01,100)
     for param in pars[2:]:
         lnp += prior.ln_prob(param)
     return lnp
@@ -151,7 +151,7 @@ def fitEphem(myLoc, T0, period, simple=False):
 
         #burn in
         nburn=5000
-        pos, prob, state = mu.run_burnin(sampler, p0,nburn)
+        pos, prob, state = run_burnin(sampler, p0,nburn)
 
         #production
         sampler.reset()
@@ -159,8 +159,8 @@ def fitEphem(myLoc, T0, period, simple=False):
 
         chain_fname = path.join(myLoc, "EPHEMERIS", "ephemeris_chain.txt")
 
-        sampler = mu.run_mcmc_save(sampler, pos, nprod, state, chain_fname)
-        chain = mu.flatchain(sampler.chain, npars, thin=1)
+        sampler = run_mcmc_save(sampler, pos, nprod, state, chain_fname)
+        chain = flatchain(sampler.chain, npars, thin=1)
 
         # Gather and report the best values
         bestPars = []
@@ -181,7 +181,7 @@ def fitEphem(myLoc, T0, period, simple=False):
                 P_err = uplim-lolim
                 printer("New P: {:.8f}+/-{:.8f}\n".format(P, P_err))
 
-        fig = mu.thumbPlot(chain,nameList)
+        fig = thumbPlot(chain,nameList)
 
         corner_fname = path.join(myLoc, "EPHEMERIS", "ephemeris_corner_plot.pdf")
         fig.savefig(corner_fname)
