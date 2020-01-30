@@ -17,6 +17,14 @@ setuptools.setup(
     url='https://github.com/wildjames/cal_phot',
 #     packages=['cam_calphot'],
     packages=setuptools.find_packages(),
-    scripts=['scripts/bin_data', 'scripts/cal_phot', 'scripts/calc_extinction', 'scripts/comparison_mags', 'scripts/splitLogFile'],
     python_requires='>=3.6',
+    entry_points={
+      'console_scripts': [
+            'scripts/bin_data',
+            'scripts/cal_phot',
+            'scripts/calc_extinction',
+            'scripts/comparison_mags',
+            'scripts/splitLogFile'
+      ]
+    }
 )
