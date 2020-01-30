@@ -1,0 +1,27 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+
+[packages]
+numpy = "*"
+ruamel-yaml = "*"
+requests = "*"
+astropy = "*"
+beautifulsoup4 = "*"
+matplotlib = "*"
+scipy = "*"
+argparse = "*"
+readline = "*"
+cycler = "*"
+pandas = "*"
+emcee = "*"
+dask = "*"
+triangle = "*"
+seaborn = "*"
+corner = "*"
+
+[requires]
+python_version = "3.7"

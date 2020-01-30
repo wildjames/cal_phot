@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import matplotlib.pyplot as plt
 import numpy as np
 from astropy import coordinates as coord
@@ -204,7 +206,7 @@ The RA and Dec are used to calculate the airmass at whatever time, so the tel RA
 
     parser = argparse.ArgumentParser(
         description=desc,
-        prefix_chars='-'
+        prefix_chars='@'
     )
 
     parser.add_argument(
@@ -221,11 +223,13 @@ The RA and Dec are used to calculate the airmass at whatever time, so the tel RA
     )
     parser.add_argument(
         'observatory',
-        help="The observing location. Must be parsable by astropy's of_site()"
+        help="The observing location. Must be parsable by astropy's of_site(). If using lat, long, make sure they're space separated!",
+        nargs="+"
     )
     parser.add_argument(
-        "--loud",
+        "@@loud",
         help='Print debugging information',
+        default=False,
         action="store_true"
     )
 
@@ -233,7 +237,7 @@ The RA and Dec are used to calculate the airmass at whatever time, so the tel RA
     data = args.logfile
     RA, Dec = args.RA, args.Dec
     observatory = args.observatory
-    debug = args.loud
+    debug = False #args.loud
 
     print('log file = {}'.format(data))
 
@@ -242,8 +246,12 @@ The RA and Dec are used to calculate the airmass at whatever time, so the tel RA
     target_loc = coord.SkyCoord(RA, Dec, unit=(u.hourangle, u.deg))
     print("Target location: {}".format(target_loc))
 
-    obs_loc = coord.EarthLocation.of_site(observatory)
-    print("Observing location: {}".format(obs_loc))
+    if len(observatory) == 1:
+        obs_loc = coord.EarthLocation.of_site(observatory[0])
+    else:
+        lat, lon = observatory
+        print("  Attempting to get the earth observatory from latitude and longitude")
+        obs_loc = coord.EarthLocation.from_geodetic(lat=lat, lon=lon)
 
     extinction_coefficients = {}
     for CCD, apertures in data.apnames.items():

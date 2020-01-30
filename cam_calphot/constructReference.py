@@ -1,13 +1,8 @@
 import json
 import os
-from copy import deepcopy
-from pprint import pprint
-from time import sleep
 
 import bs4 as bs
-import feedparser
 import hipercam as hcam
-import matplotlib.pyplot as plt
 import numpy as np
 import requests
 from astropy import coordinates as coord
@@ -15,10 +10,9 @@ from astropy import time
 from astropy import units as u
 from astropy.coordinates import AltAz
 from astropy.stats import sigma_clipped_stats
-from lxml.html.soupparser import fromstring
 
 try:
-    from logger import printer
+    from .logger import printer
 except ImportError:
     def printer(string, end='\n'):
         print(string, end=end)
@@ -511,6 +505,7 @@ def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords,
     Returns:
     --------
     '''
+
     printer("\n\n--- Extracting comparison star SDSS magnitudes from the file '{}'---".format(comp_fname))
     printer("     using the standard star found in {}\n".format(std_fname))
 

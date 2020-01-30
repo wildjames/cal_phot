@@ -1,10 +1,17 @@
-import numpy as np
-import scipy.stats as stats
-import pandas as pd
-import emcee
-import dask.dataframe as dd
-import seaborn
+import warnings
 from os import stat
+
+import dask.dataframe as dd
+import emcee
+import numpy as np
+import pandas as pd
+import scipy.integrate as intg
+import scipy.stats as stats
+import seaborn
+from matplotlib import pyplot as plt
+# lightweight progress bar
+from tqdm import tqdm
+
 try:
     import triangle
     # This triangle should have a method corner
@@ -14,11 +21,6 @@ except (AttributeError, ImportError):
     # We want the other package
     import corner as triangle
 
-# lightweight progress bar
-from tqdm import tqdm
-import scipy.integrate as intg
-import warnings
-from matplotlib import pyplot as plt
 
 TINY = -np.inf
 
@@ -283,7 +285,7 @@ def flatchain(chain, npars, nskip=0, thin=1):
 
 def reverse_readline(filename, buf_size=8192):
     """A generator that returns the lines of a file in reverse order
-    Taken from 
+    Taken from
     https://stackoverflow.com/questions/2301789/read-a-file-in-reverse-order-using-python
     """
     with open(filename) as fh:
@@ -303,7 +305,7 @@ def reverse_readline(filename, buf_size=8192):
             if segment is not None:
                 # if the previous chunk starts right from the beginning of line
                 # do not concact the segment to the last line of new chunk
-                # instead, yield the segment first 
+                # instead, yield the segment first
                 if buffer[-1] != '\n':
                     lines[-1] += segment
                 else:
@@ -320,9 +322,9 @@ def readchain(file, nskip=0, thin=1., memory=10):
     '''Memory is the amount of memory available to read the file into, in Gigabytes'''
     # Get filesize in Gb
     filesize = stat(file).st_size
-    # The max file size we can read is set by the amount of memory we have. 
+    # The max file size we can read is set by the amount of memory we have.
     if filesize > memory*1e9:
-        ### TODO: Read in only the tail of the chainfile. 
+        ### TODO: Read in only the tail of the chainfile.
         # Temporary solution, read in a sample of the chain.
         print("Warning! The supplied chain file ({:.1f}Gb) is larger than {:.1f}Gb.".format(filesize/1e9, memory))
         # Count the lines

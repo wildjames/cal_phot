@@ -1,21 +1,21 @@
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
-
-import numpy as np
-
-import os
 import copy
-
-from astropy import time, coordinates as coord, units as u
-from astropy.coordinates import AltAz
-from astropy.stats import sigma_clipped_stats
-
-from scipy.optimize import curve_fit
+import os
 
 import hipercam as hcam
-from constructReference import construct_reference, get_comparison_magnitudes
-from getEclipseTimes import read_ecl_file, tcorrect
-from logger import printer
+import matplotlib.pyplot as plt
+import numpy as np
+from astropy import coordinates as coord
+from astropy import time
+from astropy import units as u
+from astropy.coordinates import AltAz
+from astropy.stats import sigma_clipped_stats
+from matplotlib.backends.backend_pdf import PdfPages
+from scipy.optimize import curve_fit
+
+from .constructReference import construct_reference, get_comparison_magnitudes
+from .getEclipseTimes import read_ecl_file, tcorrect
+from .logger import printer
+
 
 def straight_line(x, A, B): # this is your 'straight line' y=f(x)
     return A*x + B

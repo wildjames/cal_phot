@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import argparse
 import atexit
 import readline
@@ -18,7 +20,6 @@ atexit.register(readline.write_history_file, histfile)
 
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser()
     parser.add_argument(
         'nbin',

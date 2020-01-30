@@ -1,7 +1,10 @@
-import numpy as np
-import matplotlib.pyplot as plt
-from logger import printer
 from os import mkdir, path
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+from .logger import printer
+
 
 def plot_all(files, oname, myLoc='.'):
     '''

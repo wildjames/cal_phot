@@ -1,38 +1,20 @@
-from hipercam.hlog import Hlog
+from os import path as path
 
-from astropy import coordinates as coord, units as u
-from astropy.time import Time
-from astropy.convolution import Box1DKernel, convolve
-from astropy.stats import sigma_clipped_stats
-
-from scipy.signal import medfilt
-from scipy.optimize import minimize, leastsq as lsq
-
-import celerite
-from celerite import terms
-from celerite.modeling import Model
-
-import numpy as np
-import copy
-from os import path as path, listdir
-import sys
 import emcee
-
-from matplotlib.pyplot import close as closeplot
+import numpy as np
+from astropy import units as u
 from matplotlib import pyplot as plt
+from scipy.optimize import leastsq as lsq
 
-import pylab
-import mcmc_utils as mu
+import .mcmc_utils as mu
+from .getEclipseTimes import read_ecl_file
 
-from getEclipseTimes import read_ecl_file
 try:
-    from logger import printer
+    from .logger import printer
 except ImportError:
     def printer(string, end='\n'):
         print(string, end='\n')
 
-#import corner
-import time
 
 # Use Stu's version of the fitting, which considers error
 def model(pars,x):

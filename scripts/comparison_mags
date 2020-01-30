@@ -1,4 +1,6 @@
-from constructReference import get_comparison_magnitudes
+#!/usr/bin/env python3
+
+from cam_calphot.constructReference import get_comparison_magnitudes
 import hipercam as hcam
 
 if __name__ in "__main__":
@@ -14,14 +16,15 @@ if __name__ in "__main__":
         help="The logfile reduction of the comparison stars, with the same settings as the standard"
     )
     parser.add_argument(
-        "obsname",
-        help="The name of the observing site"
+        "observatory",
+        help="The name of the observing site",
+        nargs='+'
     )
 
     args = parser.parse_args()
     std_fname = args.std_fname
     comp_fname = args.comp_fname
-    obsname = args.obsname
+    obsname = ','.join(args.obsname)
 
     std_coords = input("Please enter the standard RA, Dec: ")
     comp_coords = input("Please enter the comparison stars' RA, Dec (for airmass calc): ")
@@ -59,4 +62,4 @@ if __name__ in "__main__":
     print("Here's the bloc that you'll want to put in the config YAML for cal_phot:")
     for i, CCD in mags.items():
         string = ["{:.3f}".format(mag) for mag in CCD]
-        print("  - [{}]".format(','.join(string)))
+        print("      - [{}]".format(','.join(string)))

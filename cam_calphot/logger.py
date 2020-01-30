@@ -1,6 +1,9 @@
 import sys
 from io import TextIOWrapper
+
 from ruamel.yaml import YAML
+
+FNAME = "Calibration.txt"
 
 class Logger(TextIOWrapper):
     '''
@@ -29,8 +32,8 @@ class Logger(TextIOWrapper):
             self.log.write(message)
 
 def header(inFile):
-    file = 'Calibration.txt'
-    with open(file, 'w') as o:
+    fname = 'Calibration.txt'
+    with open(fname, 'w') as o:
         o.write("#####################################    COPY OF INPUT FILE    #####################################\n")
         with open(inFile, 'r') as f:
             for line in f:
@@ -39,13 +42,13 @@ def header(inFile):
         o.write("\n##################################### BEGIN CALIBRATION OUTPUT #####################################\n")
 
 
-def printer(string, end='\n', terminal=True):
-    file = 'Calibration.txt'
-
+def printer(string, end='\n', fname=None, terminal=True):
     string = str(string)
 
-    if file != None:
-        with open(file, 'a') as f:
-            f.write(string+end)
+    if fname == None:
+        fname = FNAME
+
+    with open(fname, 'a') as f:
+        f.write(string+end)
 
     if terminal: print(string, end=end)

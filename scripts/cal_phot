@@ -1,16 +1,16 @@
+#!/usr/bin/env python3
+
 from ruamel import yaml
 import argparse
 from pathlib import Path
 import os
 
-from getEclipseTimes import getEclipseTimes
-from extractData import extract_data
-from fitEphem import fitEphem
-from plotAll import plot_all
+from cam_calphot.getEclipseTimes import getEclipseTimes
+from cam_calphot.extractData import extract_data
+from cam_calphot.fitEphem import fitEphem
+from cam_calphot.plotAll import plot_all
 
-from logger import printer, header
-
-#TODO: Write a help file
+from cam_calphot.logger import printer, header
 
 if __name__ in "__main__":
     parser = argparse.ArgumentParser("YAML input method.")

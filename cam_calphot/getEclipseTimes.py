@@ -1,10 +1,9 @@
 import copy
-#import corner
 import glob
 import sys
 from multiprocessing import Pool
-from os import listdir, mkdir
-from os import path as path
+from os import mkdir
+from os import path
 from os import remove
 
 import celerite
@@ -24,7 +23,7 @@ from scipy.optimize import leastsq, minimize
 from scipy.signal import medfilt
 
 try:
-    from logger import printer
+    from .logger import printer
 except:
     def printer(string, end='\n'):
         print(string, end='\n')

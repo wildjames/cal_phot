@@ -1,0 +1,38 @@
+# Target data we already know
+target coords: 07:48:59.56 +31:25:12.7
+period:        0.0583110795
+T0:            57808.63029759
+
+# Are we in the SDSS field?
+SDSS: 1
+
+# Where to put my results
+directory: 'KG5_ONLY'
+fit ephemeris: false
+
+# If this is true, then all the files I create, I'll plot on the same graph for comparison
+overplot filename: SDSS0748_KG5
+overplot: true
+
+extract:
+  # The name of <data_1> doesn't matter, so long as it exists. This allows different batches of logfiles to be reduced at once, e.g. some UCAM, some USPEC, or using different comparisons, or whatever.
+  data_1:
+    # Observing conditions
+    observatory: 18:35:26, 98:29:12
+    inst:        uspec
+    phase range: [-0.5, 0.5]
+
+    # Target data
+    oname: SDSS0748
+    logfiles:
+      - REDUCED/uspec/2017-01-22/run010.log # KG5
+      - REDUCED/uspec/2017-02-15/run010.log # KG5
+      - REDUCED/uspec/2017-12-12/run018.log # KG5
+      - REDUCED/uspec/2018-02-01/run040.log # KG5
+
+    # We want to refine the ephemeris
+    get eclipse times: false
+
+    flux calibrate: 1
+    extract data: true
+
