@@ -9,7 +9,7 @@ with open("requirements.txt", 'r') as f:
     install_req = f.readlines()
 
 setuptools.setup(
-    name='cam_calphot',
+    name='calphot',
     version='1.0',
     description='Set of codes for flux-calibrating *CAM data, when doing relative or absolute photometry',
     long_description=long_description,
