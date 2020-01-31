@@ -5,12 +5,12 @@ import argparse
 from pathlib import Path
 import os
 
-from cam_calphot.getEclipseTimes import getEclipseTimes
-from cam_calphot.extractData import extract_data
-from cam_calphot.fitEphem import fitEphem
-from cam_calphot.plotAll import plot_all
+from calphot.getEclipseTimes import getEclipseTimes
+from calphot.extractData import extract_data
+from calphot.fitEphem import fitEphem
+from calphot.plotAll import plot_all
 
-from cam_calphot.logger import printer, header
+from calphot.logger import printer, header
 
 if __name__ in "__main__":
     parser = argparse.ArgumentParser("YAML input method.")

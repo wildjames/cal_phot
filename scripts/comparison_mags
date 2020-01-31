@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from cam_calphot.constructReference import get_comparison_magnitudes
+from calphot.constructReference import get_comparison_magnitudes
 import hipercam as hcam
 
 if __name__ in "__main__":
