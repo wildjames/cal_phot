@@ -457,6 +457,10 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
                 # star counts/s
                 fl = star.y / exptime
 
+                # Filter out bad data
+                if np.any(star.mask):
+                    print("This data has bad flags!")
+
                 printer("Aperture {} had a mean counts per frame of {:.2f}".format(comp, np.mean(star.y)))
                 printer("  and a mean exposure time of {:.3f}".format(np.mean(exptime)))
 

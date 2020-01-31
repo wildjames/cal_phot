@@ -5,6 +5,8 @@ import setuptools
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
+with open("requirements.txt", 'r') as f:
+    install_req = f.readlines()
 
 setuptools.setup(
     name='cam_calphot',
@@ -15,16 +17,14 @@ setuptools.setup(
     author='James Wild',
     author_email='jwild2@sheffield.ac.uk',
     url='https://github.com/wildjames/cal_phot',
-#     packages=['cam_calphot'],
     packages=setuptools.find_packages(),
+    install_requires=install_req,
     python_requires='>=3.6',
-    entry_points={
-      'console_scripts': [
-            'scripts/bin_data',
-            'scripts/cal_phot',
-            'scripts/calc_extinction',
-            'scripts/comparison_mags',
-            'scripts/splitLogFile'
-      ]
-    }
+    scripts=[
+          'scripts/bin_data',
+          'scripts/cal_phot',
+          'scripts/calc_extinction',
+          'scripts/comparison_mags',
+          'scripts/splitLogFile'
+    ]
 )

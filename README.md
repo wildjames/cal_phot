@@ -14,13 +14,27 @@ The main advantage of using this script, and in writing this at all, is that it 
 
 A fairly verbose log is produces by each script in the file, `Calibration.txt`. Note that if an older one exists where it wants to put a new one, it'll overwrite the old log. Normally you'll want this - so that your logs always correspond to the data you currently have, but please beware!
 
-## Scripts you'll want to use
+# Installing the package
 
-### `cal_phot`
+```
+git clone https://github.com/wildjames343/cal_phot
+cd cal_phot
+pip3 install --user .
+```
+
+This should also create some commands for you to use;
+  - `cal_phot`
+  - `calc_extinction`
+  - `comparison_mags`
+  - `bin_data`
+
+# Scripts you'll want to use
+
+## `cal_phot`
 
 This is the main calibration script. See below for details, but in short it needs a configuration yaml file.
 
-### `calc_extinction`
+## `calc_extinction`
 
 This takes a long observations and, assuming the apertures you use to reduce it are around constant-brightness stars, calculates the extinction in each frame. This requires a few things to be thought about to work properly:
 
@@ -28,11 +42,11 @@ This takes a long observations and, assuming the apertures you use to reduce it 
   - The larger the airmass range, the better. The logs on `deneb` list the airmass range for an observation, so use that to inform what run you use.
   - Variable targets will result in junk. There's a lazy way and a smart way to deal with this - use many apertures to make sure that at least some are constant sources, or actually check each target's RA and Dec in catalogues for variability.
 
-### `comparison_mags`
+## `comparison_mags`
 
 We need to know the apparent magnitudes of the comparison stars so that we can convert ADU counts to a flux in mJy. This is easy when we're in the SDSS field, since the code can just look that up, but if we're elsewhere in the sky we have to jump through some hoops. This script will calculate the average apparent magnitude of all apertures in a logfile, except the first one (assumed to be the target). The result of this can be put into the `cal_phot` config file.
 
-### `bin_data`
+## `bin_data`
 
 Note to self: **Always be wary about *how* and *why* you're binning some data together!**
 
@@ -114,16 +128,16 @@ The observer has likely observed a standard on the night (check the logs). Reduc
 
 Then, go over to the target obeservation, and use the **exact same settings** to reduce the target frames. *Use the same `.ape` file as you used in step 1*, but make sure you use the same settings that you have in the standard's `.red` file! This will ensure consistency. I tend to call this standard-like reduction `<system_name>_standard.log`.
 
-### 3 Compute the comparison star magnitudes
+### 3. Compute the comparison star magnitudes
 
 Use the script `comparison_mags.py` to get the apparent magnitudes of all your comparison stars. This script will output the magnitudes in a conviniently copy-pasteable chunk for your configuration file.
 
-### 3. Construct the configuration file
+### 4. Construct the configuration file
 
 There are a few extra bits of info needed in the configuration now. I usually just take the [example](cal_commands.yaml), copy it into my working directory, and tweak the stuff.
 
 
-### 3. Run the interpreter
+### 5. Run the interpreter
 
 That's it! The software will walk you through the rest.
 
