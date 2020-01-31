@@ -1,50 +1,49 @@
 # Target data we already know
-target coords: 20:29:17.04 -43:40:19.0
-period:        0.056789
-T0:            58754.12003
+target coords: 05:22:10 -35:05:30
+
+# TODO: Impliment this
+phase fold: true
+
+period:        0.06219388
+T0:            58755.36436103
 
 # Are we in the SDSS field?
 SDSS: 0
 
 # Where to put my results
 directory: '.'
+fit ephemeris: false
 
-# Should I refine the fit on my ephemeris?
-# If I do, I use the above P and T0 as initial guesses.
-fit ephemeris: true
-
-# If this is true, then all the files I create I'll plot on the same graph for comparison. *hopefully* they're consistent!
+# If this is true, then all the files I create, I'll plot on the same graph for comparison
 overplot: true
-overplot filename: "ASASSN-17jf"
+overplot filename: "SSS111126"
 
 extract:
-  # The name of <data_1> doesn't matter, so long as it exists. This allows different batches of logfiles to be reduced at once, e.g. some UCAM, some USPEC, or using different comparisons, or whatever.
+  # The name of <data_1> doesn't matter, so long as it exists.
   data_1:
-    # If this is false, this batch gets skipped.
-    extract data: true
-
     # Observing conditions
-    observatory: lasilla                 # Can also be `<lat>, <long>`
+    observatory: lasilla
     inst: ucam
     phase range: [-0.5, 0.5]
-
     # Target data
-    oname: ASASSN-17jf_ucam
+    oname: SSS111126_ucam
+
+    # Not in the SDSS, these are reduced the same as the standard
     logfiles:
-      - REDUCED/ucam/2019_09_27/run015.log
-      - REDUCED/ucam/2019_09_29/run015.log
-      - REDUCED/ucam/2019_09_30/run013.log
+      # The name of the logfile
+      REDUCED/ucam/2019_09_28/run032.log:
+        # The comparion star apparent magnitudes, in CCD order (i.e., CCD1, CCD2, CCD3)
+        r: [16.443,15.750]
+        g: [16.638,16.261,17.627]
+        u: [17.297,16.644]
+      REDUCED/ucam/2019_09_30/run017.log:
+        r: [14.448,15.750]
+        g: [15.202,16.638]
+        u: [17.297,16.644]
 
-    # I need to know the apparent magnitudes of my comparisons.. RTFM!
-    comparison magnitudes:
-      - [15.002, 15.704, 16.206]
-      - [16.030, 16.115, 16.560]
-      - [18.542, 17.142, 17.793]
 
-    # We want to calculate the eclipse times of the logfiles in this batch
-    get eclipse times: true
+    # We want to refine the ephemeris
+    get eclipse times: false
 
-    # If this is false, the resulting .calib files will contain the flux in ADU.
-    # In this case, the comparison magnitudes above are not needed.
-    flux calibrate: 1
-
+    flux calibrate: true
+    extract data: true

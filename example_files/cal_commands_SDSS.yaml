@@ -15,7 +15,7 @@ overplot filename: SDSS0748_KG5
 overplot: true
 
 extract:
-  # The name of <data_1> doesn't matter, so long as it exists. This allows different batches of logfiles to be reduced at once, e.g. some UCAM, some USPEC, or using different comparisons, or whatever.
+  # The name of <data_1> doesn't matter, so long as it exists.
   data_1:
     # Observing conditions
     observatory: 18:35:26, 98:29:12
@@ -25,10 +25,17 @@ extract:
     # Target data
     oname: SDSS0748
     logfiles:
-      - REDUCED/uspec/2017-01-22/run010.log # KG5
-      - REDUCED/uspec/2017-02-15/run010.log # KG5
-      - REDUCED/uspec/2017-12-12/run018.log # KG5
-      - REDUCED/uspec/2018-02-01/run040.log # KG5
+      REDUCED/uspec/2017-01-22/run010.log:        # logfile
+        REDUCED/uspec/2017-01-22/run010.coords    # coords file
+
+      REDUCED/uspec/2017-02-15/run010.log: # KG5
+        REDUCED/uspec/2017-02-15/run010.coords
+
+      REDUCED/uspec/2017-12-12/run018.log: # KG5
+        REDUCED/uspec/2017-12-12/run018.coords
+
+      REDUCED/uspec/2018-02-01/run040.log: # KG5
+        REDUCED/uspec/2018-02-01/run040.coords
 
     # We want to refine the ephemeris
     get eclipse times: false
