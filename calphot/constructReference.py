@@ -46,10 +46,10 @@ It will construct a dict of the magnitudes from the result and return it.
 
 '''
 
-def robust_mag(cps):
+def robust_mag(cps, mask=None):
     '''Converts a list of fluxes to magnitudes'''
     try:
-        mean, median, sigma = sigma_clipped_stats(cps, maxiters=2, sigma=3)
+        mean, median, sigma = sigma_clipped_stats(cps, mask=mask, maxiters=2, sigma=3)
     except:
         mean, median, sigma = sigma_clipped_stats(cps, iters=2, sigma=3)
     return -2.5*np.log10(mean)
@@ -419,7 +419,7 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
         logger.printer(str(star_loc))
         input("Hit enter to continue... ")
 
-    logger.printer("Getting the INSTRUMENTAL (electron flux) magnitudes for the log file")
+    logger.printer("\nGetting the INSTRUMENTAL (electron flux) magnitudes for the log file")
 
     all_mags = {}
     aps = data.apnames
@@ -443,25 +443,28 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
         mags = []
 
         for comp in ap:
+            logger.printer("")
             star = data.tseries(CCD, comp)
 
             # Mask out data that has flags
+            mask = star.mask != 0
             if np.any(star.mask):
                 logger.printer("Bad data detected!")
 
-                mask = star.mask == 0
-                star.y *= mask
                 removed = np.sum(star.mask != 0)
                 logger.printer("The mask will remove {}/{} data points.".format(removed, len(star.y)))
+            mask[0] = True
+            mask[-1] = True
 
             # star counts/s
             fl = star.y / exptime
+            print(fl)
 
             logger.printer("Aperture {} had a mean counts per frame of {:.2f}".format(comp, np.mean(star.y)))
-            logger.printer("  and a mean exposure time of {:.3f}".format(np.mean(exptime)))
+            logger.printer("  and a mean exposure time of {:.3f}s".format(np.mean(exptime)))
 
             # Calculate the mean apparent magnitude of the star above the atmosphere
-            mag = robust_mag(fl)
+            mag = robust_mag(fl, mask=mask)
             logger.printer("  Pre-ext correct: CCD {}, Ap {}, mag: {:.3f}".format(CCD, comp, mag))
             mags.append(mag)
 
@@ -472,7 +475,7 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
         mags = mags - (ex*airmass)
         logger.printer("  Post-ext correct:")
         for i, mag in enumerate(mags):
-            logger.printer("    Ap {}: {:.3f}".format(i, mag))
+            logger.printer("    Ap {}: {:.3f} mags".format(i, mag))
         logger.printer("\n\n")
 
 
@@ -529,7 +532,7 @@ def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords,
     instrumental_std_mags = np.array(instrumental_std_mags)
 
     # The zero points are the difference between observed and expected.
-    zero_points = instrumental_std_mags - std_mags
+    zero_points = std_mags - instrumental_std_mags
 
 
     # Get the comparison instrumental mags, in the taget frame
@@ -541,7 +544,7 @@ def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords,
     for i, CCD in enumerate(instrumental_comp_mags):
         ccd = str(i+1)
         instrumental_comp_mags[ccd] = instrumental_comp_mags[ccd][1:]
-        apparent_comp_mags[ccd] = instrumental_comp_mags[ccd] - zero_points[i]
+        apparent_comp_mags[ccd] = instrumental_comp_mags[ccd] + zero_points[i]
 
 
 

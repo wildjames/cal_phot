@@ -105,7 +105,7 @@ if __name__ in "__main__":
         instrument = payload['inst']
         lower_phase, upper_phase = payload["phase range"]
 
-        fnames = payload['logfiles']
+        fnames = payload['logfiles'].keys()
         no_calibration = not payload['flux calibrate']
 
         if not payload['extract data']:
@@ -123,21 +123,20 @@ if __name__ in "__main__":
 
         elif is_SDSS:
             print("TARGET IS IN SDSS. PERFORMING LOOKUP")
+            comparisons = payload['logfiles']
 
             written_files = extract_data(
                 oname, target_coords, observatory, T0, period,
                 inst=instrument, SDSS=is_SDSS, myLoc=directory,
                 lower_phase=lower_phase, upper_phase=upper_phase,
-                fnames=fnames
+                fnames=fnames, comp_mags=comparisons,
             )
             extracted_files += written_files
 
         else:
             print("TARGET NOT IN SDSS AND MUST BE CALIBRATED USING STANDARD STAR")
             print('')
-            if "comparison magnitudes" not in payload.keys():
-                raise IndexError("Please supply comparison apparent magnitudes, in CCD order! (use comparison_magnitudes.py to get these!)")
-            comparisons = payload['comparison magnitudes']
+            comparisons = payload['logfiles']
 
             written_files = extract_data(
                 oname, target_coords, observatory, T0, period,

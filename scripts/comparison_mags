@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from os.path import split
+from os import remove
 
 import hipercam as hcam
 from calphot.constructReference import get_comparison_magnitudes, load_stds
@@ -46,16 +47,16 @@ if __name__ in "__main__":
 
     # ugriz are easy
     std_magnitudes = {
-        "r'": float(std_row["r'"]),
-        "g'": float(std_row["r'"]) + float(std_row["g'-r'"])
+        "r": float(std_row["r'"]),
+        "g": float(std_row["r'"]) + float(std_row["g'-r'"])
     }
-    std_magnitudes["u'"] = std_magnitudes["g'"] + float(std_row["u'-g'"])
-    std_magnitudes["i'"] = std_magnitudes["r'"] - float(std_row["r'-i'"])
-    std_magnitudes["z'"] = std_magnitudes["i'"] - float(std_row["i'-z'"])
+    std_magnitudes["u"] = std_magnitudes["g"] + float(std_row["u'-g'"])
+    std_magnitudes["i"] = std_magnitudes["r"] - float(std_row["r'-i'"])
+    std_magnitudes["z"] = std_magnitudes["i"] - float(std_row["i'-z'"])
 
     # Interpolate KG5
-    g = std_magnitudes["g'"]
-    r = std_magnitudes["r'"]
+    g = std_magnitudes["g"]
+    r = std_magnitudes["r"]
     std_magnitudes['kg5'] = g - 0.2240*(g-r)**2 - 0.3590*(g-r) + 0.0460
 
     # Ask the user if this is correct
@@ -104,6 +105,10 @@ if __name__ in "__main__":
         ext.append(ex)
 
     # Run the actual thing
+    try:
+        remove("ComparisonMags.LOGS")
+    except:
+        pass
     mags = get_comparison_magnitudes(
         std_fname, comp_fname,
         std_coords, comp_coords,
@@ -113,7 +118,6 @@ if __name__ in "__main__":
     )
 
     print("Here's the bloc that you'll want to put in the config YAML for cal_phot:")
-    print("    comparison magnitudes:")
     for i, CCD in mags.items():
         string = ["{:.3f}".format(mag) for mag in CCD]
-        print("      - [{}]".format(','.join(string)))
+        print("        {}: [{}]".format(bands[int(i)-1], ','.join(string)))

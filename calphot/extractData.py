@@ -1,6 +1,8 @@
 import copy
 import os
 
+import pdb
+
 import hipercam as hcam
 import matplotlib.pyplot as plt
 import numpy as np
@@ -52,9 +54,9 @@ def calc_E_Err(T, T0, P, T_err, T0_err, P_err):
 
 
 def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
-                comp_mags=None, myLoc='.', fnames=None,
-                lower_phase=-0.5, upper_phase=0.5,
-                no_calibration=False):
+                 comp_mags=None, myLoc='.', fnames=None,
+                 lower_phase=-0.5, upper_phase=0.5,
+                 no_calibration=False):
     '''
     Takes a set of *CAM observations (and data on the system), and produces a set of phase folded lightcurves.
 
@@ -180,14 +182,6 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
 
     written_files = []
 
-    if not no_calibration and not SDSS:
-        print("  For each of these CCDs, I've been given comparison stars of the following magnitudes:")
-        reference_stars = {}
-        for i, CCD in enumerate(comp_mags):
-            print("    CCD {} ({} band): ".format(i+1, band[i]))
-            print("      {}".format(CCD))
-            reference_stars[str(i+1)] = np.array(CCD)
-
     ## Plotting ##
     ADU_lightcurves = {fname: [] for fname in fnames}
 
@@ -221,7 +215,6 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
     print(" Done!")
 
     # I want a master pdf file with all the nights' lightcurves plotted
-    # pdfname = '/'.join([myLoc, 'figs', 'all_nights.pdf'])
     pdfname = os.path.join(figs_dir, oname+"_all_nights.pdf")
     with PdfPages(pdfname) as pdf:
         for fname in fnames:
@@ -249,12 +242,9 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                 printer("ERROR! No data in the file!")
             printer("  The observations have the following CCDs: {}".format([int(ccd) for ccd in CCDs]))
 
-            ## TODO:
-            # Make this part happen only ONCE per batch, so that comparison star
-            # magnitudes are shared between files in the same batch!!
-            printer("Am I flux calibrating the data? {}".format(not no_calibration))
+            printer("  Am I flux calibrating the data? {}".format(not no_calibration))
             if no_calibration:
-                printer("Not doing flux calibration! Setting reference magnitudes to correspond to a flux=1")
+                printer("\n!!! Not doing flux calibration! Setting reference magnitudes to correspond to a flux=1\n\n")
 
                 reference_stars = {}
                 for CCD in CCDs:
@@ -267,13 +257,24 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                     reference_stars[CCD] = np.array(mags)
 
                 printer("'Unit' Reference stars have a magnitude of {:.2f}\n".format(sdss_flux2mag(1.0)))
+
             elif SDSS:
                 printer("  Looking up SDSS magnitudes from the database")
-                reference_stars = construct_reference(fname.replace('.log', '.coords'))
+                comparison_coord_files = comp_mags[fname]
+                reference_stars = construct_reference(comparison_coord_files)
+
             else:
+                printer("  For each of these CCDs, I've been given comparison stars of the following magnitudes:")
+
+                reference_stars = {}
+                comparisons = comp_mags[fname]
+
+                for i, (b, comps) in enumerate(comparisons.items()):
+                    reference_stars[str(i+1)] = np.array(comps)
                 printer("  My comparison stars have the following apparent mags:")
                 for b, mags in reference_stars.items():
-                    printer("    - Band {}, mags: {}".format(b, mags))
+                    printer("    - CCD{}, mags: {}".format(b, mags))
+            printer("\n\n")
 
             for a in ax:
                     a.clear()
@@ -359,13 +360,13 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                 for a in ap[2:]:
                     N_comparisons += 1
                     comparison = comparison + data.tseries(CCD, a)
-
                     printer("  The reference star now includes data from aperture {}".format(a))
 
                 # Sometimes, we get nan frames. Let the user know.
                 if np.any(np.isnan(comparison.y)):
                     printer(" !!! The comparison star contains nan electron counts in {} frames!".format(np.sum(np.isnan(comparison.y))))
                     lightcurve_metadata += "#  !!! The comparison star contains nan electron counts in {} frames!\n".format(np.sum(np.isnan(comparison.y)))
+
                 if np.any(np.isnan(target.y)):
                     printer(" !!! The target star contains nan electron counts in {} frames!".format(np.sum(np.isnan(target.y))))
                     lightcurve_metadata += "#  !!! The target star contains nan electron counts in {} frames!\n".format(np.sum(np.isnan(target.y)))
@@ -430,14 +431,15 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
 
                 if len(mags) != N_comparisons:
                     printer("  Target reduction filename:    {}".format(fname))
-                    printer("  Comparison stars filename:    {}".format(refname))
                     printer("!!!!! Number of comparison magnitudes in standard star reduction: {}".format(len(mags)))
                     printer("!!!!! Number of comparison stars in target reduction: {}".format(len(ap[1:])))
 
                     lightcurve_metadata += "# !! WARNING !!! There was a mismatch between the number of apertures in the target and comparison reductions!! #\n"
                     input("Hit <Enter> to continue")
 
+                #######################################
                 ### Conversion of target lightcurve ###
+                #######################################
 
                 # Get the non-saturated fluxes
                 fluxs = sdss_mag2flux(mags)
@@ -489,6 +491,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                     ratio.ye[slice_args],
                     ratio.mask[slice_args]
                     )
+                meanRatio = np.mean(ratio.y)
 
                 printer("  I sliced out {} data from the lightcurve about the eclipse.".format(len(ratio.t)))
 
@@ -515,18 +518,16 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                     printer("    Star {} -> {:.3f} mJy".format(i, flux))
                     lightcurve_metadata += "#   Star {} -> {:.3f} mJy\n".format(i, flux)
                 lightcurve_metadata += "#\n"
-
                 printer('  Sum apparent Flux: {:.3f} mJy\n'.format(comparison_flux))
+
                 printer("  Instrumental summed counts per mean frame ({} frames) of {} comparison stars: {:.1f}".format(
                     len(comparison.y), len(ap[1:]), np.mean(comparison.y)
                 ))
                 printer("  Instrumental counts per mean frame ({} frames) of target: {:.1f}".format(
                     len(target.y), np.mean(target.y)
                 ))
-                meanRatio = np.mean(ratio.y)
                 printer("  Mean Target/comparison count ratio: {:.3f}".format(meanRatio))
                 printer("  Mean target magnitude: {:.3f}".format(sdss_flux2mag(meanRatio * comparison_flux)))
-
 
                 lightcurve_metadata += '# Sum apparent Flux: {:.3f} mJy\n#\n#\n'.format(comparison_flux)
                 lightcurve_metadata += "# Instrumental summed counts per mean frame ({} frames) of {} comparison stars: {:.1f}\n".format(len(comparison.y), len(ap[1:]), np.mean(comparison.y))
@@ -574,15 +575,15 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                             print("  -> Plotting ap {}/{}".format(a, b))
                             toPlot = first / data.tseries(CCD, b)
 
-                            # # Apply the mask to the data
-                            # if np.sum(toPlot.mask):
-                            #     mask = np.where(toPlot.mask == 0)
-                            #     print("  -> {} masked data!".format(np.sum(toPlot.mask)))
+                            # Apply the mask to the data
+                            if np.sum(toPlot.mask):
+                                mask = np.where(toPlot.mask == 0)
+                                print("  -> {} masked data!".format(np.sum(toPlot.mask)))
 
-                            #     toPlot.t  = toPlot.t[mask]
-                            #     toPlot.y  = toPlot.y[mask]
-                            #     toPlot.ye = toPlot.ye[mask]
-                            #     toPlot.mask = toPlot.mask[mask]
+                                toPlot.t  = toPlot.t[mask]
+                                toPlot.y  = toPlot.y[mask]
+                                toPlot.ye = toPlot.ye[mask]
+                                toPlot.mask = toPlot.mask[mask]
 
                             toPlot.y = toPlot.y / np.mean(toPlot.y)
                             toPlot.y = toPlot.y + (j / 5)
@@ -643,8 +644,8 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                     f.write("# Phase, Flux, Err_Flux\n")
                     for t, y, ye, mask in zip(ratio.t, ratio.y, ratio.ye, ratio.mask):
                         # TODO: Do we always want to ignore ALL maked data?? It's not always unusable!
-                        # if not mask:
-                        f.write("{} {} {}\n".format(t, y, ye))
+                        if not mask:
+                            f.write("{} {} {}\n".format(t, y, ye))
 
                 written_files.append(filename)
                 printer("  Wrote data to {}".format(filename))
@@ -682,7 +683,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                 flx = tseries.y
                 phase = tseries.t
 
-                ax[i].plot(phase, flx, label=fname)
+                ax[i].step(phase, flx, label=fname)
 
         for a in ax:
             a.legend()
