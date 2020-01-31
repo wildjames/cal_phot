@@ -121,26 +121,6 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
             printer("  I couldn't find any log files! Stopping...")
             raise Exception("I couldn't find any log files! Stopping...")
 
-    # if no_calibration:
-    #     comp_fnames = ['' for _ in fnames]
-    # elif SDSS:
-    #     comp_fnames = [x.replace('.log', '.coords') for x in fnames]
-    # else:
-    #     if comp_fnames == None:
-    #         "I didn't get any comparison reductions. Please supply these!"
-    #         raise NameError
-
-    #     # Check we have the same number of comparison reductions as we do target reductions
-    #     if len(comp_fnames) != len(fnames):
-    #         printer("Error! I got a different number of comparison reductions and target reductions!")
-    #         printer("Comparisons:")
-    #         for f in comp_fnames:
-    #             printer(f)
-    #         printer("\nTargets:")
-    #         for f in fnames:
-    #             printer(f)
-    #         raise NameError
-
     # Writing out
     lc_dir = os.path.join(myLoc, 'MCMC_LIGHTCURVES')
     try:
@@ -662,6 +642,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                     f.write(lightcurve_metadata)
                     f.write("# Phase, Flux, Err_Flux\n")
                     for t, y, ye, mask in zip(ratio.t, ratio.y, ratio.ye, ratio.mask):
+                        # TODO: Do we always want to ignore ALL maked data?? It's not always unusable!
                         # if not mask:
                         f.write("{} {} {}\n".format(t, y, ye))
 

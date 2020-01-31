@@ -18,6 +18,7 @@ setuptools.setup(
     author_email='jwild2@sheffield.ac.uk',
     url='https://github.com/wildjames/cal_phot',
     packages=setuptools.find_packages(),
+    package_data={"calphot": ["tab08.dat.txt"]},
     install_requires=install_req,
     python_requires='>=3.6',
     scripts=[

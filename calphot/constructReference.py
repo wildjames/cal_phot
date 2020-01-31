@@ -4,6 +4,7 @@ import os
 import bs4 as bs
 import hipercam as hcam
 import numpy as np
+from pandas import read_fwf
 import requests
 from astropy import coordinates as coord
 from astropy import time
@@ -11,12 +12,8 @@ from astropy import units as u
 from astropy.coordinates import AltAz
 from astropy.stats import sigma_clipped_stats
 
-try:
-    from .logger import printer
-except ImportError:
-    def printer(string, end='\n'):
-        print(string, end=end)
 
+import calphot.logger as logger
 
 
 
@@ -57,6 +54,11 @@ def robust_mag(cps):
         mean, median, sigma = sigma_clipped_stats(cps, iters=2, sigma=3)
     return -2.5*np.log10(mean)
 
+def load_stds():
+    data = read_fwf(
+        os.path.join(os.path.split(__file__)[0], "tab08.dat.txt")
+    )
+    return data
 
 def deg2arcsec(inp, ra):
     sign = '+'
@@ -83,8 +85,8 @@ def convert_kg5(sdss_result):
     g = sdss_result['g']
 
     KG5 = g  - 0.2240*(g-r)**2 - 0.3590*(g-r) + 0.0460
-    printer("  ** Using the recipe: KG5 = g - 0.2240*(g-r)**2 - 0.3590*(g-r) + 0.0460")
-    printer("  ** Computed the KG5 magnitude: {:.3f}".format(KG5))
+    logger.printer("  ** Using the recipe: KG5 = g - 0.2240*(g-r)**2 - 0.3590*(g-r) + 0.0460")
+    logger.printer("  ** Computed the KG5 magnitude: {:.3f}".format(KG5))
 
     return KG5
 
@@ -125,20 +127,20 @@ def construct_reference(fetchFname):
         Dictionary containing the magnitudes of the stars in the relevant band.
     '''
 
-    printer("\n\n--- Getting reference SDSS magnitudes from '{:s}' ---".format(fetchFname.split('/')[-1]))
+    logger.printer("\n\n--- Getting reference SDSS magnitudes from '{:s}' ---".format(fetchFname.split('/')[-1]))
 
     radius = '0.1' # search radius, arcseconds
 
 
     if not os.path.isfile(fetchFname):
-        printer("The file I was passed, {}, does not exist!".format(fetchFname))
+        logger.printer("The file I was passed, {}, does not exist!".format(fetchFname))
         # Check that we;ve not been given a directory with a 'coord_list' file in it:
         test = fetchFname.split('/')
         test.append('coord_list.coords')
         test = '/'.join(test)
         if os.path.isfile(test):
             fetchFname = test
-            printer("I did, however, find a file called {}. Using that instead...".format(fetchFname))
+            logger.printer("I did, however, find a file called {}. Using that instead...".format(fetchFname))
         # If not, then we have no file. Create a template.
         else:
             with open(fetchFname, 'w') as f:
@@ -154,10 +156,10 @@ def construct_reference(fetchFname):
                 f.write("\n")
                 f.write("<CCD 3 reference 1 RA> <CCD 3 reference 1 Dec>\n")
                 f.write("<CCD 3 reference 2 RA> <CCD 3 reference 2 Dec>\n")
-            printer("Couldn't find that co-ordinate list! I created a template for you at the location you gave me, {}".format(fetchFname))
+            logger.printer("Couldn't find that co-ordinate list! I created a template for you at the location you gave me, {}".format(fetchFname))
             raise FileNotFoundError
 
-    printer("Getting SDSS magnitudes for the coordinates found in {}".format(fetchFname))
+    logger.printer("Getting SDSS magnitudes for the coordinates found in {}".format(fetchFname))
 
     with open(fetchFname) as f:
         line = f.readline()
@@ -168,7 +170,7 @@ def construct_reference(fetchFname):
         for b in line:
             bands.append(b)
         f.readline()
-        printer('Querying SDSS for the following bands: {}'.format(', '.join(bands[1:])))
+        logger.printer('Querying SDSS for the following bands: {}'.format(', '.join(bands[1:])))
 
         # Construct a dict to read the desired coordinates to
         fetchme = {str(i+1):[] for i, b in enumerate(bands[1:])}
@@ -186,19 +188,19 @@ def construct_reference(fetchFname):
             else:
                 fetchme[str(x)].append(line.split())
 
-    printer("  Looking for the following the coordinates:")
-    printer("  {:^15s} | {:^15s}".format('RA', 'DEC'))
+    logger.printer("  Looking for the following the coordinates:")
+    logger.printer("  {:^15s} | {:^15s}".format('RA', 'DEC'))
     for CCD in CCDs:
         coords = fetchme[CCD]
-        printer("    {:<13s} | {:<15s}".format('CCD {}'.format(CCD), ''))
+        logger.printer("    {:<13s} | {:<15s}".format('CCD {}'.format(CCD), ''))
         for coord in coords:
             ra, dec = coord
-            printer("  {:>15s} | {:<15s}".format(ra, dec))
+            logger.printer("  {:>15s} | {:<15s}".format(ra, dec))
 
     toWrite = {}
 
     for CCD in CCDs:
-        printer('-> CCD {}'.format(CCD))
+        logger.printer('-> CCD {}'.format(CCD))
         # Grab the list of coordinates we want to query
         coords = fetchme[CCD]
         band = bands[int(CCD)]
@@ -206,7 +208,7 @@ def construct_reference(fetchFname):
         for index, coord in enumerate(coords):
             ra, dec = coord
 
-            printer('    Searching -> RA, Dec: {}, {} for {} band mag'.format(ra, dec, band))
+            logger.printer('    Searching -> RA, Dec: {}, {} for {} band mag'.format(ra, dec, band))
 
             # Construct the URL we're gonna post. First define what DB we want to search
             url  = 'http://skyserver.sdss.org/dr14/SkyserverWS/SearchTools/RadialSearch?'
@@ -224,13 +226,13 @@ def construct_reference(fetchFname):
 
             results = resp.json()[0]['Rows']
             if len(results) >= 5:
-                printer('You got a lot of results from the SDSS query! Choose from the following VERY carefully.')
+                logger.printer('You got a lot of results from the SDSS query! Choose from the following VERY carefully.')
             if len(results) > 1:
-                printer("--------------------------------------------\nMore than one object found at that location!")
-                printer("If you want to look in more detail, here's my search URL:\n{}".format(url.replace('json', 'html')))
+                logger.printer("--------------------------------------------\nMore than one object found at that location!")
+                logger.printer("If you want to look in more detail, here's my search URL:\n{}".format(url.replace('json', 'html')))
                 # Get the user to pick one:
                 for m, line in enumerate(results):
-                    printer("{}\n  RA, Dec: {} {}\n  u: {}\n  g: {}\n  r: {}\n  i: {}\n  z: {}".format(
+                    logger.printer("{}\n  RA, Dec: {} {}\n  u: {}\n  g: {}\n  r: {}\n  i: {}\n  z: {}".format(
                         m, line['ra'], line['dec'],
                         line['u'], line['g'], line['r'], line['i'], line['z']
                         )
@@ -240,23 +242,23 @@ def construct_reference(fetchFname):
                     n = input("Which object to use?: ")
                     if int(n) >= len(results):
                         n = ''
-                printer("Chose object {}".format(n), terminal=False)
+                logger.printer("Chose object {}".format(n), terminal=False)
                 target = results[int(n)]
-                printer('--------------------------------------------')
+                logger.printer('--------------------------------------------')
             elif len(results) == 1:
                 target = results[0]
                 ra = deg2arcsec(target['ra'], ra=True)
                 dec = deg2arcsec(target['dec'], ra=False)
-                printer("    Found one result:\n      ra: {}, dec: {}\n       u: {}\n       g: {}\n       r: {}\n       i: {}\n       z: {}".format(
+                logger.printer("    Found one result:\n      ra: {}, dec: {}\n       u: {}\n       g: {}\n       r: {}\n       i: {}\n       z: {}".format(
                         ra, dec,
                         target['u'], target['g'], target['r'], target['i'], target['z']
                         )
                     )
 
             else:
-                printer('ERROR! Found no targets at the location: RA: {}, Dec: {}'.format(target['ra'], target['dec']))
-                printer('Try broadening the search radius in this script (was {}),'.format(radius))
-                printer('and make sure that your targets are definitely in the SDSS field!')
+                logger.printer('ERROR! Found no targets at the location: RA: {}, Dec: {}'.format(target['ra'], target['dec']))
+                logger.printer('Try broadening the search radius in this script (was {}),'.format(radius))
+                logger.printer('and make sure that your targets are definitely in the SDSS field!')
                 raise LookupError
 
             # append the magnitudes found in [bands] to the output dict.
@@ -266,7 +268,7 @@ def construct_reference(fetchFname):
 
             ### I need to check the flags here. Mini webscraper:
             target_entry = 'http://skyserver.sdss.org/DR14/en/tools/explore/summary.aspx?id={}'.format(target['objid'])
-            printer("    Here's the entry on the skyserver:\n    {}".format(target_entry))
+            logger.printer("    Here's the entry on the skyserver:\n    {}".format(target_entry))
             # Lovely soup
             resp = requests.post(target_entry)
             soup = bs.BeautifulSoup(resp.text, features='lxml')
@@ -282,29 +284,29 @@ def construct_reference(fetchFname):
                     foundFlags = True
                     FLAGS = table.text.strip().split()[1:]
                     if len(FLAGS):
-                        printer("    This star has the following flags:")
+                        logger.printer("    This star has the following flags:")
                         for flag in FLAGS:
-                            printer("      -> {}".format(flag))
+                            logger.printer("      -> {}".format(flag))
 
                         if 'SATURATED' in FLAGS:
-                            printer("THIS STAR HAS SATURATED SDSS, AND WILL NOT GIVE AN ACCURATE FLUX.")
-                            printer("I'll infer its magnitude from other comparisons..")
+                            logger.printer("THIS STAR HAS SATURATED SDSS, AND WILL NOT GIVE AN ACCURATE FLUX.")
+                            logger.printer("I'll infer its magnitude from other comparisons..")
                             target[band] = np.nan
 
                         stop = input("Hit enter to continue if these are okay, 'q' to stop the script: ") + ' '
                         if 'q' in stop.lower():
-                            printer("User terminated during SDSS star lookups")
+                            logger.printer("User terminated during SDSS star lookups")
                             quit()
                         break
 
             if not foundFlags:
                 # Boooooo
-                printer("Didn't find the flags table... Check this one manually!")
-                printer("\n")
+                logger.printer("Didn't find the flags table... Check this one manually!")
+                logger.printer("\n")
                 input("Cont...")
 
-            printer("    -> Using the {} band magnitude for star {}: {:.3f}".format(band, index, target[band]))
-            printer("\n\n")
+            logger.printer("    -> Using the {} band magnitude for star {}: {:.3f}".format(band, index, target[band]))
+            logger.printer("\n\n")
 
             try:
                 toWrite[CCD].append(
@@ -315,7 +317,7 @@ def construct_reference(fetchFname):
 
         toWrite[CCD] = np.array(toWrite[CCD])
 
-    printer("Got all reference stars for this file!\n")
+    logger.printer("Got all reference stars for this file!\n")
     return toWrite
 
 def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
@@ -346,25 +348,25 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
         Dict, with the keys corresponding to the CCD numbers. Each entry is a numpy array of the
         instrumental magnitudes, in the order they're found in the aperture list.
     '''
-    printer("------- Getting instrumental magnitude -------")
+    logger.printer("------- Getting instrumental magnitude -------")
 
     if coords != None and obsname != None:
-        printer("  I'm correcting for airmass, using the following:")
-        printer("     Extinction: {} mags/airmass".format(ext))
-        printer("        Ra, Dec: {}".format(coords))
-        printer("    Observatory: {}".format(obsname))
+        logger.printer("  I'm correcting for airmass, using the following:")
+        logger.printer("     Extinction: {} mags/airmass".format(ext))
+        logger.printer("        Ra, Dec: {}".format(coords))
+        logger.printer("    Observatory: {}".format(obsname))
 
         # Where are we?
         try:
             observatory = coord.EarthLocation.of_site(obsname)
-            printer("Observatory successfully retrieved from site name")
+            logger.printer("Observatory successfully retrieved from site name")
         except:
             obsname = obsname.split(',')
             if len(obsname) != 2:
-                printer("  The (lat, lon) MUST!!! be comma separated!")
+                logger.printer("  The (lat, lon) MUST!!! be comma separated!")
                 exit()
             lat, lon = obsname
-            printer("  Earth location from latitude, longitude: {}, {}".format(lat, lon))
+            logger.printer("  Earth location from latitude, longitude: {}, {}".format(lat, lon))
             observatory = coord.EarthLocation.from_geodetic(lat=lat, lon=lon)
 
         star_loc = coord.SkyCoord(
@@ -386,38 +388,38 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
         zenith_angle_rad = np.deg2rad(zenith_angle)
         airmass = 1. / np.cos(zenith_angle_rad)
 
-        printer(
+        logger.printer(
             "  For the observations starting at {} and ending at {}...".format(
                 obs_T[0].iso, obs_T[-1].iso
             )
         )
-        printer(
+        logger.printer(
             "   -> Zenith angle starts at {:.3f}, and ends at {:.3f}".format(
                 zenith_angle[0], zenith_angle[-1]
             )
         )
-        printer(
+        logger.printer(
             "   -> Airmass starts at {:.3f}, ends at {:.3f}".format(
                 airmass[0], airmass[-1]
             )
         )
     else:
-        printer("  No coordinates or observatory provided, setting airmass to 0.0")
+        logger.printer("  No coordinates or observatory provided, setting airmass to 0.0")
         airmass = [0.0 for _ in data.tseries('1', '1').t]
 
     ##TODO: The mean airmass is used for now.
     airmass = np.mean(airmass)
     print("Mean airmass: {:.3f}".format(airmass))
     if airmass <= 0:
-        printer("Airmass is negative!! We have a problem there!")
-        printer("EarthLocation (constructed from {}):".format(obsname))
-        printer(str(observatory))
-        printer(str(observatory.lat), str(observatory.lon))
-        printer("Star location:")
-        printer(str(star_loc))
+        logger.printer("Airmass is negative!! We have a problem there!")
+        logger.printer("EarthLocation (constructed from {}):".format(obsname))
+        logger.printer(str(observatory))
+        logger.printer(str(observatory.lat), str(observatory.lon))
+        logger.printer("Star location:")
+        logger.printer(str(star_loc))
         input("Hit enter to continue... ")
 
-    printer("Getting the INSTRUMENTAL (electron flux) magnitudes for the log file")
+    logger.printer("Getting the INSTRUMENTAL (electron flux) magnitudes for the log file")
 
     all_mags = {}
     aps = data.apnames
@@ -427,53 +429,51 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
         ext = [0.0 for i in CCDs]
     ext = np.array(ext)
 
+    mags = []
     for CCD in CCDs:
-        printer("\n---> Doing CCD {} <---".format(CCD))
-        # Get this frame's apertures
+        logger.printer("\n---> Doing CCD {} <---".format(CCD))
+        # information gathering
         ap = sorted(aps[CCD])
-
         ex = ext[int(CCD)-1]
+        exptime = data[CCD]['Exptim']
 
         star = data.tseries(CCD, '1')
 
-        exptime = data[CCD]['Exptim']
-
-        # star counts/s
-        fl = star.y / exptime
-
-        printer("The first aperture had a mean counts per frame of {:.2f}".format(np.mean(star.y)))
-        printer("  and a mean exposure time of {:.3f}".format(np.mean(exptime)))
-
-        # Calculate the mean apparent magnitude of the star above the atmosphere
-        mag = robust_mag(fl)
         # star magnitudes
-        mags = [mag]
+        mags = []
 
-        # If we have more than one star, handle that
-        if len(ap) > 1:
-            for comp in ap[1:]:
-                star = data.tseries(CCD, comp)
+        for comp in ap:
+            star = data.tseries(CCD, comp)
 
-                # star counts/s
-                fl = star.y / exptime
+            # Mask out data that has flags
+            if np.any(star.mask):
+                logger.printer("Bad data detected!")
 
-                # Filter out bad data
-                if np.any(star.mask):
-                    print("This data has bad flags!")
+                mask = star.mask == 0
+                star.y *= mask
+                removed = np.sum(star.mask != 0)
+                logger.printer("The mask will remove {}/{} data points.".format(removed, len(star.y)))
 
-                printer("Aperture {} had a mean counts per frame of {:.2f}".format(comp, np.mean(star.y)))
-                printer("  and a mean exposure time of {:.3f}".format(np.mean(exptime)))
+            # star counts/s
+            fl = star.y / exptime
 
-                # Calculate the mean apparent magnitude of the star above the atmosphere
-                mag = robust_mag(fl)
-                printer("  Pre-ext correct: CCD {}, Ap {}, mag: {:.3f}".format(CCD, comp, mag))
-                mags.append(mag)
+            logger.printer("Aperture {} had a mean counts per frame of {:.2f}".format(comp, np.mean(star.y)))
+            logger.printer("  and a mean exposure time of {:.3f}".format(np.mean(exptime)))
+
+            # Calculate the mean apparent magnitude of the star above the atmosphere
+            mag = robust_mag(fl)
+            logger.printer("  Pre-ext correct: CCD {}, Ap {}, mag: {:.3f}".format(CCD, comp, mag))
+            mags.append(mag)
 
         mags = np.array(mags)
 
         # Add the light lost to atmosphere back in
-        printer("  CCD {} extinction: {:.3f} mags".format(CCD, ex*airmass))
+        logger.printer("  CCD {} extinction: {:.3f} mags".format(CCD, ex*airmass))
         mags = mags - (ex*airmass)
+        logger.printer("  Post-ext correct:")
+        for i, mag in enumerate(mags):
+            logger.printer("    Ap {}: {:.3f}".format(i, mag))
+        logger.printer("\n\n")
 
 
         all_mags[CCD] = np.array(mags)
@@ -481,7 +481,7 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
     return all_mags
 
 def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords,
-                                std_mags, obsname, ext):
+                                std_mags, obsname, ext, fname=None):
     '''
     Takes two .log files, one containing the reduction of a standard star and the other the reduction of
     the target frame, using the same settings (aperture size, extraction method, etc.). Uses this to
@@ -509,9 +509,11 @@ def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords,
     Returns:
     --------
     '''
+    if fname is not None:
+        logger.FNAME = fname
 
-    printer("\n\n--- Extracting comparison star SDSS magnitudes from the file '{}'---".format(comp_fname))
-    printer("     using the standard star found in {}\n".format(std_fname))
+    logger.printer("\n\n--- Extracting comparison star SDSS magnitudes from the file '{}'---".format(comp_fname))
+    logger.printer("     using the standard star found in {}\n".format(std_fname))
 
     std_mags = np.array(std_mags)
 
@@ -519,7 +521,7 @@ def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords,
     comp_data     = hcam.hlog.Hlog.read(comp_fname)
 
     # Extract the instrumental magnitudes of the standard
-    printer("   -> Computing the instrumental magnitudes of the standard")
+    logger.printer("   -> Computing the instrumental magnitudes of the standard")
     instrumental_std_mags = get_instrumental_mags(standard_data, std_coords, obsname, ext)
 
     # Convert the dict recieved into an array, so that we have the zero points [r, g, b, ..] in CCD order
@@ -531,7 +533,7 @@ def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords,
 
 
     # Get the comparison instrumental mags, in the taget frame
-    printer("\n\n   -> Computing the instrumental magnitudes of the target frame")
+    logger.printer("\n\n   -> Computing the instrumental magnitudes of the target frame")
     instrumental_comp_mags = get_instrumental_mags(comp_data, comp_coords, obsname, ext)
 
     # Discard the variable star magnitude, and do the zero point correction
@@ -543,31 +545,31 @@ def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords,
 
 
 
-    printer("-----------------  STANDARD  -----------------")
-    printer("\n  Standard star instrumental magnitudes: ")
+    logger.printer("-----------------  STANDARD  -----------------")
+    logger.printer("\n  Standard star instrumental magnitudes: ")
     for i, m in enumerate(instrumental_std_mags):
-        printer("    CCD {}: {:3.3f}".format(i+1, m))
+        logger.printer("    CCD {}: {:3.3f}".format(i+1, m))
 
-    printer("\n  Standard Star SDSS magnitudes:")
+    logger.printer("\n  Standard Star SDSS magnitudes:")
     for i, m in enumerate(std_mags):
-        printer("    CCD {}: {:3.3f}".format(i+1, m))
+        logger.printer("    CCD {}: {:3.3f}".format(i+1, m))
 
-    printer("\n  Zero points in each band (in order of CCD, will be subtracted from the inst. mags):")
+    logger.printer("\n  Zero points in each band (in order of CCD, will be subtracted from the inst. mags):")
     for i, m in enumerate(zero_points):
-        printer("    CCD {}: {:3.3f}".format(i+1, m))
+        logger.printer("    CCD {}: {:3.3f}".format(i+1, m))
 
-    printer("\n----------------- COMPARISON -----------------")
-    printer("\n  Comparison star instrumental magnitudes:")
+    logger.printer("\n----------------- COMPARISON -----------------")
+    logger.printer("\n  Comparison star instrumental magnitudes:")
     for i, _ in enumerate(instrumental_comp_mags):
         CCD = str(i+1)
-        printer("    CCD {}: {}".format(CCD,
+        logger.printer("    CCD {}: {}".format(CCD,
             np.array2string(instrumental_comp_mags[CCD], precision=3) ))
 
-    printer("\n  Comparison star apparent magnitudes:")
+    logger.printer("\n  Comparison star apparent magnitudes:")
     for i, _ in enumerate(instrumental_comp_mags):
         CCD = str(i+1)
-        printer("    CCD {}: {}".format(CCD,
+        logger.printer("    CCD {}: {}".format(CCD,
             np.array2string(apparent_comp_mags[CCD], precision=3) ))
 
-    printer('\n  --- Done getting magnitudes ---\n\n')
+    logger.printer('\n  --- Done getting magnitudes ---\n\n')
     return apparent_comp_mags

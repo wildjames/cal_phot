@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 
-from calphot.constructReference import get_comparison_magnitudes
+from os.path import split
+
 import hipercam as hcam
+from calphot.constructReference import get_comparison_magnitudes, load_stds
+from pandas import read_csv
 
 if __name__ in "__main__":
     import argparse
@@ -24,42 +27,93 @@ if __name__ in "__main__":
     args = parser.parse_args()
     std_fname = args.std_fname
     comp_fname = args.comp_fname
-    obsname = ','.join(args.obsname)
+    obsname = ','.join(args.observatory)
 
-    std_coords = input("Please enter the standard RA, Dec: ")
     comp_coords = input("Please enter the comparison stars' RA, Dec (for airmass calc): ")
 
+    # Load in the standard star data
+    std_data = load_stds()
+
+    # Get the star from the user
+    std_name = input("Please enter the standard star's name: ")
+    while std_name not in std_data['StarName'].values:
+        print("Star list: https://classic.sdss.org/dr7/algorithms/standardstars/tab08.dat.txt")
+        std_name = input("I couldn't find that star.\nPlease enter a star name: ")
+
+    std_row = std_data.loc[std_data['StarName'] == std_name]
+
+    std_coords = " ".join(std_row["RA (J2000.0)"].append(std_row["DEC (J2000.0)"]))
+
+    # ugriz are easy
+    std_magnitudes = {
+        "r'": float(std_row["r'"]),
+        "g'": float(std_row["r'"]) + float(std_row["g'-r'"])
+    }
+    std_magnitudes["u'"] = std_magnitudes["g'"] + float(std_row["u'-g'"])
+    std_magnitudes["i'"] = std_magnitudes["r'"] - float(std_row["r'-i'"])
+    std_magnitudes["z'"] = std_magnitudes["i'"] - float(std_row["i'-z'"])
+
+    # Interpolate KG5
+    g = std_magnitudes["g'"]
+    r = std_magnitudes["r'"]
+    std_magnitudes['kg5'] = g - 0.2240*(g-r)**2 - 0.3590*(g-r) + 0.0460
+
+    # Ask the user if this is correct
+    print("Using this standard star:")
+    print("  RA, Dec: {}".format(std_coords))
+    print("  Magnitudes:")
+    for band, mag in std_magnitudes.items():
+        print("    {}: {:.3f}".format(band, mag))
+    print("\n\n")
+
+    # Get the standard observations, so we know how many CCDs we're dealing with
     std_data = hcam.hlog.Hlog.read(std_fname)
     aps = std_data.apnames
     nCCD = len(aps.keys())
     print("The standard reduction in {} has {} CCDs".format(std_fname, nCCD))
 
-    std_mags = []
-    print("\nPlease enter standard mags, in CCD order:")
-    while len(std_mags) != nCCD:
-        print("Currently, I have mags: {}".format(std_mags))
-        mag = input("Enter a mag: ")
-        mag = float(mag)
-        std_mags.append(mag)
-        print()
+    # I need to know what filters the CCDs are in.
+    print("What bands are the CCDs in?")
+    std_CCD_mags = []
+    bands = []
+    for i in range(nCCD):
+        band = input("Please enter the band of CCD {}: ".format(i+1)).lower()
+        bands.append(band)
+        if band in std_magnitudes.keys():
+            std_CCD_mags.append(std_magnitudes[band])
+        else:
+            print("I don't know the SDSS magnitude of the star in that band!!")
+            print("Please enter a magnitude for me to use:")
+            mag = float(input("> "))
+            std_CCD_mags.append(mag)
 
+        print("   Band {} magnitude: {:.3f}\n".format(band, std_CCD_mags[-1]))
+
+    # The user has to be careful. Try and be annoying about this
+    print("\nPlease type 'yes' to confirm that this is correct!")
+    while input("> ") != "yes":
+        print("You gotta be careful about this!")
+
+    # Extinction coefficients
     ext = []
     print("\n\nPlease give me the extinction of each CCD, in order:")
-    while len(ext) != nCCD:
+    for band in bands:
         print("Currently, I have extinctions (mags/airmass): {}".format(ext))
-        ex = input("Enter k_(ext): ")
+        ex = input("Enter k_(ext) for band {}: ".format(band))
         ex = float(ex)
         ext.append(ex)
 
+    # Run the actual thing
     mags = get_comparison_magnitudes(
         std_fname, comp_fname,
         std_coords, comp_coords,
-        std_mags,
+        std_CCD_mags,
         obsname,
-        ext
+        ext, fname="ComparisonMags.LOGS"
     )
 
     print("Here's the bloc that you'll want to put in the config YAML for cal_phot:")
+    print("    comparison magnitudes:")
     for i, CCD in mags.items():
         string = ["{:.3f}".format(mag) for mag in CCD]
         print("      - [{}]".format(','.join(string)))
