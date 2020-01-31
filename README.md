@@ -16,6 +16,7 @@ A fairly verbose log is produces by each script in the file, `Calibration.txt`. 
 
 # Installing the package
 
+This package is pip installable: `pip3 install calphot`, but if you want to do it more manually, and fiddle with the source:
 ```
 git clone https://github.com/wildjames343/cal_phot
 cd cal_phot
