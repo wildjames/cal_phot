@@ -108,9 +108,11 @@ if __name__ in "__main__":
         fnames = payload['logfiles'].keys()
         no_calibration = not payload['flux calibrate']
 
+        # Some batches can be skipped by the user
         if not payload['extract data']:
             continue
 
+        # In this case, the flux of the standards is set as unity.
         if no_calibration:
             print("NOT CALIBRATING THE FLUX OF THE TARGET")
             written_files = extract_data(
@@ -121,6 +123,7 @@ if __name__ in "__main__":
             )
             extracted_files += written_files
 
+        # The code will lookup the SDSS database for the comparison star mags
         elif is_SDSS:
             print("TARGET IS IN SDSS. PERFORMING LOOKUP")
             comparisons = payload['logfiles']
@@ -133,6 +136,7 @@ if __name__ in "__main__":
             )
             extracted_files += written_files
 
+        # Use magnitudes supplied by the user.
         else:
             print("TARGET NOT IN SDSS AND MUST BE CALIBRATED USING STANDARD STAR")
             print('')

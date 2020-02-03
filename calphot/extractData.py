@@ -165,19 +165,19 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
     inst = inst.lower()
     if inst == 'uspec':
         nCCD = 1
-        band = ['???']
+        bands = ['???']
         c    = ['black']
     elif inst == 'ucam':
         nCCD = 3
-        band = ['r', 'g', 'u']
+        bands = ['r', 'g', 'u']
         c = ['red', 'green', 'blue']
     elif inst == 'hcam':
         nCCD = 5
-        band = ['u', 'g', 'r', 'i', 'z']
+        bands = ['u', 'g', 'r', 'i', 'z']
         c = ['blue', 'green', 'red', 'magenta', 'black']
 
     printer("  I'm using the instrument {}, which has {} CCDS in the following order:".format(inst, nCCD))
-    for n, b, col in zip(range(nCCD), band, c):
+    for n, b, col in zip(range(nCCD), bands, c):
         printer("  -> CCD {}: {} band, plotted in {}".format(n+1, b, col))
 
     written_files = []
@@ -622,7 +622,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                 compAx[CCD_int].set_xlim([comparison.t[0], comparison.t[-1]])
 
                 # File handling stuff
-                b = band[CCD_int]
+                b = bands[CCD_int]
                 while b == '???':
                     b = input("What band are these data?: ")
                     if b == '':
