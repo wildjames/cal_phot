@@ -206,11 +206,11 @@ def initialise_walkers_pt(p, scatter, nwalkers, ntemps, ln_prior):
     return p0
 
 
-def run_burnin(sampler, startPos, nSteps, storechain=False, progress=True):
+def run_burnin(sampler, startPos, nSteps, store=False, progress=True):
     iStep = 0
     if progress:
         bar = tqdm(total=nSteps)
-    for pos, prob, state in sampler.sample(startPos, iterations=nSteps, storechain=storechain):
+    for pos, prob, state in sampler.sample(startPos, iterations=nSteps, store=store):
         iStep += 1
         if progress:
             bar.update()
@@ -229,7 +229,7 @@ def run_mcmc_save(sampler, startPos, nSteps, rState, file, progress=True, **kwar
     if progress:
         bar = tqdm(total=nSteps)
     for pos, prob, state in sampler.sample(startPos, iterations=nSteps, rstate0=rState,
-                                           storechain=True, **kwargs):
+                                           store=True, **kwargs):
         if file:
             f = open(file, "a")
         iStep += 1
@@ -256,7 +256,7 @@ def run_ptmcmc_save(sampler, startPos, nSteps, file, progress=True, **kwargs):
     iStep = 0
     if progress:
         bar = tqdm(total=nSteps)
-    for pos, prob, like in sampler.sample(startPos, iterations=nSteps, storechain=True, **kwargs):
+    for pos, prob, like in sampler.sample(startPos, iterations=nSteps, store=True, **kwargs):
         f = open(file, "a")
         iStep += 1
         if progress:

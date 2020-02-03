@@ -14,10 +14,11 @@ from astropy.stats import sigma_clipped_stats
 from matplotlib.backends.backend_pdf import PdfPages
 from scipy.optimize import curve_fit
 
-from .constructReference import construct_reference, get_comparison_magnitudes
+from .constructReference import construct_reference
 from .getEclipseTimes import read_ecl_file, tcorrect
 from .logger import printer
 
+FLAGS_I_CARE_ABOUT = [1,2,16,32,64,128,512,2048,4095]
 
 def straight_line(x, A, B): # this is your 'straight line' y=f(x)
     return A*x + B
@@ -501,6 +502,9 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                 # Convert the ratio from ADU to mJy
                 ratio = ratio * comparison_flux # Scale back up to actual flux.
 
+                # Filter out flags I don't care about.
+                ratio.mask = np.array(np.isin(ratio.mask, FLAGS_I_CARE_ABOUT), dtype=np.int)
+
 
                 ## Reporting
                 printer("  Comparison star apparent SDSS magnitudes:")
@@ -572,13 +576,24 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                     for i, a in enumerate(ap[1:-1]):
                         first = data.tseries(CCD, a)
                         for b in ap[i+2:]:
-                            print("  -> Plotting ap {}/{}".format(a, b))
+                            printer("  -> Plotting ap {}/{}".format(a, b))
                             toPlot = first / data.tseries(CCD, b)
 
+                            # Filter out flags I don't care about.
+                            toPlot.mask = np.array(np.isin(toPlot.mask, FLAGS_I_CARE_ABOUT), dtype=np.int)
+
                             # Apply the mask to the data
-                            if np.sum(toPlot.mask):
+                            if np.any(toPlot.mask):
                                 mask = np.where(toPlot.mask == 0)
-                                print("  -> {} masked data!".format(np.sum(toPlot.mask)))
+                                printer("  -> {} masked data!".format(np.sum(toPlot.mask)))
+
+                                if np.all(toPlot.mask != 0):
+                                    printer("This data is fully masked!")
+                                    printer("mask:")
+                                    printer(toPlot.mask)
+                                    printer("Flags:")
+                                    printer(hcam.FLAGS)
+                                    exit()
 
                                 toPlot.t  = toPlot.t[mask]
                                 toPlot.y  = toPlot.y[mask]

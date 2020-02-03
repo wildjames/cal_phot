@@ -108,9 +108,9 @@ def fitEphem(myLoc, T0, period, simple=False):
 
     params = [T0, period]
 
+    def fitfunc(p,x):
+        return p[0] + p[1]*x
     if simple:
-        def fitfunc(p,x):
-            return p[0] + p[1]*x
         def errfunc(p,x,y,err):
             return (y-fitfunc(p,x)) / err
 
@@ -207,8 +207,6 @@ def fitEphem(myLoc, T0, period, simple=False):
     printer('')
     printer("Source          |  (Obs) - (Calc), sec | Cycle Number")
 
-    def fitfunc(p,x):
-        return p[0] + p[1]*x
     for t in tl:
         dT = fitfunc([T0, P], t[0]) - t[1]
         dT *= 24*60*60

@@ -1,5 +1,5 @@
 argparse>=1.4.0
-astropy>=4.0
+astropy>=3.2.3
 beautifulsoup4>=4.8.2
 certifi>=2019.11.28
 chardet>=3.0.4

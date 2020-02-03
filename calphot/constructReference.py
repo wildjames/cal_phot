@@ -543,7 +543,7 @@ def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords,
     apparent_comp_mags = {}
     for i, CCD in enumerate(instrumental_comp_mags):
         ccd = str(i+1)
-        instrumental_comp_mags[ccd] = instrumental_comp_mags[ccd][1:]
+        # instrumental_comp_mags[ccd] = instrumental_comp_mags[ccd][1:]
         apparent_comp_mags[ccd] = instrumental_comp_mags[ccd] + zero_points[i]
 
 
