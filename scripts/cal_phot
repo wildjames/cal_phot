@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
 
-from ruamel import yaml
 import argparse
-from pathlib import Path
 import os
+from pathlib import Path
 
-from calphot.getEclipseTimes import getEclipseTimes
-from calphot.extractData import extract_data
-from calphot.fitEphem import fitEphem
-from calphot.plotAll import plot_all
-
-from calphot.logger import printer, header
+import calphot
+from calphot import header, printer
+from ruamel import yaml
 
 if __name__ in "__main__":
     parser = argparse.ArgumentParser("YAML input method.")
@@ -91,11 +87,11 @@ if __name__ in "__main__":
 
             printer("Getting eclipse times from data...")
 
-            getEclipseTimes(fnames, target_coords, obsname, myLoc=directory)
+            calphot.getEclipseTimes.getEclipseTimes(fnames, target_coords, obsname, myLoc=directory)
 
     # Fit ephemeris
     if do_fit_ephem:
-        T0, period = fitEphem(directory, T0, period)
+        T0, period = calphot.fitEphem.fitEphem(directory, T0, period)
 
     extracted_files = []
     # Extract the data for each payload
@@ -112,10 +108,17 @@ if __name__ in "__main__":
         if not payload['extract data']:
             continue
 
+        # The user can specify flags to pay attention to here
+        if "flags" in payload.keys():
+            print("Ignoring bad data flags for {}!".format(payload['flags']))
+            calphot.extractData.FLAGS_TO_IGNORE = payload['flags']
+        else:
+            calphot.extractData.FLAGS_TO_IGNORE = []
+
         # In this case, the flux of the standards is set as unity.
         if no_calibration:
             print("NOT CALIBRATING THE FLUX OF THE TARGET")
-            written_files = extract_data(
+            written_files = calphot.extractData.extract_data(
                 oname, target_coords, observatory, T0, period,
                 inst=instrument, SDSS=True, fnames=fnames,
                 lower_phase=lower_phase, upper_phase=upper_phase,
@@ -128,7 +131,7 @@ if __name__ in "__main__":
             print("TARGET IS IN SDSS. PERFORMING LOOKUP")
             comparisons = payload['logfiles']
 
-            written_files = extract_data(
+            written_files = calphot.extractData.extract_data(
                 oname, target_coords, observatory, T0, period,
                 inst=instrument, SDSS=is_SDSS, myLoc=directory,
                 lower_phase=lower_phase, upper_phase=upper_phase,
@@ -142,7 +145,7 @@ if __name__ in "__main__":
             print('')
             comparisons = payload['logfiles']
 
-            written_files = extract_data(
+            written_files = calphot.extractData.extract_data(
                 oname, target_coords, observatory, T0, period,
                 inst=instrument, SDSS=is_SDSS, myLoc=directory,
                 fnames=fnames,
@@ -176,4 +179,4 @@ if __name__ in "__main__":
                 print("  - {}".format(fname))
             print()
             oname = "{}_{}".format(input_dict["overplot filename"], band)
-            plot_all(files, oname, myLoc=directory)
+            calphot.plotAll.plot_all(files, oname, myLoc=directory)

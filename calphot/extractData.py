@@ -18,7 +18,10 @@ from .constructReference import construct_reference
 from .getEclipseTimes import read_ecl_file, tcorrect
 from .logger import printer
 
-FLAGS_I_CARE_ABOUT = [1,2,16,32,64,128,512,2048,4095]
+
+# hipercam.FLAGS gives a key for this
+FLAGS_TO_IGNORE = []
+
 
 def straight_line(x, A, B): # this is your 'straight line' y=f(x)
     return A*x + B
@@ -107,6 +110,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
     written_files: list
         List of created .calib files.
     '''
+    printer("\n\n##################################### BEGIN BATCH CALIBRATION #####################################\n\n")
 
     ## First, find the logfiles we want to use
     if fnames==None:
@@ -147,8 +151,16 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
 
     #Correct to BMJD
     printer("  Correcting observations from MJD to BMJD (observed from '{}')".format(obsname))
-
     printer("  Phase folding data for a T0: {:}, period: {:}".format(T0, period))
+
+    # Data masking stuff
+    FLAG = np.uint32(0)
+    for f in FLAGS_TO_IGNORE:
+        FLAG = FLAG | f
+    if FLAG:
+        printer("  Ignoring bad data flags: {}".format(FLAGS_TO_IGNORE))
+        printer("List of keys:")
+        printer(hcam.FLAGS)
 
     # Where are we?
     try:
@@ -503,7 +515,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                 ratio = ratio * comparison_flux # Scale back up to actual flux.
 
                 # Filter out flags I don't care about.
-                ratio.mask = np.array(np.isin(ratio.mask, FLAGS_I_CARE_ABOUT), dtype=np.int)
+                ratio.mask = ratio.mask & (~ FLAG)
 
 
                 ## Reporting
@@ -580,19 +592,19 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                             toPlot = first / data.tseries(CCD, b)
 
                             # Filter out flags I don't care about.
-                            toPlot.mask = np.array(np.isin(toPlot.mask, FLAGS_I_CARE_ABOUT), dtype=np.int)
+                            toPlot.mask = toPlot.mask & (~ FLAG)
 
                             # Apply the mask to the data
                             if np.any(toPlot.mask):
                                 mask = np.where(toPlot.mask == 0)
-                                printer("  -> {} masked data!".format(np.sum(toPlot.mask)))
+                                printer("  -> {} masked data!".format(np.sum(toPlot.mask != 0)))
+                                printer("\nMasked data:")
+                                printer(toPlot.mask)
+                                printer("\n\n")
+                                printer("This data is fully masked!\nFlags:")
+                                printer(hcam.FLAGS)
 
                                 if np.all(toPlot.mask != 0):
-                                    printer("This data is fully masked!")
-                                    printer("mask:")
-                                    printer(toPlot.mask)
-                                    printer("Flags:")
-                                    printer(hcam.FLAGS)
                                     exit()
 
                                 toPlot.t  = toPlot.t[mask]
@@ -654,11 +666,12 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
 
                 # Saving data
                 printer("  These data have {} masked points.".format(np.sum(ratio.mask != 0)))
+                if np.sum(ratio.mask != 0):
+                    printer("\n\n{}\n\n".format(ratio.mask))
                 with open(filename, 'w') as f:
                     f.write(lightcurve_metadata)
                     f.write("# Phase, Flux, Err_Flux\n")
                     for t, y, ye, mask in zip(ratio.t, ratio.y, ratio.ye, ratio.mask):
-                        # TODO: Do we always want to ignore ALL maked data?? It's not always unusable!
                         if not mask:
                             f.write("{} {} {}\n".format(t, y, ye))
 
