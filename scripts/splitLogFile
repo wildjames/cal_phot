@@ -68,8 +68,6 @@ if __name__ in "__main__":
             of = '{}_{}.log'.format(lf[:-4], i)
             print('Writing to {}...'.format(of))
             with open(of, 'w') as f:
-                # [line] is currently a string containing the first line of data.
-                print(line)
                 f.write("# This logfile is the result of splitting the logfile {}\n# The following is the header from that file:\n".format(lf))
                 f.write(header)
                 f.write('# time, flx, fl_err, mask\n')

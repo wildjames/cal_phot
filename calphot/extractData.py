@@ -18,6 +18,8 @@ from .constructReference import construct_reference
 from .getEclipseTimes import read_ecl_file, tcorrect
 from .logger import printer
 
+## I apologise for the this atrocity. This is a project that grew out of some convinience scripts, and by the time it was bit enough to be useful to anyone but me, it was a horrid mess. I am very lazy and don't want to clean it up.
+
 
 # hipercam.FLAGS gives a key for this
 FLAGS_TO_IGNORE = []
@@ -110,36 +112,20 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
     written_files: list
         List of created .calib files.
     '''
-    printer("\n\n##################################### BEGIN BATCH CALIBRATION #####################################\n\n")
-
-    ## First, find the logfiles we want to use
-    if fnames==None:
-        fnames = []
-
-        red_data_dir = os.path.join(myLoc, 'REDUCED')
-        if not os.path.isdir(red_data_dir):
-            raise FileNotFoundError("Couldn't find {}".format(red_data_dir))
-
-        for file_name in os.listdir(red_data_dir):
-            if file_name.endswith('.log'):
-                fname = os.path.join(red_data_dir, file_name)
-
-        if len(fnames) == 0:
-            printer("  I couldn't find any log files! Stopping...")
-            raise Exception("I couldn't find any log files! Stopping...")
+    printer("\n\n# # # # # # # # # # # # # # # # # # # BEGIN BATCH CALIBRATION # # # # # # # # # # # # # # # # # # #\n\n")
 
     # Writing out
     lc_dir = os.path.join(myLoc, 'MCMC_LIGHTCURVES')
     try:
         os.mkdir(lc_dir)
     except: pass
-    print("Lightcurves will go in: {}".format(lc_dir))
+    printer("Lightcurves will go in: {}".format(lc_dir))
 
     figs_dir = os.path.join(myLoc, 'MCMC_LIGHTCURVES', "FIGS")
     try:
         os.mkdir(figs_dir)
     except: pass
-    print("Figures will go in: {}".format(figs_dir))
+    printer("Figures will go in: {}".format(figs_dir))
 
 
     # Report the things we're working with
@@ -175,6 +161,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
         unit=(u.hourangle, u.deg), frame='icrs'
     )
 
+    # I want to know what instrument I'm using, since each has a different number of cameras
     inst = inst.lower()
     if inst == 'uspec':
         nCCD = 1
@@ -182,7 +169,6 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
         c    = ['black']
     elif inst == 'ucam':
         nCCD = 3
-        bands = ['r', 'g', 'u']
         c = ['red', 'green', 'blue']
     elif inst == 'hcam':
         nCCD = 5
@@ -190,12 +176,13 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
         c = ['blue', 'green', 'red', 'magenta', 'black']
 
     printer("  I'm using the instrument {}, which has {} CCDS in the following order:".format(inst, nCCD))
-    for n, b, col in zip(range(nCCD), bands, c):
-        printer("  -> CCD {}: {} band, plotted in {}".format(n+1, b, col))
+    for n, col in zip(range(nCCD), c):
+        printer("  -> CCD {}: plotted in {}".format(n+1, col))
 
     written_files = []
 
-    ## Plotting ##
+
+    #  Plotting #
     ADU_lightcurves = {fname: [] for fname in fnames}
 
     print("Making plotting area...", end='')
@@ -226,6 +213,8 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
     compFig.tight_layout()
     plt.show()
     print(" Done!")
+
+
 
     # I want a master pdf file with all the nights' lightcurves plotted
     pdfname = os.path.join(figs_dir, oname+"_all_nights.pdf")
@@ -259,6 +248,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
             if no_calibration:
                 printer("\n!!! Not doing flux calibration! Setting reference magnitudes to correspond to a flux=1\n\n")
 
+                # Reference stars is a dict, keyed by the CCD string
                 reference_stars = {}
                 for CCD in CCDs:
                     mags = []
@@ -277,13 +267,27 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                 reference_stars = construct_reference(comparison_coord_files)
 
             else:
-                printer("  For each of these CCDs, I've been given comparison stars of the following magnitudes:")
-
                 reference_stars = {}
                 comparisons = comp_mags[fname]
+                bands = list(comparisons.keys())
 
+                printer("  For each of these CCDs, I've been given comparison stars of the following magnitudes:")
                 for i, (b, comps) in enumerate(comparisons.items()):
-                    reference_stars[str(i+1)] = np.array(comps)
+                    # I need to capture 'none' strings here, and store them as np.nans.
+                    # Later, when I construct the comparison star, these apertures must be ignored!
+
+                    comparison_list = []
+                    for comp in comps:
+                        try:
+                            # Can I float? (we all float down here, georgie...)
+                            comp = float(comp)
+                            comparison_list.append(comp)
+                        except:
+                            # If I can't, Ignore me.
+                            comparison_list.append(np.nan)
+                    # Who doesnt love vectorised calculations?
+                    reference_stars[str(i+1)] = np.array(comparison_list)
+
                 printer("  My comparison stars have the following apparent mags:")
                 for b, mags in reference_stars.items():
                     printer("    - CCD{}, mags: {}".format(b, mags))
@@ -296,7 +300,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
             ax[0].set_title('Waiting for data...')
 
             # Loop through the CCDs.
-            ### For each CCD, grab the target lightcurve, and the comparisons
+            # # For each CCD, grab the target lightcurve, and the comparisons
             for CCD in CCDs:
                 lightcurve_metadata = '# This is data from the file {} CCD {}\n'.format(fname, CCD)
 
@@ -317,6 +321,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                     printer("!!! Bad log file, '{}' !!!".format(fname))
                     raise LookupError("Not enough apertures in the log file!", fname)
 
+
                 # Check for nans in the log files.
                 for a in ap:
                     star = data.tseries(CCD, a)
@@ -325,16 +330,14 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                         raise ValueError("Log file cannot contain nan values!", fname)
 
 
-                # Get some data on the quality of the observations
+                # Get some data on the """quality""" of the observations
                 metadata = '#\n# Reduction info:\n\n'
                 to_proc = data[CCD]
 
                 ap_x = [header for header in
                     to_proc.dtype.fields if "x_" in header]
-
                 ap_y = [header for header in
                     to_proc.dtype.fields if "y_" in header]
-
                 ap_fwhm = [header for header in
                     to_proc.dtype.fields if "fwhm_" in header]
 
@@ -351,13 +354,10 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                     metadata += "#     fwhm:       {:.2f}\n#\n#\n".format(fwhm_pix_loc)
                 lightcurve_metadata += metadata
 
+
                 # Grab the target data
                 target = data.tseries(CCD, '1')
 
-                # First comparison star
-                comparison = data.tseries(CCD, '2')
-                N_comparisons = 1
-                printer("  Got the reference star in aperture 2")
 
                 # mags is a list of the relevant comparison star magnitudes.
                 # For non-SDSS fields, this is the clipped mean magnitude of each object.
@@ -369,23 +369,24 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                 else:
                     lightcurve_metadata += "# Comparison star mags: {}\n".format(mags)
 
+
                 # Add up the reference star fluxes
-                for a in ap[2:]:
-                    N_comparisons += 1
-                    comparison = comparison + data.tseries(CCD, a)
-                    printer("  The reference star now includes data from aperture {}".format(a))
+                N_comparisons = 0
+                comparison = "Dummy initialiser ( ͡° ͜ʖ ͡°)"
+                for a, mag in zip(ap[1:], mags):
+                    if np.isnan(mag):
+                        printer("  The reference star in ap {} is being ignored!".format(a))
+                    else:
+                        N_comparisons += 1
+                        try:
+                            comparison = comparison + data.tseries(CCD, a)
+                        except:
+                            comparison = data.tseries(CCD, a)
+                        printer("  The reference star now includes data from aperture {}".format(a))
 
-                # Sometimes, we get nan frames. Let the user know.
-                if np.any(np.isnan(comparison.y)):
-                    printer(" !!! The comparison star contains nan electron counts in {} frames!".format(np.sum(np.isnan(comparison.y))))
-                    lightcurve_metadata += "#  !!! The comparison star contains nan electron counts in {} frames!\n".format(np.sum(np.isnan(comparison.y)))
-
-                if np.any(np.isnan(target.y)):
-                    printer(" !!! The target star contains nan electron counts in {} frames!".format(np.sum(np.isnan(target.y))))
-                    lightcurve_metadata += "#  !!! The target star contains nan electron counts in {} frames!\n".format(np.sum(np.isnan(target.y)))
 
                 # If we have SDSS stars too bright, get their mags from flux calibrating those that arent
-                if np.any([np.isnan(i) for i in mags]):
+                if SDSS and np.any(np.isinf(mags)):
                     printer("\n\n  I have some comparisons that saturated SDSS! Inferring their magnitudes from fainter stars.")
 
                     lightcurve_metadata += "# Some comparison stars saturated the SDSS image.\n# Their magnitudes were inferred from fainter stars\n"
@@ -393,7 +394,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                     printer("  Collecting fainter stars...")
                     calibComp = None
                     for mag, a in zip(mags, ap[1:]):
-                        if np.isnan(mag):
+                        if np.inf(mag):
                             printer("    Skipping aperture {}, as it is nan".format(a))
                         else:
                             if calibComp is None:
@@ -405,58 +406,54 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                         raise Exception("All comparison stars saturated SDSS! Pick at least one that doesn't!")
 
                     calibComp_counts = np.mean(calibComp.y)
-                    printer("  My non-saturated SDSS stars have a mean count/frame of {:.3f}".format(calibComp_counts))
-                    lightcurve_metadata += "# My non-saturated SDSS stars have a mean count/frame of {:.3f}\n".format(calibComp_counts)
 
                     fluxs = sdss_mag2flux(mags)
                     sumFlux = np.nansum(fluxs)
                     sumMag = sdss_flux2mag(sumFlux)
 
-                    printer("  My fluxes are {}".format([f for f in fluxs if not np.isnan(f)]))
+
+                    printer("  My non-saturated SDSS stars have a mean count/frame of {:.3f}".format(calibComp_counts))
+                    lightcurve_metadata += "# My non-saturated SDSS stars have a mean count/frame of {:.3f}\n".format(calibComp_counts)
+
+                    printer("  My fluxes are {}".format([f for f in fluxs if not np.inf(f)]))
                     printer("    with a sum flux of {:.3f} mJy".format(sumFlux))
                     printer("     and a sum mag of  {:.3f} mag".format(sumMag))
 
-                    lightcurve_metadata += "# My fluxes are {}\n".format([f for f in fluxs if not np.isnan(f)])
+                    lightcurve_metadata += "# My fluxes are {}\n".format([f for f in fluxs if not np.inf(f)])
                     lightcurve_metadata += "#   with a sum flux of {:.3f} mJy\n".format(sumFlux)
                     lightcurve_metadata += "#    and a sum mag of  {:.3f} mag\n".format(sumMag)
 
                     for i, (mag, a) in enumerate(zip(mags, ap[1:])):
-                        if np.isnan(mag):
+                        if np.isinf(mag):
                             cnts = data.tseries(CCD, a)
                             meanCnts = np.mean(cnts.y)
+
                             if np.any(np.isnan(cnts.y)):
-                                printer("The file {} has nan counts! That's wierd, and you should fix that.".format(fname))
+                                meanCnts = np.nanmean(cnts.y)
+
+                                printer("The file {} has nan counts! That's weird, and you should fix that.".format(fname))
                                 printer("I'll continue ignoring the nan, BUT FIX IT!")
 
                                 lightcurve_metadata += "# The file {} has nan counts! That's wierd, and you should fix that.\n".format(fname)
                                 lightcurve_metadata += "# I'll continue ignoring the nan, BUT FIX IT!\n"
 
-                                meanCnts = np.nanmean(cnts.y)
 
+                            # Calibrated against known SDSS stars. Observed through the same air column since they're the same frame, so no ext. corr.
                             mag = sumMag - 2.5*np.log10(meanCnts/calibComp_counts)
-
                             mags[i] = mag
-                            printer("    Star {} had no SDSS magnitude. Computed a magnitude of {:.3f} from an e- flux of {}".format(a, mag, meanCnts))
 
+                            printer("    Star {} had no SDSS magnitude. Computed a magnitude of {:.3f} from an e- flux of {}".format(a, mag, meanCnts))
                             lightcurve_metadata += "# Star {} had no SDSS magnitude. Computed a magnitude of {:.3f} from an e- flux of {}\n".format(a, mag, meanCnts)
 
                     printer("\n")
 
-                if len(mags) != N_comparisons:
-                    printer("  Target reduction filename:    {}".format(fname))
-                    printer("!!!!! Number of comparison magnitudes in standard star reduction: {}".format(len(mags)))
-                    printer("!!!!! Number of comparison stars in target reduction: {}".format(len(ap[1:])))
-
-                    lightcurve_metadata += "# !! WARNING !!! There was a mismatch between the number of apertures in the target and comparison reductions!! #\n"
-                    input("Hit <Enter> to continue")
-
-                #######################################
-                ### Conversion of target lightcurve ###
-                #######################################
+                # # # # # # # # # # # # # # # # # # # #
+                # # Conversion of target lightcurve # #
+                # # # # # # # # # # # # # # # # # # # #
 
                 # Get the non-saturated fluxes
                 fluxs = sdss_mag2flux(mags)
-                comparison_flux = np.sum(fluxs)
+                comparison_flux = np.nansum(fluxs)
 
                 ratio = target / comparison # counts / counts - ratio between target and comp
 
@@ -489,10 +486,6 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                     printer("  The eclipse is then at time {:.3f}".format(eclTime))
                     printer("")
 
-                lightcurve_metadata += "# I calculated an eclipse time of {} BMJD, and phase-folded around that\n".format(eclTime)
-                lightcurve_metadata += "# with a T0 of {}, and a period of {}, making this eclipse {}.\n".format(T0, period, E)
-                lightcurve_metadata += "# I also sliced out the phase -0.5 -> +0.5!!\n#\n#\n"
-
                 # slice out the data between phase -0.5 and 0.5
                 printer("  Slicing out data between phase {} and {}".format(lower_phase, upper_phase))
                 slice_time = (ratio.t - eclTime) / period
@@ -504,6 +497,11 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                     ratio.ye[slice_args],
                     ratio.mask[slice_args]
                     )
+
+                # Bad data has error = -1
+                mask = np.where(ratio.ye != -1)
+                ratio = ratio[mask]
+
                 meanRatio = np.mean(ratio.y)
 
                 printer("  I sliced out {} data from the lightcurve about the eclipse.".format(len(ratio.t)))
@@ -517,10 +515,19 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                 # Filter out flags I don't care about.
                 ratio.mask = ratio.mask & (~ FLAG)
 
+                #######################################################################################################
+                ############ IGNORE ME I'M BORING AND HARD TO READ. WHY READ ANYTHING HARD? JUST TRUST ME. ############
+                #######################################################################################################
 
-                ## Reporting
+                #  Reporting  #
+
+                lightcurve_metadata += "# I calculated an eclipse time of {} BMJD, and phase-folded around that\n".format(eclTime)
+                lightcurve_metadata += "# with a T0 of {}, and a period of {}, making this eclipse {}.\n".format(T0, period, E)
+                lightcurve_metadata += "# I also sliced out the phase {} -> {}!!\n#\n#\n".format(lower_phase, upper_phase)
+
                 printer("  Comparison star apparent SDSS magnitudes:")
                 lightcurve_metadata += "# Comparison star apparent SDSS magnitudes:\n"
+
                 for m, mag in enumerate(mags):
                     printer("    Star {} -> {:.3f} mag".format(m, mag))
                     lightcurve_metadata += "#   Star {} -> {:.3f} mag\n".format(m, mag)
@@ -534,11 +541,13 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                     printer("    Star {} -> {:.3f} mJy".format(i, flux))
                     lightcurve_metadata += "#   Star {} -> {:.3f} mJy\n".format(i, flux)
                 lightcurve_metadata += "#\n"
+
                 printer('  Sum apparent Flux: {:.3f} mJy\n'.format(comparison_flux))
 
-                printer("  Instrumental summed counts per mean frame ({} frames) of {} comparison stars: {:.1f}".format(
-                    len(comparison.y), len(ap[1:]), np.mean(comparison.y)
+                printer("  Instrumental counts, summed per mean frame ({} frames) of {} comparison stars: {:.1f}".format(
+                    len(comparison.y), N_comparisons, np.mean(comparison.y)
                 ))
+
                 printer("  Instrumental counts per mean frame ({} frames) of target: {:.1f}".format(
                     len(target.y), np.mean(target.y)
                 ))
@@ -601,7 +610,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                                 printer("\nMasked data:")
                                 printer(toPlot.mask)
                                 printer("\n\n")
-                                printer("This data is fully masked!\nFlags:")
+                                printer("Flags:")
                                 printer(hcam.FLAGS)
 
                                 if np.all(toPlot.mask != 0):

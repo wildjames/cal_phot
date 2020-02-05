@@ -87,11 +87,11 @@ if __name__ in "__main__":
 
             printer("Getting eclipse times from data...")
 
-            calphot.getEclipseTimes.getEclipseTimes(fnames, target_coords, obsname, myLoc=directory)
+            calphot.getEclipseTimes(fnames, target_coords, obsname, myLoc=directory)
 
     # Fit ephemeris
     if do_fit_ephem:
-        T0, period = calphot.fitEphem.fitEphem(directory, T0, period)
+        T0, period = calphot.fitEphem(directory, T0, period)
 
     extracted_files = []
     # Extract the data for each payload

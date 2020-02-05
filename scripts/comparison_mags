@@ -90,11 +90,6 @@ if __name__ in "__main__":
 
         print("   Band {} magnitude: {:.3f}\n".format(band, std_CCD_mags[-1]))
 
-    # The user has to be careful. Try and be annoying about this
-    print("\nPlease type 'yes' to confirm that this is correct!")
-    while input("> ") != "yes":
-        print("You gotta be careful about this!")
-
     # Extinction coefficients
     ext = []
     print("\n\nPlease give me the extinction of each CCD, in order:")
@@ -103,6 +98,11 @@ if __name__ in "__main__":
         ex = input("Enter k_(ext) for band {}: ".format(band))
         ex = float(ex)
         ext.append(ex)
+
+    # The user has to be careful. Try and be annoying about this
+    print("\nPlease type 'yes' to confirm that this is correct!")
+    while input("> ") != "yes":
+        print("You gotta be careful about this!")
 
     # Run the actual thing
     try:

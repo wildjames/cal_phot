@@ -6,6 +6,7 @@ from astropy import coordinates as coord
 from astropy import time
 from astropy import units as u
 from astropy.coordinates import AltAz
+from astropy.stats import sigma_clip
 from hipercam.hlog import Hlog
 from scipy import optimize as opt
 
@@ -13,8 +14,8 @@ from scipy import optimize as opt
 # The model to fit
 def model(airmass, k, F0):
     # If F0 or k is negative, we're in bad territory
-    if F0 < 0.0 or k < 0.0:
-        return -np.inf
+    # if F0 < 0.0 or k < 0.0:
+    #     return -np.inf
     pred = -2.5*np.log10(F0) + k * airmass
     if np.any(np.isnan(pred)):
         pred = -np.inf
@@ -50,7 +51,7 @@ def scipy_opt(model_func, initial_guess, data, *args, **kwargs):
     result = opt.minimize(chisq_func, initial_guess, args=chisq_args, *args, **kwargs)
     return result
 
-def fit_airmass(target_loc, observatory, data, CCD, aperture, quiet=True):
+def fit_airmass(target_loc, observatory, data, CCD, aperture, run_no, quiet=True):
     '''
     Fit extinction coefficients to an observation
 
@@ -86,8 +87,8 @@ def fit_airmass(target_loc, observatory, data, CCD, aperture, quiet=True):
 
     # Filter out nans an 0.0 data
     star = star.remove_outliers()
-
-    # TODO: Filter out cloudy observations
+    mask = np.where(star.ye != -1)
+    star = star[mask]
 
     # Covert to electons/second, then to magnitudes
     exp_time = np.mean(data[CCD]['Exptim'])
@@ -120,6 +121,12 @@ def fit_airmass(target_loc, observatory, data, CCD, aperture, quiet=True):
     zenith_angle = 90. - target_loc_AltAz.alt.deg
     zenith_angle_rad = np.deg2rad(zenith_angle)
     airmasses = 1. / np.cos(zenith_angle_rad)
+
+    # # Airmass cutoff:
+    # mask = np.where(airmasses > 1.2)
+    # airmasses = airmasses[mask]
+    # electronic_mags = electronic_mags[mask]
+    # electronic_mags_err = electronic_mags_err[mask]
 
     if not quiet:
         print("\n\nInitial airmass: {:.3f}".format(airmasses[0]))
@@ -185,6 +192,7 @@ def fit_airmass(target_loc, observatory, data, CCD, aperture, quiet=True):
     ax.set_ylabel("$-2.5 log_{10}(C_{obs})$")
     ax.set_xlabel("Airmass, sec(z)")
     ax.legend()
+    plt.savefig("RUN{}_CCD{}_AP{}.png".format(run_no, CCD, aperture))
     plt.show()
 
     return fit
@@ -192,6 +200,7 @@ def fit_airmass(target_loc, observatory, data, CCD, aperture, quiet=True):
 if __name__ == "__main__":
     import argparse
     import pandas as pd
+    from os import path
 
     desc = '''
 Takes a log file and calculates an atmospheric extinction coefficient in mags/airmass for each aperture in the file.
@@ -234,14 +243,17 @@ The RA and Dec are used to calculate the airmass at whatever time, so the tel RA
     )
 
     args = parser.parse_args()
-    data = args.logfile
+    fname = args.logfile
     RA, Dec = args.RA, args.Dec
     observatory = args.observatory
     debug = False #args.loud
 
-    print('log file = {}'.format(data))
+    print('log file = {}'.format(fname))
 
-    data = Hlog.read(data)
+    loc, fn = path.split(fname)
+    run_no = fn.replace("run", "").replace(".log", "")
+
+    data = Hlog.read(fname)
 
     target_loc = coord.SkyCoord(RA, Dec, unit=(u.hourangle, u.deg))
     print("Target location: {}".format(target_loc))
@@ -259,7 +271,7 @@ The RA and Dec are used to calculate the airmass at whatever time, so the tel RA
 
         extinction_coefficients[CCD] = []
         for aperture in apertures:
-            fit = fit_airmass(target_loc, obs_loc, data, CCD, aperture, quiet=(not debug))
+            fit = fit_airmass(target_loc, obs_loc, data, CCD, aperture, run_no, quiet=(not debug))
             ext = fit['x'][0]
             extinction_coefficients[CCD].append(ext)
             print("  Aperture {}:".format(aperture))

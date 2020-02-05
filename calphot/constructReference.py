@@ -51,7 +51,7 @@ def robust_mag(cps, mask=None):
     try:
         mean, median, sigma = sigma_clipped_stats(cps, mask=mask, maxiters=2, sigma=3)
     except:
-        mean, median, sigma = sigma_clipped_stats(cps, iters=2, sigma=3)
+        mean, median, sigma = sigma_clipped_stats(cps, mask=mask, iters=2, sigma=3)
     return -2.5*np.log10(mean)
 
 def load_stds():
@@ -291,7 +291,7 @@ def construct_reference(fetchFname):
                         if 'SATURATED' in FLAGS:
                             logger.printer("THIS STAR HAS SATURATED SDSS, AND WILL NOT GIVE AN ACCURATE FLUX.")
                             logger.printer("I'll infer its magnitude from other comparisons..")
-                            target[band] = np.nan
+                            target[band] = np.inf
 
                         stop = input("Hit enter to continue if these are okay, 'q' to stop the script: ") + ' '
                         if 'q' in stop.lower():
@@ -453,14 +453,16 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
 
                 removed = np.sum(star.mask != 0)
                 logger.printer("The mask will remove {}/{} data points.".format(removed, len(star.y)))
+            # First and last data are never good
             mask[0] = True
             mask[-1] = True
 
             # star counts/s
             fl = star.y / exptime
-            print(fl)
 
-            logger.printer("Aperture {} had a mean counts per frame of {:.2f}".format(comp, np.mean(star.y)))
+            counts_per_frame = np.mean(star.y[np.where(mask != True)])
+
+            logger.printer("Aperture {} had a mean counts per frame of {:.2f}".format(comp, counts_per_frame))
             logger.printer("  and a mean exposure time of {:.3f}s".format(np.mean(exptime)))
 
             # Calculate the mean apparent magnitude of the star above the atmosphere
