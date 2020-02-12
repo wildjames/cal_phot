@@ -25,7 +25,7 @@ def chisq_func(model_args, model_function, x_data, y_data, yerr=None, ln_like=Fa
     '''Call the model function on the x_data, compute chisq on the observations.
     Model takes (x, *model_args)'''
 
-    # I need model_args to be a toople
+    # I need model_args to be a tooooooople
     model_args = tuple(model_args)
     model_data = model_function(x_data, *model_args)
 
@@ -90,7 +90,7 @@ def fit_airmass(target_loc, observatory, data, CCD, aperture, run_no, quiet=True
     mask = np.where(star.ye != -1)
     star = star[mask]
 
-    # Covert to electons/second, then to magnitudes
+    # Covert to electrons/second, then to magnitudes
     exp_time = np.mean(data[CCD]['Exptim'])
     electronic_mags = -2.5 * np.log10(star.y/exp_time)
     electronic_mags_err = (np.log(np.e)/np.log(10)) * (star.ye/star.y)

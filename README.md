@@ -4,9 +4,9 @@ A set of scripts that will calibrate periodic \*CAM lightcurves from counts to f
 
 The scripts available are fairly basic calibration stuff, but this takes a lot of the legwork out of reducing periodic data. Importantly, it makes calls to SDSS, either for the comparisons in the target frame, or a separate reference star taken on the same night/run. And don't worry, these are all corrected for airmass, light travel time, etc! The useful outputs are a few files:
 
--   A lightcurve for the star in aperture 1 of each supplied `.log` file
--   Two figures for each lightcurve, one showing the target's flux over the observation, and another plotting the comparisons against each other
--   An mcmc chain that optimises the ephemeris data
+  - A lightcurve for the star in aperture 1 of each supplied `.log` file
+  - Two figures for each lightcurve, one showing the target's flux over the observation, and another plotting the comparisons against each other
+  - An mcmc chain that optimises the ephemeris data
 
 The figure containing the compared comparison stars is there to help diagnose a bad comparison. These should all ideally be flat lines at unity, but life is often not that perfect.
 
@@ -23,6 +23,7 @@ pip3 install calphot
 ```
 
 but if you want to do it more manually, and fiddle with the source:
+
 ```
 git clone https://github.com/wildjames343/cal_phot
 cd cal_phot
