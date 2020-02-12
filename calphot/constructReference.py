@@ -320,7 +320,7 @@ def construct_reference(fetchFname):
     logger.printer("Got all reference stars for this file!\n")
     return toWrite
 
-def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
+def get_instrumental_mags(data, coords, obsname, ext):
     '''
     Takes a hipercam data object, and exctracts the instrumental magnitude of each aperture in each CCD
 
@@ -333,13 +333,13 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
         The data to analyse. tseries will be extracted from here.
 
     coords: str
-        Optional. Ra, Dec of the data. Must be readable by Astropy.
+        Ra, Dec of the data. Must be readable by Astropy.
 
     obsname: str
-        Optional. Observing location name of the data.
+        Observing location name of the data.
 
     ext: iterable
-        Optional. Extinction corrections to apply, given in CCD order. i.e. [<CCD1 ext>, <CCD2 ext>, ...]
+        Extinction corrections to apply, given in CCD order. i.e. [<CCD1 ext>, <CCD2 ext>, ...]
 
 
     Returns:
@@ -350,67 +350,62 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
     '''
     logger.printer("------- Getting instrumental magnitude -------")
 
-    if coords != None and obsname != None:
-        logger.printer("  I'm correcting for airmass, using the following:")
-        logger.printer("     Extinction: {} mags/airmass".format(ext))
-        logger.printer("        Ra, Dec: {}".format(coords))
-        logger.printer("    Observatory: {}".format(obsname))
+    logger.printer("  I'm correcting for airmass, using the following:")
+    logger.printer("     Extinction: {} mags/airmass".format(ext))
+    logger.printer("        Ra, Dec: {}".format(coords))
+    logger.printer("    Observatory: {}".format(obsname))
 
-        # Where are we?
-        try:
-            observatory = coord.EarthLocation.of_site(obsname)
-            logger.printer("Observatory successfully retrieved from site name")
-        except:
-            obsname = obsname.split(',')
-            if len(obsname) != 2:
-                logger.printer("  The (lat, lon) MUST!!! be comma separated!")
-                exit()
-            lat, lon = obsname
-            logger.printer("  Earth location from latitude, longitude: {}, {}".format(lat, lon))
-            observatory = coord.EarthLocation.from_geodetic(lat=lat, lon=lon)
+    # Where are we?
+    try:
+        observatory = coord.EarthLocation.of_site(obsname)
+        logger.printer("Observatory successfully retrieved from site name")
+    except:
+        obsname = obsname.split(',')
+        if len(obsname) != 2:
+            logger.printer("  The (lat, lon) MUST!!! be comma separated!")
+            exit()
+        lat, lon = obsname
+        logger.printer("  Earth location from latitude, longitude: {}, {}".format(lat, lon))
+        observatory = coord.EarthLocation.from_geodetic(lat=lat, lon=lon)
 
-        star_loc = coord.SkyCoord(
-            coords,
-            unit=(u.hourangle, u.deg)
+    star_loc = coord.SkyCoord(
+        coords,
+        unit=(u.hourangle, u.deg)
+    )
+
+    # I want altitude converted to zenith angle.
+    obs_T = data.tseries('1', '1').t
+    obs_T = time.Time(obs_T, format='mjd')
+
+    # Define the altAz frame, containing the time and location
+    altAz_frame = AltAz(obstime=obs_T, location=observatory)
+    star_loc_AltAz = star_loc.transform_to(altAz_frame)
+
+        # Compute the airmass, at the time of the first frame
+    zenith_angle = 90 - star_loc_AltAz.alt.deg
+    zenith_angle_rad = np.deg2rad(zenith_angle)
+    airmass = 1. / np.cos(zenith_angle_rad)
+
+    logger.printer(
+        "  For the observations starting at {} and ending at {}...".format(
+            obs_T[0].iso, obs_T[-1].iso
         )
-
-        # I want altitude converted to zenith angle. Airmass is roughly constant over
-        # a single eclipse so only do it once to save time.
-        obs_T = data.tseries('1', '1').t
-        obs_T = time.Time(obs_T, format='mjd')
-
-        # Define the altAz frame, containing the time and location
-        altAz_frame = AltAz(obstime=obs_T, location=observatory)
-        star_loc_AltAz = star_loc.transform_to(altAz_frame)
-
-         # Compute the airmass, at the time of the first frame
-        zenith_angle = 90 - star_loc_AltAz.alt.deg
-        zenith_angle_rad = np.deg2rad(zenith_angle)
-        airmass = 1. / np.cos(zenith_angle_rad)
-
-        logger.printer(
-            "  For the observations starting at {} and ending at {}...".format(
-                obs_T[0].iso, obs_T[-1].iso
-            )
+    )
+    logger.printer(
+        "   -> Zenith angle starts at {:.3f}, and ends at {:.3f}".format(
+            zenith_angle[0], zenith_angle[-1]
         )
-        logger.printer(
-            "   -> Zenith angle starts at {:.3f}, and ends at {:.3f}".format(
-                zenith_angle[0], zenith_angle[-1]
-            )
+    )
+    logger.printer(
+        "   -> Airmass starts at {:.3f}, ends at {:.3f}".format(
+            airmass[0], airmass[-1]
         )
-        logger.printer(
-            "   -> Airmass starts at {:.3f}, ends at {:.3f}".format(
-                airmass[0], airmass[-1]
-            )
-        )
-    else:
-        logger.printer("  No coordinates or observatory provided, setting airmass to 0.0")
-        airmass = [0.0 for _ in data.tseries('1', '1').t]
+    )
 
-    ##TODO: The mean airmass is used for now.
-    airmass = np.mean(airmass)
-    print("Mean airmass: {:.3f}".format(airmass))
-    if airmass <= 0:
+    # I'll use the mean for reporting.
+    mean_airmass = np.mean(airmass)
+    logger.printer("Mean airmass: {:.3f}".format(mean_airmass))
+    if np.any(airmass) <= 0:
         logger.printer("Airmass is negative!! We have a problem there!")
         logger.printer("EarthLocation (constructed from {}):".format(obsname))
         logger.printer(str(observatory))
@@ -426,6 +421,7 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
     CCDs = [str(i+1) for i, key in enumerate(aps)]
 
     if ext is None:
+        logger.printer("NOT applying extinction corrections!!!")
         ext = [0.0 for i in CCDs]
     ext = np.array(ext)
 
@@ -437,8 +433,6 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
         ex = ext[int(CCD)-1]
         exptime = data[CCD]['Exptim']
 
-        star = data.tseries(CCD, '1')
-
         # star magnitudes
         mags = []
 
@@ -446,35 +440,57 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
             logger.printer("")
             star = data.tseries(CCD, comp)
 
+            ### AIRMASSES ###
+            # I want altitude converted to zenith angle.
+            obs_T = star.t
+            obs_T = time.Time(obs_T, format='mjd')
+
+            # Define the altAz frame, containing the time and location
+            altAz_frame = AltAz(obstime=obs_T, location=observatory)
+            star_loc_AltAz = star_loc.transform_to(altAz_frame)
+
+                # Compute the airmass, at the time of the first frame
+            zenith_angle = 90 - star_loc_AltAz.alt.deg
+            zenith_angle_rad = np.deg2rad(zenith_angle)
+            airmass = 1. / np.cos(zenith_angle_rad)
+
+
             # Mask out data that has flags
             mask = star.mask != 0
-            if np.any(star.mask):
-                logger.printer("Bad data detected!")
-
-                removed = np.sum(star.mask != 0)
-                logger.printer("The mask will remove {}/{} data points.".format(removed, len(star.y)))
             # First and last data are never good
             mask[0] = True
             mask[-1] = True
+            if np.any(star.mask):
+                removed = np.sum(star.mask != 0)
+
+                logger.printer("Bad data detected!")
+                logger.printer("The mask will remove {}/{} data points.".format(removed, len(star.y)))
 
             # star counts/s
             fl = star.y / exptime
 
+            # Get magnitudes, and apply atmospheric extinction correction to each frame.
+            aperture_mags =  -2.5 * np.log10(fl)
+            aperture_mags -= (ex * airmass)
+
+            # Take a clipped mean
+            mag, mag_median, mag_sigma = sigma_clipped_stats(aperture_mags, mask=mask, sigma=3.0)
+
+
+            # Just for reporting
             counts_per_frame = np.mean(star.y[np.where(mask != True)])
+            counts_per_frame_err = np.std(star.y[np.where(mask != True)])
 
-            logger.printer("Aperture {} had a mean counts per frame of {:.2f}".format(comp, counts_per_frame))
+            logger.printer("Aperture {} had a clipped mean counts per frame of {:.2f}+/-{:.2f}".format(comp, counts_per_frame, counts_per_frame_err))
             logger.printer("  and a mean exposure time of {:.3f}s".format(np.mean(exptime)))
-
-            # Calculate the mean apparent magnitude of the star above the atmosphere
-            mag = robust_mag(fl, mask=mask)
-            logger.printer("  Pre-ext correct: CCD {}, Ap {}, mag: {:.3f}".format(CCD, comp, mag))
+            logger.printer("  Pre-ext correct: CCD {}, Ap {}, mag: {:.3f}+/-{:.3f}".format(CCD, comp, mag, mag_sigma))
             mags.append(mag)
+
 
         mags = np.array(mags)
 
-        # Add the light lost to atmosphere back in
-        logger.printer("  CCD {} extinction: {:.3f} mags".format(CCD, ex*airmass))
-        mags = mags - (ex*airmass)
+
+        logger.printer("  CCD {} extinction: {:.3f} mags".format(CCD, ex*mean_airmass))
         logger.printer("  Post-ext correct:")
         for i, mag in enumerate(mags):
             logger.printer("    Ap {}: {:.3f} mags".format(i, mag))
@@ -482,7 +498,7 @@ def get_instrumental_mags(data, coords=None, obsname=None, ext=None):
 
 
         all_mags[CCD] = np.array(mags)
-        del mags
+
     return all_mags
 
 def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords,
