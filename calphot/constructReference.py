@@ -425,7 +425,7 @@ def get_instrumental_mags(data, coords, obsname, ext):
         ext = [0.0 for i in CCDs]
     ext = np.array(ext)
 
-    mags = []
+
     for CCD in CCDs:
         logger.printer("\n---> Doing CCD {} <---".format(CCD))
         # information gathering
@@ -478,17 +478,14 @@ def get_instrumental_mags(data, coords, obsname, ext):
 
 
             # Just for reporting
-            counts_per_frame = np.mean(star.y[np.where(mask != True)])
-            counts_per_frame_err = np.std(star.y[np.where(mask != True)])
+            counts_per_frame = np.mean(star.y[np.where(mask == False)])
+            counts_per_frame_err = np.std(star.y[np.where(mask == False)])
 
             logger.printer("Aperture {} had a clipped mean counts per frame of {:.2f}+/-{:.2f}".format(comp, counts_per_frame, counts_per_frame_err))
             logger.printer("  and a mean exposure time of {:.3f}s".format(np.mean(exptime)))
-            logger.printer("  Pre-ext correct: CCD {}, Ap {}, mag: {:.3f}+/-{:.3f}".format(CCD, comp, mag, mag_sigma))
+            logger.printer("  Pre-ext correct: CCD {}, Ap {}, mag: {:.3f}+/-{:.3f}".format(CCD, comp, -2.5*np.log10(fl), mag_sigma))
             mags.append(mag)
-
-
         mags = np.array(mags)
-
 
         logger.printer("  CCD {} extinction: {:.3f} mags".format(CCD, ex*mean_airmass))
         logger.printer("  Post-ext correct:")
@@ -496,9 +493,7 @@ def get_instrumental_mags(data, coords, obsname, ext):
             logger.printer("    Ap {}: {:.3f} mags".format(i, mag))
         logger.printer("\n\n")
 
-
         all_mags[CCD] = np.array(mags)
-
     return all_mags
 
 def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords,
