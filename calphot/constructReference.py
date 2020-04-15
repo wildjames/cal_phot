@@ -16,6 +16,8 @@ from astropy.stats import sigma_clipped_stats
 import calphot.logger as logger
 
 
+FLAGS_TO_IGNORE = [4]
+
 
 '''
 
@@ -54,9 +56,9 @@ def robust_mag(cps, mask=None):
         mean, median, sigma = sigma_clipped_stats(cps, mask=mask, iters=2, sigma=3)
     return -2.5*np.log10(mean)
 
-def load_stds():
+def load_stds(telescope, instrument, filt):
     data = read_fwf(
-        os.path.join(os.path.split(__file__)[0], "tab08.dat.txt")
+        os.path.join(os.path.split(__file__)[0], "{}-{}-{}_tab08.dat.txt".format(instrument, telescope, filt))
     )
     return data
 
@@ -426,6 +428,16 @@ def get_instrumental_mags(data, coords, obsname, ext):
     ext = np.array(ext)
 
 
+    # Data masking stuff
+    FLAG = np.uint32(0)
+    for f in FLAGS_TO_IGNORE:
+        FLAG = FLAG | f
+    if FLAG:
+        logger.printer("  Ignoring bad data flags: {}".format(FLAGS_TO_IGNORE))
+        logger.printer("List of keys:")
+        logger.printer(hcam.FLAGS)
+
+
     for CCD in CCDs:
         logger.printer("\n---> Doing CCD {} <---".format(CCD))
         # information gathering
@@ -456,6 +468,8 @@ def get_instrumental_mags(data, coords, obsname, ext):
 
 
             # Mask out data that has flags
+            # Filter out flags I don't care about.
+            star.mask = star.mask & (~ FLAG)
             mask = star.mask != 0
             # First and last data are never good
             mask[0] = True
@@ -483,7 +497,7 @@ def get_instrumental_mags(data, coords, obsname, ext):
 
             logger.printer("Aperture {} had a clipped mean counts per frame of {:.2f}+/-{:.2f}".format(comp, counts_per_frame, counts_per_frame_err))
             logger.printer("  and a mean exposure time of {:.3f}s".format(np.mean(exptime)))
-            logger.printer("  Pre-ext correct: CCD {}, Ap {}, mag: {:.3f}+/-{:.3f}".format(CCD, comp, -2.5*np.log10(fl), mag_sigma))
+            # logger.printer("  Pre-ext correct: CCD {}, Ap {}, mag: {:.3f}+/-{:.3f}".format(CCD, comp, -2.5*np.log10(fl), mag_sigma))
             mags.append(mag)
         mags = np.array(mags)
 

@@ -6,6 +6,8 @@ from os import remove
 import hipercam as hcam
 from calphot.constructReference import get_comparison_magnitudes, load_stds
 from pandas import read_csv
+import calphot.logger as logger
+
 
 if __name__ in "__main__":
     import argparse
@@ -32,8 +34,16 @@ if __name__ in "__main__":
 
     comp_coords = input("Please enter the comparison stars' RA, Dec (for airmass calc): ")
 
+    tels = ['ntt']
+    insts = ['ucam']
+    filts = ['super', 'regular']
+
+    telescope = input("What telescope was this observed with? ({}): ".format(tels))
+    instrument = input("What instrument was this observed with? ({}): ".format(insts))
+    filt = input("What filter set did you use? ({}): ".format(filts))
+
     # Load in the standard star data
-    std_data = load_stds()
+    std_data = load_stds(telescope, instrument, filt)
 
     # Get the star from the user
     std_name = input("Please enter the standard star's name: ")
@@ -109,6 +119,20 @@ if __name__ in "__main__":
         remove("ComparisonMags.LOGS")
     except:
         pass
+
+    logger.FNAME = "ComparisonMags.LOGS"
+    logger.printer("----- comparison_mags script collected the following arguments -----\n\n")
+    logger.printer("Telescope, instrument, filter set: {}/{}/{}".format(telescope, instrument, filt))
+    logger.printer("\nStandard filename: {}".format(std_fname))
+    logger.printer("Comparison reduction: {}".format(comp_fname))
+    logger.printer("\nStd coordinates: {}".format(std_coords))
+    logger.printer("Comparison coordinates: {}".format(comp_coords))
+    logger.printer("\nCCD filters: {}".format(bands))
+    logger.printer("\nStandard magnitudes, in CCD order: {}".format(std_CCD_mags))
+    logger.printer("Extinction coefficients (CCD order): {}".format(ext))
+    logger.printer("Observed from {}".format(obsname))
+    logger.printer("\n\n\n")
+
     mags = get_comparison_magnitudes(
         std_fname, comp_fname,
         std_coords, comp_coords,

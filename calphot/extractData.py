@@ -666,7 +666,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                         b = "???"
 
                 date = time.Time(eclTime, format='mjd')
-                date = date.strftime("%Y-%m-%d@%Hh%Mm%Ss")
+                date = date.strftime("%Y-%m-%d@%Hh%Mm")
 
                 filename = oname
                 filename = "{}_{}_{}.calib".format(filename, date, b)

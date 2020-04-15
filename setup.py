@@ -10,7 +10,7 @@ with open("requirements.txt", 'r') as f:
 
 setuptools.setup(
     name='calphot',
-    version='1.10',
+    version='1.14',
     description='Set of codes for flux-calibrating *CAM data, when doing relative or absolute photometry',
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -18,7 +18,7 @@ setuptools.setup(
     author_email='jwild2@sheffield.ac.uk',
     url='https://github.com/wildjames/cal_phot',
     packages=setuptools.find_packages(),
-    package_data={"calphot": ["tab08.dat.txt"]},
+    package_data={"calphot": ["*.dat.txt"]},
     install_requires=install_req,
     python_requires='>=3.6',
     scripts=[
