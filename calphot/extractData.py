@@ -380,9 +380,10 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                         N_comparisons += 1
                         try:
                             comparison = comparison + data.tseries(CCD, a)
+                            printer("  The reference star now includes data from aperture {}".format(a))
                         except:
                             comparison = data.tseries(CCD, a)
-                        printer("  The reference star now includes data from aperture {}".format(a))
+                            printer("  The comparison was initialised with aperture {}".format(a))
 
 
                 # If we have SDSS stars too bright, get their mags from flux calibrating those that arent
