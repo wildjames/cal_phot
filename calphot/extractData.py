@@ -385,7 +385,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                             comparison = data.tseries(CCD, a)
                             printer("  The comparison was initialised with aperture {}".format(a))
 
-                printer("  The 'comparison star' I've construced from {} apertures now has a mean count/frame of {:.3f}".format(np.mean(comparison.y)))
+                printer("  The 'comparison star' I've construced from {} apertures now has a mean count/frame of {:.3f}".format(N_comparisons, np.mean(comparison.y)))
 
 
                 # If we have SDSS stars too bright, get their mags from flux calibrating those that arent
