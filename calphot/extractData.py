@@ -700,6 +700,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
             compAx[0].set_xlim(x_range)
 
             plt.tight_layout()
+            plt.subplots_adjust(hspace=0.0)
 
             fig.canvas.draw_idle()
             compFig.canvas.draw_idle()
