@@ -362,7 +362,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                 # mags is a list of the relevant comparison star magnitudes.
                 # For non-SDSS fields, this is the clipped mean magnitude of each object.
                 mags = reference_stars[CCD]
-                printer("  Comparison star mags: {}".format(mags))
+                # printer("  Comparison star mags: {}".format(mags))
                 if no_calibration:
                     lightcurve_metadata += "# No flux calibration being done!!\n"
                     lightcurve_metadata += "# simulated a dummy comparison magnitude of 1.00 mJy\n"
@@ -373,6 +373,8 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                 # Add up the reference star fluxes
                 N_comparisons = 0
                 comparison = "Dummy initialiser ( ͡° ͜ʖ ͡°)"
+                printer("  This file has the apertures: {}".format(ap))
+                printer("  and the magnitudes:          {}".format(mags))
                 for a, mag in zip(ap[1:], mags):
                     if np.isnan(mag):
                         printer("  The reference star in ap {} is being ignored!".format(a))
