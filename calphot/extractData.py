@@ -384,26 +384,14 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                         printer("  The reference star in ap {} is being ignored!".format(a))
                     else:
                         N_comparisons += 1
-                        new_comparison = data.tseries(CCD, a)
-                        print(np.nanmean(new_comparison.y))
-                        print(np.nanstd(new_comparison))
                         try:
-                            r = sdss_mag2flux(mag)/np.nanmean(new_comparison.y)
-                            r_err = sdss_mag2flux(mag) / np.nanstd(new_comparison)
-                            count_ratios.append(r)
-
+                            new_comparison = data.tseries(CCD, a)
                             comparison = comparison + new_comparison
                             printer("  The reference star now includes data from aperture {}".format(a))
-                            printer("    this aperture has a mJy/Count = {:.3g} +/- {:.3g}".format(r, r_err))
                         except:
                             comparison = data.tseries(CCD, a)
                             printer("  The comparison was initialised with aperture {}".format(a))
-                printer("\n  --> The mean flux/count ratio from the included comparisons")
-                printer("         is {:.3g}, with a {:.2f}% error!".format(
-                    np.nanmean(count_ratios), 
-                    100.*np.nanstd(count_ratios)/np.nanmean(count_ratios)
-                ))
-
+                
                 printer("  The 'comparison star' I've construced from {} apertures now has a mean count/frame of {:.3f}".format(N_comparisons, np.mean(comparison.y)))
 
 
