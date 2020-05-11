@@ -18,7 +18,7 @@ from .constructReference import construct_reference
 from .getEclipseTimes import read_ecl_file, tcorrect
 from .logger import printer
 
-## I apologise for the this atrocity. This is a project that grew out of some convinience scripts, and by the time it was bit enough to be useful to anyone but me, it was a horrid mess. I am very lazy and don't want to clean it up.
+## I apologise for this atrocity. This is a project that grew out of some convinience scripts, and by the time it was big enough to be useful to anyone but me, it was a horrid mess. I am very lazy and don't want to clean it up.
 
 
 # hipercam.FLAGS gives a key for this
@@ -362,6 +362,10 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                 # mags is a list of the relevant comparison star magnitudes.
                 # For non-SDSS fields, this is the clipped mean magnitude of each object.
                 mags = reference_stars[CCD]
+                fluxs = sdss_mag2flux(mags)
+                sumFlux = np.nansum(fluxs)
+                sumMag = sdss_flux2mag(sumFlux)
+
                 printer("  Comparison star mags: {}".format(mags))
                 if no_calibration:
                     lightcurve_metadata += "# No flux calibration being done!!\n"
@@ -373,17 +377,25 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                 # Add up the reference star fluxes
                 N_comparisons = 0
                 comparison = "Dummy initialiser ( ͡° ͜ʖ ͡°)"
+                count_ratios = []
                 for a, mag in zip(ap[1:], mags):
                     if np.isnan(mag):
                         printer("  The reference star in ap {} is being ignored!".format(a))
                     else:
                         N_comparisons += 1
                         try:
-                            comparison = comparison + data.tseries(CCD, a)
+                            new_comparison = data.tseries(CCD, a)
+                            r = sdss_mag2flux(mag)/new_comparison.y.mean()
+                            r_err = sdss_mag2flux(mag) / new_comparison.std()
+                            count_ratios.append(r)
+
+                            comparison = comparison + new_comparison
                             printer("  The reference star now includes data from aperture {}".format(a))
+                            printer("    this aperture has a mJy/Count = {:.3g} +/- {:.3g}".format(r, r_err))
                         except:
                             comparison = data.tseries(CCD, a)
                             printer("  The comparison was initialised with aperture {}".format(a))
+                printer("\n  --> The mean flux/count ratio from the included comparisons is {:.3g}, with a {:.2f}% error!".format(np.mean(count_ratios, 100.*np.std(count_ratios)/np.mean(count_ratios))))
 
                 printer("  The 'comparison star' I've construced from {} apertures now has a mean count/frame of {:.3f}".format(N_comparisons, np.mean(comparison.y)))
 
@@ -407,13 +419,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
 
                     if calibComp is None:
                         raise Exception("All comparison stars saturated SDSS! Pick at least one that doesn't!")
-
                     calibComp_counts = np.mean(calibComp.y)
-
-                    fluxs = sdss_mag2flux(mags)
-                    sumFlux = np.nansum(fluxs)
-                    sumMag = sdss_flux2mag(sumFlux)
-
 
                     printer("  My non-saturated SDSS stars have a mean count/frame of {:.3f}".format(calibComp_counts))
                     lightcurve_metadata += "# My non-saturated SDSS stars have a mean count/frame of {:.3f}\n".format(calibComp_counts)
