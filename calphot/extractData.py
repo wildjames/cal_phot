@@ -395,7 +395,11 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                         except:
                             comparison = data.tseries(CCD, a)
                             printer("  The comparison was initialised with aperture {}".format(a))
-                printer("\n  --> The mean flux/count ratio from the included comparisons is {:.3g}, with a {:.2f}% error!".format(np.mean(count_ratios, 100.*np.std(count_ratios)/np.mean(count_ratios))))
+                printer("\n  --> The mean flux/count ratio from the included comparisons")
+                printer("         is {:.3g}, with a {:.2f}% error!".format(
+                    np.mean(count_ratios), 
+                    100.*np.std(count_ratios)/np.mean(count_ratios)
+                ))
 
                 printer("  The 'comparison star' I've construced from {} apertures now has a mean count/frame of {:.3f}".format(N_comparisons, np.mean(comparison.y)))
 
