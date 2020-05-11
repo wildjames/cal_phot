@@ -169,6 +169,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
         c    = ['black']
     elif inst == 'ucam':
         nCCD = 3
+        bands = ['r', 'g', 'u']
         c = ['red', 'green', 'blue']
     elif inst == 'hcam':
         nCCD = 5
