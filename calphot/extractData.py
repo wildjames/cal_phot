@@ -618,6 +618,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                                 printer(hcam.FLAGS)
 
                                 if np.all(toPlot.mask != 0):
+                                    print("ALL DATA ARE MASKED! Stopping...")
                                     exit()
 
                                 toPlot.t  = toPlot.t[mask]
