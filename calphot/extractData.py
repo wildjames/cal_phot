@@ -384,10 +384,10 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                         printer("  The reference star in ap {} is being ignored!".format(a))
                     else:
                         N_comparisons += 1
+                        new_comparison = data.tseries(CCD, a)
                         print(np.nanmean(new_comparison.y))
                         print(np.nanstd(new_comparison))
                         try:
-                            new_comparison = data.tseries(CCD, a)
                             r = sdss_mag2flux(mag)/np.nanmean(new_comparison.y)
                             r_err = sdss_mag2flux(mag) / np.nanstd(new_comparison)
                             count_ratios.append(r)
