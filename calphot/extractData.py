@@ -22,7 +22,7 @@ from .logger import printer
 
 
 # hipercam.FLAGS gives a key for this
-FLAGS_TO_IGNORE = [4]
+FLAGS_TO_IGNORE = []
 
 
 def straight_line(x, A, B): # this is your 'straight line' y=f(x)
