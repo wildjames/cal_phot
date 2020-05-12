@@ -386,8 +386,11 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                         N_comparisons += 1
                         try:
                             new_comparison = data.tseries(CCD, a)
+                            r = new_comparison.y.mean()
+                            r_err = new_comparison.y.std()
                             comparison = comparison + new_comparison
                             printer("  The reference star now includes data from aperture {}".format(a))
+                            printer("    and has a flux/count of {:.3g} +/- {:.3g} mJy/count")
                         except:
                             comparison = data.tseries(CCD, a)
                             printer("  The comparison was initialised with aperture {}".format(a))
