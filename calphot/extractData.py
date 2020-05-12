@@ -385,8 +385,9 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                     else:
                         N_comparisons += 1
                         new_comparison = data.tseries(CCD, a)
-                        r = new_comparison.y.mean()
-                        r_err = new_comparison.y.std()
+                        print(mag)
+                        r = sdss_mag2flux(mag) / new_comparison.y.mean()
+                        r_err = sdss_mag2flux(mag) / new_comparison.y.std()
                         try:
                             comparison = comparison + new_comparison
                             printer("  The reference star now includes data from aperture {}".format(a))
@@ -394,7 +395,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                             comparison = data.tseries(CCD, a)
                             printer("  The comparison was initialised with aperture {}".format(a))
                         printer("    and has a flux/count of {:.3g} +/- {:.3g} mJy/count".format(r, r_err))
-                
+
                 printer("  The 'comparison star' I've construced from {} apertures now has a mean count/frame of {:.3f}".format(N_comparisons, np.mean(comparison.y)))
 
 
