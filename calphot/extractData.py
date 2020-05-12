@@ -518,6 +518,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                 ADU_lightcurves[fname].append(copy.deepcopy(ratio))
 
                 # Convert the ratio from ADU to mJy
+                printer("  Multiplying the target count flux / comparison count flux by the comparison flux, {:.3f}".format(comparison_flux))
                 ratio = ratio * comparison_flux # Scale back up to actual flux.
 
                 # Filter out flags I don't care about.
