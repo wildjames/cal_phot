@@ -521,6 +521,10 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                 ratio = ratio * comparison_flux # Scale back up to actual flux.
 
                 # Filter out flags I don't care about.
+                if np.any(ratio.mask & FLAG):
+                    printer("I found some flags that I want to ignore. These are:")
+                    printer(ratio.mask & FLAG)
+                    printer("\nThese will be ignored and the relevant frames used anyway, unless they also contain other flags that I'm not ignoring!\n")
                 ratio.mask = ratio.mask & (~ FLAG)
 
                 #######################################################################################################
