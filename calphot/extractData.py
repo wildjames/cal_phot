@@ -526,6 +526,10 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                     printer(ratio.mask & FLAG)
                     printer("\nThese will be ignored and the relevant frames used anyway, unless they also contain other flags that I'm not ignoring!\n")
                 ratio.mask = ratio.mask & (~ FLAG)
+                printer("The target aperture now has these flags:")
+                printer(ratio.mask)
+                printer("Flag keys:")
+                printer(hcam.FLAGS)
 
                 #######################################################################################################
                 ############ IGNORE ME I'M BORING AND HARD TO READ. WHY READ ANYTHING HARD? JUST TRUST ME. ############
@@ -619,11 +623,11 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                             if np.any(toPlot.mask):
                                 mask = np.where(toPlot.mask == 0)
                                 printer("  -> {} masked data!".format(np.sum(toPlot.mask != 0)))
-                                printer("\nMasked data:")
-                                printer(toPlot.mask)
-                                printer("\n\n")
-                                printer("Flags:")
-                                printer(hcam.FLAGS)
+                                # printer("\nMasked data:")
+                                # printer(toPlot.mask)
+                                # printer("\n\n")
+                                # printer("Flags:")
+                                # printer(hcam.FLAGS)
 
                                 if np.all(toPlot.mask != 0):
                                     print("ALL DATA ARE MASKED! Stopping...")
