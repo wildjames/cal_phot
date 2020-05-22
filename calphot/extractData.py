@@ -690,10 +690,10 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
 
                 filename = os.path.join(lc_dir, filename)
 
-                # Saving data
-                printer("  These data have {} masked points.".format(np.sum(ratio.mask != 0)))
-                if np.sum(ratio.mask != 0):
-                    printer("\n\n{}\n\n".format(ratio.mask))
+                # # Saving data
+                # printer("  These data have {} masked points.".format(np.sum(ratio.mask != 0)))
+                # if np.sum(ratio.mask != 0):
+                #     printer("\n\n{}\n\n".format(ratio.mask))
                 with open(filename, 'w') as f:
                     f.write(lightcurve_metadata)
                     f.write("# Phase, Flux, Err_Flux\n")
