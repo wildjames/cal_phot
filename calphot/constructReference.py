@@ -431,7 +431,7 @@ def get_instrumental_mags(data, coords, obsname, ext):
     # Data masking stuff
     FLAG = np.uint64(0)
     for f in FLAGS_TO_IGNORE:
-        FLAG = FLAG | f
+        FLAG = FLAG | np.uint64(f)
     if FLAG:
         logger.printer("  Ignoring bad data flags: {}".format(FLAGS_TO_IGNORE))
         logger.printer("List of keys:")
