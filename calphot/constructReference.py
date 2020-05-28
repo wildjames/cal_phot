@@ -429,7 +429,7 @@ def get_instrumental_mags(data, coords, obsname, ext):
 
 
     # Data masking stuff
-    FLAG = np.uint32(0)
+    FLAG = np.uint64(0)
     for f in FLAGS_TO_IGNORE:
         FLAG = FLAG | f
     if FLAG:
