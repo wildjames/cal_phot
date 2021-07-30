@@ -253,7 +253,7 @@ The RA and Dec are used to calculate the airmass at whatever time, so the tel RA
     loc, fn = path.split(fname)
     run_no = fn.replace("run", "").replace(".log", "")
 
-    data = Hlog.read(fname)
+    data = Hlog.rascii(fname)
 
     target_loc = coord.SkyCoord(RA, Dec, unit=(u.hourangle, u.deg))
     print("Target location: {}".format(target_loc))

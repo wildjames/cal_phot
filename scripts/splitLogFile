@@ -26,7 +26,7 @@ if __name__ in "__main__":
     args = parser.parse_args()
     lf = args.file
 
-    data = hcam.hlog.Hlog.read(lf)
+    data = hcam.hlog.Hlog.rascii(lf)
     print("Read in {}".format(lf))
 
     # Grab the header of that logfile too. Read lines until we run out of hashes, then skip the rest.

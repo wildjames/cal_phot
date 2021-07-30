@@ -101,6 +101,10 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
     SDSS: bool, optional
         If True, I'll do an SDSS lookup for the comparison star magnitudes. If False, use a standard star to calibrate
 
+    comp_mags: dict, optional
+        If supplied, I'll use this to key the comparison stars. Should be a dict of lists, keyed by filename.
+        Lists are lists of floats, in aperture order.
+
     myLoc: str, optional
         Working directory. If not supplied, default to current working directory
 
@@ -227,7 +231,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
 
             print("CWD:  {}".format(os.getcwd()))
             print("File: {}".format(fname))
-            data = hcam.hlog.Hlog.read(fname)
+            data = hcam.hlog.Hlog.rascii(fname)
             if data == {}:
                 data = hcam.hlog.Hlog.rulog(fname)
             if data == {}:
@@ -502,7 +506,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                     slice_time[slice_args],
                     ratio.y[slice_args],
                     ratio.ye[slice_args],
-                    ratio.mask[slice_args]
+                    ratio.bmask[slice_args]
                     )
 
                 # Bad data has error = -1
@@ -521,13 +525,13 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                 ratio = ratio * comparison_flux # Scale back up to actual flux.
 
                 # Filter out flags I don't care about.
-                if np.any(ratio.mask & FLAG):
+                if np.any(np.array([bmask & FLAG for bmask in ratio.bmask])):
                     printer("I found some flags that I want to ignore. These are:")
-                    printer(ratio.mask & FLAG)
+                    printer(np.array([bmask & FLAG for bmask in ratio.bmask]))
                     printer("\nThese will be ignored and the relevant frames used anyway, unless they also contain other flags that I'm not ignoring!\n")
-                ratio.mask = ratio.mask & (~ FLAG)
+                ratio.bmask = np.array([bmask & (~ FLAG) for bmask in ratio.bmask])
                 printer("The target aperture now has these flags:")
-                printer(ratio.mask)
+                printer(ratio.bmask)
                 printer("Flag keys:")
                 printer(hcam.FLAGS)
 
@@ -587,7 +591,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                 ax[CCD_int].set_ylabel('Flux, mJy')
 
                 # Plot the ratio
-                ratio.mplot(ax[CCD_int], colour=c[CCD_int])
+                ratio.mplot(ax[CCD_int], color=c[CCD_int])
 
                 # Scale the right side labels
                 twinAx[CCD_int].set_ylim( ax[CCD_int].get_ylim() / comparison_flux )
@@ -617,26 +621,26 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                             toPlot = first / data.tseries(CCD, b)
 
                             # Filter out flags I don't care about.
-                            toPlot.mask = toPlot.mask & (~ FLAG)
+                            toPlot.bmask = np.array([bmask & (~ FLAG) for bmask in toPlot.bmask])
 
                             # Apply the mask to the data
-                            if np.any(toPlot.mask):
-                                mask = np.where(toPlot.mask == 0)
-                                printer("  -> {} masked data!".format(np.sum(toPlot.mask != 0)))
-                                # printer("\nMasked data:")
-                                # printer(toPlot.mask)
-                                # printer("\n\n")
-                                # printer("Flags:")
-                                # printer(hcam.FLAGS)
+                            if np.any(toPlot.bmask):
+                                mask = np.where(toPlot.bmask == 0)
+                                printer("  -> {} masked data!".format(np.sum(toPlot.bmask != 0)))
 
-                                if np.all(toPlot.mask != 0):
+                                if np.all(toPlot.bmask != 0):
                                     print("ALL DATA ARE MASKED! Stopping...")
+                                    printer("\nMasked data:")
+                                    printer(toPlot.bmask)
+                                    printer("\n\n")
+                                    printer("Flags:")
+                                    printer(hcam.FLAGS)
                                     exit()
 
                                 toPlot.t  = toPlot.t[mask]
                                 toPlot.y  = toPlot.y[mask]
                                 toPlot.ye = toPlot.ye[mask]
-                                toPlot.mask = toPlot.mask[mask]
+                                toPlot.bmask = toPlot.bmask[mask]
 
                             toPlot.y = toPlot.y / np.mean(toPlot.y)
                             toPlot.y = toPlot.y + (j / 5)
@@ -691,13 +695,13 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                 filename = os.path.join(lc_dir, filename)
 
                 # # Saving data
-                # printer("  These data have {} masked points.".format(np.sum(ratio.mask != 0)))
-                # if np.sum(ratio.mask != 0):
-                #     printer("\n\n{}\n\n".format(ratio.mask))
+                # printer("  These data have {} masked points.".format(np.sum(ratio.bmask != 0)))
+                # if np.sum(ratio.bmask != 0):
+                #     printer("\n\n{}\n\n".format(ratio.bmask))
                 with open(filename, 'w') as f:
                     f.write(lightcurve_metadata)
                     f.write("# Phase, Flux, Err_Flux\n")
-                    for t, y, ye, mask in zip(ratio.t, ratio.y, ratio.ye, ratio.mask):
+                    for t, y, ye, mask in zip(ratio.t, ratio.y, ratio.ye, ratio.bmask):
                         if not mask:
                             f.write("{} {} {}\n".format(t, y, ye))
 

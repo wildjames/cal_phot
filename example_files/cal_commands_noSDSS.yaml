@@ -1,9 +1,6 @@
 # Target data we already know
 target coords: 05:22:10 -35:05:30
 
-# TODO: Impliment this
-phase fold: true
-
 period:        0.06219388
 T0:            58755.36436103
 

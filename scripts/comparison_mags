@@ -32,22 +32,23 @@ if __name__ in "__main__":
     comp_fname = args.comp_fname
     obsname = ','.join(args.observatory)
 
-    comp_coords = input("Please enter the comparison stars' RA, Dec (for airmass calc): ")
+    comp_coords = input("Please enter the comparison stars' RA and Dec, space separated (for airmass calc): ")
 
-    tels = ['ntt']
-    insts = ['ucam']
-    filts = ['super', 'regular']
+    tels = ['ucam', 'uspec']
+    # insts = ['ucam']
+    # filts = ['super', 'regular']
 
     telescope = input("What telescope was this observed with? ({}): ".format(tels))
-    instrument = input("What instrument was this observed with? ({}): ".format(insts))
-    filt = input("What filter set did you use? ({}): ".format(filts))
+    # instrument = input("What instrument was this observed with? ({}): ".format(insts))
+    # filt = input("What filter set did you use? ({}): ".format(filts))
 
     # Load in the standard star data
-    std_data = load_stds(telescope, instrument, filt)
+    std_data = load_stds(telescope)
 
     # Get the star from the user
     std_name = input("Please enter the standard star's name: ")
     while std_name not in std_data['StarName'].values:
+        print(std_data['StarName'])
         print("Star list: https://classic.sdss.org/dr7/algorithms/standardstars/tab08.dat.txt")
         std_name = input("I couldn't find that star.\nPlease enter a star name: ")
 
@@ -78,7 +79,7 @@ if __name__ in "__main__":
     print("\n\n")
 
     # Get the standard observations, so we know how many CCDs we're dealing with
-    std_data = hcam.hlog.Hlog.read(std_fname)
+    std_data = hcam.hlog.Hlog.rascii(std_fname)
     aps = std_data.apnames
     nCCD = len(aps.keys())
     print("The standard reduction in {} has {} CCDs".format(std_fname, nCCD))
@@ -122,7 +123,7 @@ if __name__ in "__main__":
 
     logger.FNAME = "ComparisonMags.LOGS"
     logger.printer("----- comparison_mags script collected the following arguments -----\n\n")
-    logger.printer("Telescope, instrument, filter set: {}/{}/{}".format(telescope, instrument, filt))
+    logger.printer("Instrument: {}".format(telescope))
     logger.printer("\nStandard filename: {}".format(std_fname))
     logger.printer("Comparison reduction: {}".format(comp_fname))
     logger.printer("\nStd coordinates: {}".format(std_coords))
@@ -143,5 +144,5 @@ if __name__ in "__main__":
 
     print("Here's the bloc that you'll want to put in the config YAML for cal_phot:")
     for i, CCD in mags.items():
-        string = ["{:.3f}".format(mag) for mag in CCD]
+        string = ["{:.3f}".format(mag) for mag in CCD[1:]]
         print("        {}: [{}]".format(bands[int(i)-1], ','.join(string)))

@@ -16,7 +16,24 @@ from astropy.stats import sigma_clipped_stats
 import calphot.logger as logger
 
 
-FLAGS_TO_IGNORE = [4]
+FLAGS_TO_IGNORE = []
+# (('ALL_OK', 0)
+#  ('ANY_FLAG', 4294967295)
+#  ('NO_FWHM', 1)
+#  ('NO_SKY', 2)
+#  ('SKY_AT_EDGE', 4)
+#  ('TARGET_AT_EDGE', 8)
+#  ('TARGET_SATURATED', 16)
+#  ('TARGET_NONLINEAR', 32)
+#  ('NO_EXTRACTION', 64)
+#  ('NO_DATA', 128)
+#  ('CLOUDS', 256)
+#  ('JUNK', 512)
+#  ('BAD_FLAT', 1024)
+#  ('BAD_COLUMN', 2048)
+#  ('BAD_TIME', 4096)
+#  ('OUTLIER', 8192))
+
 
 
 '''
@@ -56,10 +73,16 @@ def robust_mag(cps, mask=None):
         mean, median, sigma = sigma_clipped_stats(cps, mask=mask, iters=2, sigma=3)
     return -2.5*np.log10(mean)
 
-def load_stds(telescope, instrument, filt):
+def load_stds(telescope):
+    if telescope == 'ucam':
+        table_path = "ucam-ntt-regular_tab08.dat.txt"
+    elif telescope == 'uspec':
+        table_path = 'stock_tab08.dat.txt'
+
     data = read_fwf(
-        os.path.join(os.path.split(__file__)[0], "{}-{}-{}_tab08.dat.txt".format(instrument, telescope, filt))
+        os.path.join(os.path.split(__file__)[0], table_path)
     )
+
     return data
 
 def deg2arcsec(inp, ra):
@@ -322,7 +345,7 @@ def construct_reference(fetchFname):
     logger.printer("Got all reference stars for this file!\n")
     return toWrite
 
-def get_instrumental_mags(data, coords, obsname, ext):
+def get_instrumental_mags(data, coords, obsname, ext, FLAGS_TO_IGNORE=None):
     '''
     Takes a hipercam data object, and exctracts the instrumental magnitude of each aperture in each CCD
 
@@ -356,6 +379,9 @@ def get_instrumental_mags(data, coords, obsname, ext):
     logger.printer("     Extinction: {} mags/airmass".format(ext))
     logger.printer("        Ra, Dec: {}".format(coords))
     logger.printer("    Observatory: {}".format(obsname))
+
+    if FLAGS_TO_IGNORE is None:
+        FLAGS_TO_IGNORE = []
 
     # Where are we?
     try:
@@ -469,13 +495,13 @@ def get_instrumental_mags(data, coords, obsname, ext):
 
             # Mask out data that has flags
             # Filter out flags I don't care about.
-            star.mask = star.mask & (~ FLAG)
-            mask = star.mask != 0
+            star.bmask = np.array([bmask & (~ FLAG) for bmask in star.bmask])
+            mask = star.bmask != 0
             # First and last data are never good
             mask[0] = True
             mask[-1] = True
-            if np.any(star.mask):
-                removed = np.sum(star.mask != 0)
+            if np.any(star.bmask):
+                removed = np.sum(star.bmask != 0)
 
                 logger.printer("Bad data detected!")
                 logger.printer("The mask will remove {}/{} data points.".format(removed, len(star.y)))
@@ -511,7 +537,7 @@ def get_instrumental_mags(data, coords, obsname, ext):
     return all_mags
 
 def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords,
-                                std_mags, obsname, ext, fname=None):
+                                std_mags, obsname, ext, fname=None, FLAGS_TO_IGNORE=None):
     '''
     Takes two .log files, one containing the reduction of a standard star and the other the reduction of
     the target frame, using the same settings (aperture size, extraction method, etc.). Uses this to
@@ -532,7 +558,7 @@ def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords,
     std_mags: list
         list containing the SDSS magnitude of the standard in each CCD, inorder
     obsname: str
-        Observatory name
+        Observatory name, or coordinates in (lat, lon) (degrees)
     ext: list
         Extinction coefficients, in order of CCD
 
@@ -541,14 +567,16 @@ def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords,
     '''
     if fname is not None:
         logger.FNAME = fname
+    if FLAGS_TO_IGNORE is None:
+        FLAGS_TO_IGNORE = []
 
     logger.printer("\n\n--- Extracting comparison star SDSS magnitudes from the file '{}'---".format(comp_fname))
     logger.printer("     using the standard star found in {}\n".format(std_fname))
 
     std_mags = np.array(std_mags)
 
-    standard_data = hcam.hlog.Hlog.read(std_fname)
-    comp_data     = hcam.hlog.Hlog.read(comp_fname)
+    standard_data = hcam.hlog.Hlog.rascii(std_fname)
+    comp_data     = hcam.hlog.Hlog.rascii(comp_fname)
 
     # Extract the instrumental magnitudes of the standard
     logger.printer("   -> Computing the instrumental magnitudes of the standard")

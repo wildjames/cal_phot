@@ -203,7 +203,7 @@ def smooth_derivative(tseries, med_half_width, box_half_width):
     return locs, convolve(deriv, kernel)
 
 def get_tseries(logfile, ccdnam, ap_targ, ap_comp):
-    log = Hlog.read(logfile)
+    log = Hlog.rascii(logfile)
     return log.tseries(ccdnam, ap_targ) / log.tseries(ccdnam, ap_comp)
 
 # Define a cost function for MCMC
@@ -399,7 +399,7 @@ def getEclipseTimes(fnames, coords, obsname, myLoc=None):
     for lf in fnames:
         printer("  Looking at the file {}".format(lf))
         # lets make the file reading more robust
-        log = Hlog.read(lf)
+        log = Hlog.rascii(lf)
         if log == {}:
             printer("  Failed to get data from Hlog.read function, skipping this file.")
             continue
@@ -420,7 +420,7 @@ def getEclipseTimes(fnames, coords, obsname, myLoc=None):
         printer("  -> Star: {}".format(star))
         inspect_corr = tcorrect(inspect, star, obsname)
         # Discard the first 10 observations, as they're often junk
-        inspect_corr = inspect_corr[10:]
+        # inspect_corr = inspect_corr[10:]
 
         x, y = smooth_derivative(inspect_corr, 9, 5)
         yerr = 0.001*np.ones_like(x)

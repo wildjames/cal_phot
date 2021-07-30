@@ -113,6 +113,7 @@ if __name__ in "__main__":
             print("Ignoring bad data flags for {}!".format(payload['flags']))
             calphot.extractData.FLAGS_TO_IGNORE = payload['flags']
         else:
+            print("Rejecting all flagged data.")
             calphot.extractData.FLAGS_TO_IGNORE = []
 
         # In this case, the flux of the standards is set as unity.
