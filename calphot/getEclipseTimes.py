@@ -163,7 +163,7 @@ def tcorrect(tseries, star, observatory, type='B'):
     times = Time(tseries.t, format='mjd', scale='utc', location=location)
 
     if type == 'B':
-        corr = times.light_travel_time(star)
+        corr = times.light_travel_time(star, 'barycentric', )
         corr = times.tdb + corr
     else:
         corr = times.light_travel_time(star, 'heliocentric')

@@ -12,7 +12,7 @@ import calphot.logger as logger
 if __name__ in "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser("Calculate the apparent magnitude of each aperture in a run, calibrated from a standard star observation")
+    parser = argparse.ArgumentParser("Calculate the apparent magnitude of each aperture in a run, calibrated from a standard star observation. For now, uses SDSS magnitudes, UNMODIFIED, from Smith (2002).")
     parser.add_argument(
         "std_fname",
         help="The logfile reduction of the standard star"
@@ -38,12 +38,12 @@ if __name__ in "__main__":
     # insts = ['ucam']
     # filts = ['super', 'regular']
 
-    telescope = input("What telescope was this observed with? ({}): ".format(tels))
+    # telescope = input("What telescope was this observed with? ({}): ".format(tels))
     # instrument = input("What instrument was this observed with? ({}): ".format(insts))
     # filt = input("What filter set did you use? ({}): ".format(filts))
 
     # Load in the standard star data
-    std_data = load_stds(telescope)
+    std_data = load_stds('stock')
 
     # Get the star from the user
     std_name = input("Please enter the standard star's name: ")
@@ -123,7 +123,7 @@ if __name__ in "__main__":
 
     logger.FNAME = "ComparisonMags.LOGS"
     logger.printer("----- comparison_mags script collected the following arguments -----\n\n")
-    logger.printer("Instrument: {}".format(telescope))
+    # logger.printer("Instrument: {}".format(telescope))
     logger.printer("\nStandard filename: {}".format(std_fname))
     logger.printer("Comparison reduction: {}".format(comp_fname))
     logger.printer("\nStd coordinates: {}".format(std_coords))
@@ -142,7 +142,7 @@ if __name__ in "__main__":
         ext, fname="ComparisonMags.LOGS"
     )
 
-    print("Here's the bloc that you'll want to put in the config YAML for cal_phot:")
+    print("Here's the bloc that you'll want to put in the config YAML for cal_phot (remember to remove the target!):")
     for i, CCD in mags.items():
-        string = ["{:.3f}".format(mag) for mag in CCD[1:]]
+        string = ["{:.3f}".format(mag) for mag in CCD]
         print("        {}: [{}]".format(bands[int(i)-1], ','.join(string)))

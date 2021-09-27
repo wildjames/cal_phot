@@ -78,6 +78,10 @@ def load_stds(telescope):
         table_path = "ucam-ntt-regular_tab08.dat.txt"
     elif telescope == 'uspec':
         table_path = 'stock_tab08.dat.txt'
+    elif telescope == 'stock':
+        table_path = 'stock_tab08.dat.txt'
+    else:
+        raise FileNotFoundError("Do not have standard magnitudes for {}".format(telescope))
 
     data = read_fwf(
         os.path.join(os.path.split(__file__)[0], table_path)
