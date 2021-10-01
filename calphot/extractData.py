@@ -50,7 +50,7 @@ def calc_E(T, T0, P):
     E = (T-T0) / P
     return E
 def calc_E_Err(T, T0, P, T_err, T0_err, P_err):
-    N = E(T, T0, P)
+    N = calc_E(T, T0, P)
     err = np.sqrt(
         ( np.sqrt(T_err**2 + T0_err**2)/(T-T0) )**2 +
         (P_err/P)**2
@@ -248,6 +248,26 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
             if CCDs == []:
                 printer("ERROR! No data in the file!")
             printer("  The observations have the following CCDs: {}".format([int(ccd) for ccd in CCDs]))
+
+
+            # I need to filter out any times with NAN data. For each CCD, check all aps for nan. if any are nan, remove that frame.
+            for CCD in aps:
+                lightcurves = [data.tseries(CCD, ap) for ap in data.apnames[CCD]]
+                lightcurves = [data.tseries(CCD, ap).y for ap in data.apnames[CCD]]
+                badlocs = np.where(~np.isfinite(lightcurves))
+                goodlocs = np.where(np.isfinite(lightcurves))
+
+                badlocs = np.unique(badlocs[1])
+                goodlocs = np.unique(goodlocs[1])
+
+                if len(badlocs):
+                    printer("In CCD {}, I found {} frames with nan fluxes! I will remove these".format(CCD, len(badlocs)))
+                    printer("These were at indexes:")
+                    printer(badlocs)
+                    input("Hit enter to continue...  ")
+
+                data[CCD] = data[CCD][goodlocs]
+
 
             printer("  Am I flux calibrating the data? {}".format(not no_calibration))
             if no_calibration:
