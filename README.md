@@ -112,10 +112,6 @@ Note that the whitespace is important, the apertures of the different CCDs are s
 
 **You should now have two files for *each* reduction**, a `.log` and a `.coords`. If a `coords` file is missing, `cal_phot` will let you know about it.
 
-## 3. Calculate the extinction coefficients of the night
-
-The SDSS standard and the target frame are, by definition, oberved at different locations in the sky. If they weren't, we wouldn't need the standard! So, we need to correct for atmospheric extinction. The script, `calc_extinction`, helps with this. Save the output of this for the input file. This isn't always 100% necessary, as the observatories each have fairly consistent values that they publish.
-
 ## 4. Write an input file
 
 This is the easy part. The config is a YAML file, and I have an example of what it should look like in this git, [here!](cal_commands_SDSS.yaml)
@@ -141,6 +137,10 @@ Then, go over to the target obeservation, and use the **exact same settings** to
 ## 3. Compute the comparison star magnitudes
 
 Use the script `comparison_mags.py` to get the apparent magnitudes of all your comparison stars. This script will output the magnitudes in a conviniently copy-pasteable chunk for your configuration file.
+
+## 3.1. Calculate the extinction coefficients of the night
+
+The SDSS standard and the target frame are, by necessity, oberved at different locations in the sky. So, we need to correct for atmospheric extinction. The script, `calc_extinction`, helps with this. Save the output of this for the input file. This isn't always 100% necessary, as the observatories each have fairly consistent values that they publish, but ideally you should calculate them yourself anyway. They aren't carved in stone! This step isn't needed when using the SDSS lookup built in to cal_phot, since you get atmospheric corrections for free when you know the apparent, above atmosphere comparison magnitude already.
 
 ## 4. Construct the configuration file
 
