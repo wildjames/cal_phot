@@ -255,6 +255,24 @@ The RA and Dec are used to calculate the airmass at whatever time, so the tel RA
 
     data = Hlog.rascii(fname)
 
+    # I need to filter out any times with NAN data. For each CCD, check all aps for nan. if any are nan, remove that frame.
+    for CCD in data.apnames:
+        lightcurves = [data.tseries(CCD, ap) for ap in data.apnames[CCD]]
+        lightcurves = [data.tseries(CCD, ap).y for ap in data.apnames[CCD]]
+        badlocs = np.where(~np.isfinite(lightcurves))
+        goodlocs = np.where(np.isfinite(lightcurves))
+
+        badlocs = np.unique(badlocs[1])
+        goodlocs = np.unique(goodlocs[1])
+
+        if len(badlocs):
+            print("In CCD {}, I found {} frames with nan fluxes! I will remove these".format(CCD, len(badlocs)))
+            print("These were at indexes:")
+            print(badlocs)
+            input("Hit enter to continue...  ")
+
+        data[CCD] = data[CCD][goodlocs]
+
     target_loc = coord.SkyCoord(RA, Dec, unit=(u.hourangle, u.deg))
     print("Target location: {}".format(target_loc))
 

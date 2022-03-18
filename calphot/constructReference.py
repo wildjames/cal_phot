@@ -582,6 +582,47 @@ def get_comparison_magnitudes(std_fname, comp_fname, std_coords, comp_coords,
     standard_data = hcam.hlog.Hlog.rascii(std_fname)
     comp_data     = hcam.hlog.Hlog.rascii(comp_fname)
 
+
+    # I need to filter out any times with NAN data. For each CCD, check all aps for nan. if any are nan, remove that frame.
+    logger.printer("Filtering nan data from {}".format(std_fname))
+    for CCD in standard_data.apnames:
+        lightcurves = [standard_data.tseries(CCD, ap) for ap in standard_data.apnames[CCD]]
+        lightcurves = [standard_data.tseries(CCD, ap).y for ap in standard_data.apnames[CCD]]
+        badlocs = np.where(~np.isfinite(lightcurves))
+        goodlocs = np.where(np.isfinite(lightcurves))
+
+        badlocs = np.unique(badlocs[1])
+        goodlocs = np.unique(goodlocs[1])
+
+        if len(badlocs):
+            logger.printer("In CCD {}, I found {} frames with nan fluxes! I will remove these".format(CCD, len(badlocs)))
+            logger.printer("These were at indexes:")
+            logger.printer(badlocs)
+            input("Hit enter to continue...  ")
+
+        standard_data[CCD] = standard_data[CCD][goodlocs]
+
+    # I need to filter out any times with NAN data. For each CCD, check all aps for nan. if any are nan, remove that frame.
+    logger.printer("Filtering nan data from {}".format(comp_fname))
+    for CCD in comp_data.apnames:
+        lightcurves = [comp_data.tseries(CCD, ap) for ap in comp_data.apnames[CCD]]
+        lightcurves = [comp_data.tseries(CCD, ap).y for ap in comp_data.apnames[CCD]]
+        badlocs = np.where(~np.isfinite(lightcurves))
+        goodlocs = np.where(np.isfinite(lightcurves))
+
+        badlocs = np.unique(badlocs[1])
+        goodlocs = np.unique(goodlocs[1])
+
+        if len(badlocs):
+            logger.printer("In CCD {}, I found {} frames with nan fluxes! I will remove these".format(CCD, len(badlocs)))
+            logger.printer("These were at indexes:")
+            logger.printer(badlocs)
+            input("Hit enter to continue...  ")
+
+        comp_data[CCD] = comp_data[CCD][goodlocs]
+
+    logger.printer("I will ignore the following bitmask flags, and use their data anyway: {}".format(FLAGS_TO_IGNORE))
+
     # Extract the instrumental magnitudes of the standard
     logger.printer("   -> Computing the instrumental magnitudes of the standard")
     instrumental_std_mags = get_instrumental_mags(standard_data, std_coords, obsname, ext)

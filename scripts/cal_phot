@@ -37,6 +37,7 @@ if __name__ in "__main__":
     global_defaults = {
         'directory': '.',
         'fit ephemeris': False,
+        'observing_log_fname': 'observing_log.csv',
     }
     for key, value in global_defaults.items():
         if key not in input_dict.keys():
@@ -61,6 +62,7 @@ if __name__ in "__main__":
     directory = input_dict['directory']
     T0 = input_dict['t0']
     period = input_dict['period']
+    observation_log_fname = input_dict['observing_log_fname']
 
     # Create the working directory if needed
     if not os.path.isdir(directory):
@@ -123,7 +125,8 @@ if __name__ in "__main__":
                 oname, target_coords, observatory, T0, period,
                 inst=instrument, SDSS=True, fnames=fnames,
                 lower_phase=lower_phase, upper_phase=upper_phase,
-                myLoc=directory, no_calibration=True
+                myLoc=directory, no_calibration=True,
+                observation_log_fname=observation_log_fname,
             )
             extracted_files += written_files
 
@@ -137,6 +140,7 @@ if __name__ in "__main__":
                 inst=instrument, SDSS=is_SDSS, myLoc=directory,
                 lower_phase=lower_phase, upper_phase=upper_phase,
                 fnames=fnames, comp_mags=comparisons,
+                observation_log_fname=observation_log_fname,
             )
             extracted_files += written_files
 
@@ -150,7 +154,8 @@ if __name__ in "__main__":
                 oname, target_coords, observatory, T0, period,
                 inst=instrument, SDSS=is_SDSS, myLoc=directory,
                 fnames=fnames,
-                comp_mags=comparisons
+                comp_mags=comparisons,
+                observation_log_fname=observation_log_fname,
             )
             extracted_files += written_files
 

@@ -62,7 +62,7 @@ def calc_E_Err(T, T0, P, T_err, T0_err, P_err):
 def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                  comp_mags=None, myLoc='.', fnames=None,
                  lower_phase=-0.5, upper_phase=0.5,
-                 no_calibration=False):
+                 no_calibration=False, observation_log_fname=''):
     '''
     Takes a set of *CAM observations (and data on the system), and produces a set of phase folded lightcurves.
 
@@ -131,6 +131,8 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
     except: pass
     printer("Figures will go in: {}".format(figs_dir))
 
+    observation_log_fname = os.path.join(myLoc, observation_log_fname)
+    printer("Observation log will go in {}".format(observation_log_fname))
 
     # Report the things we're working with
     printer("  Using these log files: ")
@@ -239,6 +241,18 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
             if data == {}:
                 raise Exception("Could not properly read in log file, {}".format(fname))
 
+            # Initialise the observation log for this system. I can get some items right away
+            observing_log_dict = {
+                'Instrument': inst,
+                'Telescope': obsname.replace(',', '-'),
+                'Filter(s)': '-'.join(bands),
+                'Date': '',
+                'Observation start (UTC)': '',
+                'Observation end (UTC)': '',
+                'Tecl': 0.0,
+                'Cycle No.': 0,
+            }
+
             printer("  Read the data file!")
 
             # Get the apertures of this data set
@@ -251,6 +265,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
 
 
             # I need to filter out any times with NAN data. For each CCD, check all aps for nan. if any are nan, remove that frame.
+            printer("Filtering nans from {}".format(fname))
             for CCD in aps:
                 lightcurves = [data.tseries(CCD, ap) for ap in data.apnames[CCD]]
                 lightcurves = [data.tseries(CCD, ap).y for ap in data.apnames[CCD]]
@@ -382,6 +397,21 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
 
                 # Grab the target data
                 target = data.tseries(CCD, '1')
+
+
+                # Add observation beginning and end to the observing log
+                obs_times = copy.deepcopy(target.t) # MJD
+                try:
+                    location = coord.EarthLocation.of_site(obsname)
+                except:
+                    lat, lon = obsname.split(',')
+                    location = coord.EarthLocation.from_geodetic(lat=lat, lon=lon)
+
+                times = time.Time(obs_times, format='mjd', scale='utc', location=location)
+
+                observing_log_dict['Observation start (UTC)'] = times.min().strftime("%H:%M")
+                observing_log_dict['Observation end (UTC)'] = times.max().strftime("%H:%M")
+                observing_log_dict['Date'] = times[0].strftime("%Y-%m-%d")
 
 
                 # mags is a list of the relevant comparison star magnitudes.
@@ -517,6 +547,10 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                     printer("  The eclipse is then at time {:.3f}".format(eclTime))
                     printer("")
 
+                # Add the Tecl and the cycle number to the observing log
+                observing_log_dict['Tecl'] = eclTime
+                observing_log_dict['Cycle No.'] = E
+
                 # slice out the data between phase -0.5 and 0.5
                 printer("  Slicing out data between phase {} and {}".format(lower_phase, upper_phase))
                 slice_time = (ratio.t - eclTime) / period
@@ -599,6 +633,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                 lightcurve_metadata += "# Instrumental counts per mean frame ({} frames) of target: {:.1f}\n#\n".format(len(target.y), np.mean(target.y))
                 lightcurve_metadata += "# Mean Target/comparison count ratio: {:.3f}\n".format(meanRatio)
                 lightcurve_metadata += "# Mean target magnitude: {:.3f}\n".format(sdss_flux2mag(meanRatio * comparison_flux))
+
 
                 # Plotting management
                 ax[CCD_int].clear()
@@ -709,6 +744,7 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
                 date = time.Time(eclTime, format='mjd')
                 date = date.strftime("%Y-%m-%d@%Hh%Mm")
 
+
                 filename = oname
                 filename = "{}_{}_{}.calib".format(filename, date, b)
 
@@ -742,6 +778,26 @@ def extract_data(oname, coords, obsname, T0, period, inst, SDSS,
 
             fig.canvas.draw_idle()
             compFig.canvas.draw_idle()
+
+
+            # Dump the observing log info to the observing log file
+            observing_log_cols = ['Instrument', 'Telescope', 'Date', 'Filter(s)', 'Observation start (UTC)', 'Observation end (UTC)', 'Tecl', 'Cycle No.']
+            if not os.path.isfile(observation_log_fname):
+                with open(observation_log_fname, 'w') as f:
+                    f.write(",".join(observing_log_cols))
+                    f.write('\n')
+            with open(observation_log_fname, 'a') as f:
+                f.write("{},{},{},{},{},{},{},{}\n".format(
+                    observing_log_dict['Instrument'],
+                    observing_log_dict['Telescope'],
+                    observing_log_dict['Date'],
+                    observing_log_dict['Filter(s)'],
+                    observing_log_dict['Observation start (UTC)'],
+                    observing_log_dict['Observation end (UTC)'],
+                    observing_log_dict['Tecl'],
+                    observing_log_dict['Cycle No.'],
+                ))
+
 
             input("\n  Hit enter for next file\r")
             print()

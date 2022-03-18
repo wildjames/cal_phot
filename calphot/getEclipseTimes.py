@@ -204,6 +204,25 @@ def smooth_derivative(tseries, med_half_width, box_half_width):
 
 def get_tseries(logfile, ccdnam, ap_targ, ap_comp):
     log = Hlog.rascii(logfile)
+
+    # I need to filter out any times with NAN data. For each CCD, check all aps for nan. if any are nan, remove that frame.
+    for CCD in log.apnames:
+        lightcurves = [log.tseries(CCD, ap) for ap in log.apnames[CCD]]
+        lightcurves = [log.tseries(CCD, ap).y for ap in log.apnames[CCD]]
+        badlocs = np.where(~np.isfinite(lightcurves))
+        goodlocs = np.where(np.isfinite(lightcurves))
+
+        badlocs = np.unique(badlocs[1])
+        goodlocs = np.unique(goodlocs[1])
+
+        if len(badlocs):
+            print("In CCD {}, I found {} frames with nan fluxes! I will remove these".format(CCD, len(badlocs)))
+            print("These were at indexes:")
+            print(badlocs)
+            input("Hit enter to continue...  ")
+
+        log[CCD] = log[CCD][goodlocs]
+
     return log.tseries(ccdnam, ap_targ) / log.tseries(ccdnam, ap_comp)
 
 # Define a cost function for MCMC
@@ -404,6 +423,24 @@ def getEclipseTimes(fnames, coords, obsname, myLoc=None):
             printer("  Failed to get data from Hlog.read function, skipping this file.")
             continue
         aps = log.apnames
+
+        # I need to filter out any times with NAN data. For each CCD, check all aps for nan. if any are nan, remove that frame.
+        for CCD in log.apnames:
+            lightcurves = [log.tseries(CCD, ap) for ap in log.apnames[CCD]]
+            lightcurves = [log.tseries(CCD, ap).y for ap in log.apnames[CCD]]
+            badlocs = np.where(~np.isfinite(lightcurves))
+            goodlocs = np.where(np.isfinite(lightcurves))
+
+            badlocs = np.unique(badlocs[1])
+            goodlocs = np.unique(goodlocs[1])
+
+            if len(badlocs):
+                print("In CCD {}, I found {} frames with nan fluxes! I will remove these".format(CCD, len(badlocs)))
+                print("These were at indexes:")
+                print(badlocs)
+                input("Hit enter to continue...  ")
+
+            log[CCD] = log[CCD][goodlocs]
 
         printer("File: {}".format(lf))
         if len(aps['1']) < 2:

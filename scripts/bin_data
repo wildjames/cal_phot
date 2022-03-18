@@ -94,7 +94,7 @@ if __name__ == "__main__":
         else:
             ax[0].step(data[:,0], data[:,1], where='mid', color='lightgrey')
 
-    print("Input data have a {} points".format(len(master_data['ts'])))
+    print("Inputs have {} total data points".format(len(master_data['ts'])))
 
     # Lets work with arrays, shall we?
     master_data = pd.DataFrame(master_data)
@@ -104,6 +104,8 @@ if __name__ == "__main__":
 
     # Enforce the phase limits
     master_data = master_data.loc[(master_data['ts'] >= phi_min) & (master_data['ts'] <= phi_max)]
+
+    print("Input data have {} points within the phase range".format(len(master_data['ts'])))
 
     # I'll bin onto this axis...
     out_X = np.linspace(phi_min, phi_max, nbins)

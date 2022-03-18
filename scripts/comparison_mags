@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
-from os.path import split
 from os import remove
+from os.path import split
 
+import calphot.logger as logger
 import hipercam as hcam
+import numpy as np
 from calphot.constructReference import get_comparison_magnitudes, load_stds
 from pandas import read_csv
-import calphot.logger as logger
 
 
 if __name__ in "__main__":
@@ -84,6 +85,24 @@ if __name__ in "__main__":
     nCCD = len(aps.keys())
     print("The standard reduction in {} has {} CCDs".format(std_fname, nCCD))
 
+    # I need to filter out any times with NAN data. For each CCD, check all aps for nan. if any are nan, remove that frame.
+    for CCD in std_data.apnames:
+        lightcurves = [std_data.tseries(CCD, ap) for ap in std_data.apnames[CCD]]
+        lightcurves = [std_data.tseries(CCD, ap).y for ap in std_data.apnames[CCD]]
+        badlocs = np.where(~np.isfinite(lightcurves))
+        goodlocs = np.where(np.isfinite(lightcurves))
+
+        badlocs = np.unique(badlocs[1])
+        goodlocs = np.unique(goodlocs[1])
+
+        if len(badlocs):
+            print("In CCD {}, I found {} frames with nan fluxes! I will remove these".format(CCD, len(badlocs)))
+            print("These were at indexes:")
+            print(badlocs)
+            input("Hit enter to continue...  ")
+
+        std_data[CCD] = std_data[CCD][goodlocs]
+
     # I need to know what filters the CCDs are in.
     print("What bands are the CCDs in?")
     std_CCD_mags = []
@@ -109,6 +128,12 @@ if __name__ in "__main__":
         ex = input("Enter k_(ext) for band {}: ".format(band))
         ex = float(ex)
         ext.append(ex)
+
+    flags = input("Enter any flags you want to ignore, space separated: ")
+    if len(flags):
+        flags = [int(f) for f in flags.split(' ')]
+    else:
+        flags = []
 
     # The user has to be careful. Try and be annoying about this
     print("\nPlease type 'yes' to confirm that this is correct!")
@@ -139,7 +164,8 @@ if __name__ in "__main__":
         std_coords, comp_coords,
         std_CCD_mags,
         obsname,
-        ext, fname="ComparisonMags.LOGS"
+        ext, fname="ComparisonMags.LOGS",
+        FLAGS_TO_IGNORE=flags
     )
 
     print("Here's the bloc that you'll want to put in the config YAML for cal_phot (remember to remove the target!):")
